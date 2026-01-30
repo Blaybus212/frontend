@@ -1,0 +1,34 @@
+# Gemini Code Assist 설정 파일
+# PR이 열릴 때 자동으로 코드 리뷰와 요약을 수행하도록 설정
+
+code_review:
+  # 코드 리뷰 활성화
+  disable: false
+  # 리뷰 코멘트 심각도 임계값 (LOW, MEDIUM, HIGH)
+  comment_severity_threshold: MEDIUM
+  # 최대 리뷰 코멘트 수 (-1은 제한 없음)
+  max_review_comments: -1
+
+# PR이 열릴 때 자동 실행할 작업 설정
+pull_request_opened:
+  # 도움말 표시 여부
+  help: false
+  # PR 요약 생성 여부
+  summary: true
+  # 코드 리뷰 실행 여부
+  code_review: true
+  # Draft PR도 포함할지 여부
+  include_drafts: true
+
+# 리뷰에서 제외할 파일 패턴 (glob 패턴)
+ignore_patterns:
+  - '**/*.webp'
+  - '**/*.png'
+  - '**/*.jpg'
+  - '**/*.jpeg'
+  - '**/*.svg'
+  - '**/dist/**'
+  - '**/node_modules/**'
+  - '**/*.lock'
+  - '**/package-lock.json'
+  - '**/.git/**'
