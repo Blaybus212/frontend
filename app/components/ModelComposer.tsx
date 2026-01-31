@@ -37,7 +37,7 @@ function ModelComposer() {
         const response = await fetch('/api/models');
         if (response.ok) {
           const data = await response.json();
-          const objModels = data.models.filter((m: any) => m.type === 'obj');
+          const objModels = data.models.filter((m: { type: string }) => m.type === 'obj');
           setAvailableModels(objModels);
         }
       } catch (error) {

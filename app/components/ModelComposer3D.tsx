@@ -1,10 +1,22 @@
 'use client';
 
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Canvas, useLoader, useThree } from '@react-three/fiber';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { Canvas, useLoader, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+
+// R3F 컴포넌트 ref 타입 정의
+interface TransformControlsRef {
+  setMode: (mode: 'translate' | 'rotate' | 'scale') => void;
+  addEventListener: (type: 'dragging-changed', listener: (event: { value: boolean }) => void) => void;
+  removeEventListener: (type: 'dragging-changed', listener: (event: { value: boolean }) => void) => void;
+  dragging?: boolean;
+}
+
+interface OrbitControlsRef {
+  enabled: boolean;
+}
 
 interface LoadedObject {
   id: string;
@@ -120,8 +132,9 @@ function SceneContent({
   onTooltipChange: (tooltip: TooltipData | null) => void;
 }) {
   const { camera, gl, scene } = useThree();
-  const transformControlsRef = useRef<any>(null);
-  const orbitControlsRef = useRef<any>(null);
+  // R3F 컴포넌트 ref는 실제로는 더 많은 속성을 가지지만, 우리가 사용하는 것만 타입으로 정의
+  const transformControlsRef = useRef<TransformControlsRef | null>(null);
+  const orbitControlsRef = useRef<OrbitControlsRef | null>(null);
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
   const selectedObjectRef = useRef<THREE.Group | null>(null);
@@ -153,37 +166,25 @@ function SceneContent({
   }, [transformMode]);
 
   // TransformControls 드래그 중 OrbitControls 비활성화
-  useEffect(() => {
-    if (!selectedObjectRef.current) {
-      setOrbitControlsEnabled(true);
-      return;
-    }
-    
-    // TransformControls가 렌더링된 후에 이벤트 리스너 추가
-    const timeoutId = setTimeout(() => {
-      const transformControls = transformControlsRef.current;
-      if (!transformControls) return;
-
-      const handleDraggingChanged = (event: { value: boolean }) => {
-        setOrbitControlsEnabled(!event.value);
-      };
-
-      transformControls.addEventListener('dragging-changed', handleDraggingChanged);
-
-      return () => {
-        transformControls.removeEventListener('dragging-changed', handleDraggingChanged);
-      };
-    }, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-      const transformControls = transformControlsRef.current;
-      if (transformControls) {
-        transformControls.removeEventListener('dragging-changed', () => {});
+  // useFrame을 사용해서 매 프레임마다 dragging 상태 확인
+  useFrame(() => {
+    if (transformControlsRef.current) {
+      const isDragging = transformControlsRef.current.dragging || false;
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.enabled = !isDragging;
       }
-      setOrbitControlsEnabled(true);
-    };
-  }, [selectedObjectId, selectedObjectRef.current]);
+      // state도 동기화 (UI 업데이트용)
+      if (isDragging !== !orbitControlsEnabled) {
+        setOrbitControlsEnabled(!isDragging);
+      }
+    } else {
+      // TransformControls가 없으면 OrbitControls 활성화
+      if (orbitControlsRef.current && !orbitControlsEnabled) {
+        orbitControlsRef.current.enabled = true;
+        setOrbitControlsEnabled(true);
+      }
+    }
+  });
 
   // 마우스 이벤트 처리
   useEffect(() => {
@@ -290,8 +291,10 @@ function SceneContent({
       <axesHelper args={[5]} />
 
       {/* OrbitControls */}
+      {/* R3F 컴포넌트 ref 타입과 우리 인터페이스가 다르지만, 실제 사용하는 속성(enabled)은 호환됨 */}
+      {/* eslint-disable @typescript-eslint/no-explicit-any */}
       <OrbitControls
-        ref={orbitControlsRef}
+        ref={orbitControlsRef as any}
         enabled={orbitControlsEnabled}
         enablePan
         enableZoom
@@ -299,14 +302,20 @@ function SceneContent({
         enableDamping
         dampingFactor={0.05}
       />
+      {/* eslint-enable @typescript-eslint/no-explicit-any */}
 
       {/* TransformControls */}
       {selectedObjectRef.current && (
-        <TransformControls
-          ref={transformControlsRef}
-          object={selectedObjectRef.current}
-          mode={transformMode}
-        />
+        <>
+          {/* R3F 컴포넌트 ref 타입과 우리 인터페이스가 다르지만, 실제 사용하는 메서드들은 호환됨 */}
+          {/* eslint-disable @typescript-eslint/no-explicit-any */}
+          <TransformControls
+            ref={transformControlsRef as any}
+            object={selectedObjectRef.current}
+            mode={transformMode}
+          />
+          {/* eslint-enable @typescript-eslint/no-explicit-any */}
+        </>
       )}
 
       {/* 로드된 모델들 */}

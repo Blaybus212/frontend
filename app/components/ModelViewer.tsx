@@ -428,7 +428,6 @@ function ModelViewer({ modelPath }: ModelViewerProps) {
              * 가장 긴 축의 길이를 2 단위로 맞춥니다.
              */
             const box = new THREE.Box3();
-            let hasValidBounds = false;
             
             try {
               // 모델의 경계 상자(Bounding Box) 계산
@@ -437,7 +436,6 @@ function ModelViewer({ modelPath }: ModelViewerProps) {
               const maxDim = Math.max(size.x, size.y, size.z);
               
               if (!isNaN(maxDim) && maxDim > 0 && isFinite(maxDim)) {
-                hasValidBounds = true;
                 const center = box.getCenter(new THREE.Vector3());
                 const scale = 2 / maxDim; // 가장 긴 축이 2 단위가 되도록 스케일 계산
 
@@ -645,7 +643,6 @@ function ModelViewer({ modelPath }: ModelViewerProps) {
      * 매 프레임마다 씬을 렌더링합니다.
      * requestAnimationFrame을 사용하여 브라우저의 리프레시 레이트에 맞춰 실행됩니다.
      */
-    const clock = new THREE.Clock();
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
       
