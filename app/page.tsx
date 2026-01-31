@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import ModelList from './components/ModelList';
 
@@ -46,6 +47,7 @@ interface Model {
  * @returns {JSX.Element} 메인 페이지 컴포넌트
  */
 export default function Home() {
+  const router = useRouter();
   /** 사용 가능한 모델 목록 */
   const [models, setModels] = useState<Model[]>([]);
   /** 현재 선택된 모델의 경로 */
@@ -125,6 +127,17 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden fixed inset-0">
+      {/* 자유공간 버튼 */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          onClick={() => router.push('/composer')}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-semibold transition-colors duration-200 flex items-center gap-2"
+        >
+          <span>🎨</span>
+          <span>자유공간</span>
+        </button>
+      </div>
+
       {/* 모델 리스트 사이드바 */}
       <div className="w-80 flex-shrink-0 overflow-y-auto h-full">
         <ModelList
