@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
   
   // Webpack 설정 (--webpack 플래그 사용 시 또는 Turbopack이 지원하지 않는 경우)
   webpack: (config, { isServer }) => {
-    // three.js 관련 모듈을 클라이언트에서만 로드
+    // 클라이언트 측 번들에서 Node.js의 fs 모듈을 제외
+    // fs 모듈을 필요로 하는 라이브러리가 브라우저 환경에서 오류를 일으키는 것을 방지
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
