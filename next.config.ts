@@ -1,6 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Next.js 13.1 이상: three를 transpilePackages에 추가
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  // R3F 공식 문서 권장: three를 transpilePackages에 추가
   transpilePackages: ['three'],
   
   webpack: (config, { isServer }) => {
@@ -15,5 +16,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
-
+export default nextConfig;
