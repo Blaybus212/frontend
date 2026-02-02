@@ -43,7 +43,7 @@ export default function TestPage() {
     fetchFolders();
   }, []);
 
-  // 선택된 폴더의 파일 목록 가져오기
+  // 선택된 폴더의 파일 목록 가져오기 (재귀적으로 모든 하위 폴더 포함)
   useEffect(() => {
     if (!selectedFolder) {
       setFiles([]);
@@ -53,9 +53,24 @@ export default function TestPage() {
     const fetchFiles = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/assets/files?folder=${selectedFolder}`);
+        // recursive=true로 모든 하위 폴더의 파일 가져오기
+        const response = await fetch(`/api/assets/files?folder=${selectedFolder}&recursive=true`);
         const data = await response.json();
         setFiles(data.files || []);
+        
+        // 폴더 선택 시 모든 모델 자동 추가 (기존 모델 초기화)
+        if (data.files && data.files.length > 0) {
+          const newModels: Model[] = data.files.map((file: File, index: number) => ({
+            url: file.path,
+            id: `model_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name.replace('.gltf', '').replace('.glb', ''),
+          }));
+          setModels(newModels);
+          setSelectedModelIndex(null); // 선택 초기화
+        } else {
+          setModels([]); // 파일이 없으면 모델 초기화
+          setSelectedModelIndex(null);
+        }
       } catch (error) {
         console.error('Error fetching files:', error);
         setFiles([]);
@@ -111,7 +126,10 @@ export default function TestPage() {
               folders.map((folder) => (
                 <button
                   key={folder.name}
-                  onClick={() => setSelectedFolder(folder.name)}
+                  onClick={() => {
+                    setSelectedFolder(folder.name);
+                    // 폴더 선택 시 모든 모델 자동 추가
+                  }}
                   className={`w-full text-left p-2 rounded text-sm transition-colors ${
                     selectedFolder === folder.name
                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
@@ -125,37 +143,10 @@ export default function TestPage() {
           </div>
         </div>
 
-        {/* 파일 목록 */}
-        {selectedFolder && (
+        {/* 파일 목록 - 숨김 (폴더 선택 시 자동 추가) */}
+        {selectedFolder && loading && (
           <div className="mb-6">
-            <h3 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-              3D 모델 파일 ({files.length})
-            </h3>
-            {loading ? (
-              <div className="text-xs text-gray-400">로딩 중...</div>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto border rounded p-2">
-                {files.length === 0 ? (
-                  <div className="text-xs text-gray-400">파일이 없습니다</div>
-                ) : (
-                  files.map((file) => (
-                    <button
-                      key={file.path}
-                      onClick={() => addModel(file)}
-                      className="w-full text-left p-2 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white text-sm transition-colors flex items-center gap-2"
-                    >
-                      <span>+</span>
-                      <span className="flex-1 truncate">{file.name}</span>
-                      {file.type && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-                          {file.type.toUpperCase()}
-                        </span>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
+            <div className="text-xs text-gray-400">모델 로딩 중...</div>
           </div>
         )}
 
