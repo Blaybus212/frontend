@@ -92,6 +92,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         const obj = modelRefs.current.get(selectedIndices[0]);
         if (obj) {
           delete obj.userData.initialRelativePos;
+          delete obj.userData.initialQuaternion;
         }
       }
       return;
@@ -136,7 +137,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         center
       );
       obj.userData.initialRelativePos = relativePos.clone();
-      obj.userData.initialRotation = obj.rotation.clone();
+      // 초기 회전을 쿼터니언으로 저장 (김벌락 방지)
+      obj.userData.initialQuaternion = obj.quaternion.clone();
       obj.userData.initialScale = obj.scale.clone();
     });
 
@@ -157,22 +159,23 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       const obj = modelRefs.current.get(index);
       if (obj && obj.userData.initialRelativePos) {
         const relativePos = obj.userData.initialRelativePos.clone();
-        const initialRot = obj.userData.initialRotation || new THREE.Euler();
+        const initialQuaternion = obj.userData.initialQuaternion || new THREE.Quaternion();
         const initialScale = obj.userData.initialScale || new THREE.Vector3(1, 1, 1);
         
+        // 그룹의 회전을 쿼터니언으로 변환
+        const groupQuaternion = new THREE.Quaternion().setFromEuler(groupRotation);
+        
         // 그룹의 회전과 스케일을 상대 위치에 적용
-        relativePos.applyEuler(groupRotation);
+        relativePos.applyQuaternion(groupQuaternion);
         relativePos.multiply(groupScale);
         
         // 최종 위치 = 그룹 위치 + 변환된 상대 위치
         obj.position.copy(groupPosition.clone().add(relativePos));
         
-        // 회전: 초기 회전 + 그룹 회전
-        obj.rotation.set(
-          initialRot.x + groupRotation.x,
-          initialRot.y + groupRotation.y,
-          initialRot.z + groupRotation.z
-        );
+        // 회전: 쿼터니언을 사용하여 그룹 회전과 초기 회전을 합성합니다.
+        // 김벌락(Gimbal Lock) 현상을 방지하기 위해 쿼터니언 곱셈 사용
+        const initialQuaternionForRotation = initialQuaternion.clone();
+        obj.quaternion.copy(groupQuaternion).multiply(initialQuaternionForRotation);
         
         // 스케일: 초기 스케일 * 그룹 스케일
         obj.scale.set(
@@ -213,10 +216,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         // 클릭한 객체의 userData에서 modelRef 찾기 또는 부모 추적
         let current: THREE.Object3D | null = clickedObject;
         while (current) {
+          const currentObj: THREE.Object3D = current; // null 체크를 위한 변수
+          
           // userData에 저장된 modelRef 확인
-          if (current.userData.modelRef) {
+          if (currentObj.userData.modelRef) {
             modelRefs.current.forEach((group, index) => {
-              if (group === current.userData.modelRef) {
+              if (group === currentObj.userData.modelRef) {
                 foundIndex = index;
               }
             });
@@ -225,7 +230,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           
           // 모델 refs를 통해 클릭한 객체가 어느 모델에 속하는지 찾기
           modelRefs.current.forEach((group, index) => {
-            if (group && (group === current || group.getObjectById(current!.id))) {
+            if (group && (group === currentObj || group.getObjectById(currentObj.id))) {
               foundIndex = index;
             }
           });
@@ -233,7 +238,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           if (foundIndex >= 0) break;
           
           // 부모로 이동
-          current = current.parent;
+          current = currentObj.parent;
         }
         
         if (foundIndex >= 0) {
