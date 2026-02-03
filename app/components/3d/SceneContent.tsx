@@ -7,16 +7,7 @@ import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Model } from './Model';
 import { extractObjectInfo } from './utils';
-import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DRef } from './types';
-
-interface SceneContentProps {
-  models: ModelType[];
-  selectedModelIndex: number | null;
-  selectedModelIndices?: number[]; // 다중 선택 지원
-  onModelSelect: (index: number | null) => void;
-  onModelSelectMultiple?: (indices: number[]) => void; // 다중 선택 콜백
-  onObjectInfoChange?: (info: ObjectInfo | null) => void;
-}
+import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
 
 /**
  * 3D 씬의 내부 컨텐츠 (조명, 컨트롤, 모델들)
