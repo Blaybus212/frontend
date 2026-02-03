@@ -12,19 +12,10 @@ import type { ObjectInfo } from './types';
 export function extractObjectInfo(object: THREE.Group | null): ObjectInfo | null {
   if (!object) return null;
 
-  // GLTF 로더는 매트릭스를 scene의 첫 번째 자식 노드에 적용함
-  // scene 자체의 matrixWorld는 단위 행렬일 수 있으므로,
-  // 첫 번째 자식 노드의 matrixWorld를 확인하거나 scene과 자식의 매트릭스를 합침
-  let targetMatrix: THREE.Matrix4;
-  
-  if (object.children.length > 0) {
-    const firstChild = object.children[0];
-    // 자식 노드의 matrixWorld 사용 (GLTF 매트릭스가 적용된 값)
-    targetMatrix = firstChild.matrixWorld.clone();
-  } else {
-    // 자식이 없으면 scene 자체의 매트릭스 사용
-    targetMatrix = object.matrixWorld.clone();
-  }
+  // 객체의 matrixWorld를 직접 사용
+  // Model 컴포넌트에서 노드를 복제하여 추가하므로,
+  // object 자체가 노드이고 그 matrixWorld를 사용합니다
+  const targetMatrix = object.matrixWorld.clone();
   
   const matrix = targetMatrix.toArray();
   

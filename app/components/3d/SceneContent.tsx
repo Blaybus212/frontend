@@ -210,12 +210,31 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         const clickedObject = intersects[0].object;
         let foundIndex = -1;
         
-        // 모델 refs를 통해 클릭한 객체가 어느 모델에 속하는지 찾기
-        modelRefs.current.forEach((group, index) => {
-          if (group && (group === clickedObject || group.getObjectById(clickedObject.id))) {
-            foundIndex = index;
+        // 클릭한 객체의 userData에서 modelRef 찾기 또는 부모 추적
+        let current: THREE.Object3D | null = clickedObject;
+        while (current) {
+          // userData에 저장된 modelRef 확인
+          if (current.userData.modelRef) {
+            modelRefs.current.forEach((group, index) => {
+              if (group === current.userData.modelRef) {
+                foundIndex = index;
+              }
+            });
+            if (foundIndex >= 0) break;
           }
-        });
+          
+          // 모델 refs를 통해 클릭한 객체가 어느 모델에 속하는지 찾기
+          modelRefs.current.forEach((group, index) => {
+            if (group && (group === current || group.getObjectById(current!.id))) {
+              foundIndex = index;
+            }
+          });
+          
+          if (foundIndex >= 0) break;
+          
+          // 부모로 이동
+          current = current.parent;
+        }
         
         if (foundIndex >= 0) {
           const isMultiSelect = event.ctrlKey || event.metaKey; // Ctrl (Windows) 또는 Cmd (Mac)
@@ -434,7 +453,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           <Suspense key={model.id} fallback={null}>
             <Model
               url={model.url}
-              position={[0, 0, 0]}
+              nodeIndex={model.nodeIndex ?? 0}
+              nodePath={model.nodePath}
               isSelected={selectedIndices.includes(index)}
               onRef={(ref) => {
                 if (ref) {

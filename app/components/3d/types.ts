@@ -24,6 +24,8 @@ export interface Model {
   url: string;
   id: string;
   name?: string;
+  nodeIndex?: number; // scene에서의 순서 인덱스
+  nodePath?: string; // 노드를 찾기 위한 경로 (예: "0/1/2")
 }
 
 export type TransformMode = 'translate' | 'rotate' | 'scale';
