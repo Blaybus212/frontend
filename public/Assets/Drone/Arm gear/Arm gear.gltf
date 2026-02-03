@@ -1,118 +1,136 @@
 {
-  "asset": {
-    "generator": "glTF-Transform v4.2.1",
-    "version": "2.0"
-  },
-  "accessors": [
-    {
-      "type": "VEC3",
-      "componentType": 5126,
-      "count": 7014,
-      "bufferView": 0,
-      "byteOffset": 0
+    "asset": {
+        "generator": "glTF-Transform v4.2.1",
+        "version": "2.0"
     },
-    {
-      "type": "VEC3",
-      "componentType": 5126,
-      "count": 7014,
-      "max": [
-        1.1999993324279785,
-        2.9000000953674316,
-        1.199824333190918
-      ],
-      "min": [
-        -1.1991559267044067,
-        0,
-        -1.199824333190918
-      ],
-      "bufferView": 0,
-      "byteOffset": 12
-    },
-    {
-      "type": "SCALAR",
-      "componentType": 5125,
-      "count": 20280,
-      "bufferView": 1,
-      "byteOffset": 0
-    }
-  ],
-  "bufferViews": [
-    {
-      "buffer": 0,
-      "byteOffset": 0,
-      "byteLength": 168336,
-      "byteStride": 24,
-      "target": 34962
-    },
-    {
-      "buffer": 0,
-      "byteOffset": 168336,
-      "byteLength": 81120,
-      "target": 34963
-    }
-  ],
-  "buffers": [
-    {
-      "uri": "buffer.bin",
-      "byteLength": 249456
-    }
-  ],
-  "materials": [
-    {
-      "name": "CopperPolished",
-      "doubleSided": true,
-      "pbrMetallicRoughness": {
-        "baseColorFactor": [
-          0.5024979710578918,
-          0.0803631991147995,
-          0.028336700052022934,
-          1
-        ],
-        "roughnessFactor": 0.10000000149011612
-      }
-    }
-  ],
-  "meshes": [
-    {
-      "primitives": [
+    "accessors": [
         {
-          "attributes": {
-            "NORMAL": 0,
-            "POSITION": 1
-          },
-          "mode": 4,
-          "material": 0,
-          "indices": 2
+            "type": "VEC3",
+            "componentType": 5126,
+            "count": 7014,
+            "bufferView": 0,
+            "byteOffset": 0
+        },
+        {
+            "type": "VEC3",
+            "componentType": 5126,
+            "count": 7014,
+            "max": [
+                1.1999993324279785,
+                2.9000000953674316,
+                1.199824333190918
+            ],
+            "min": [
+                -1.1991559267044067,
+                0,
+                -1.199824333190918
+            ],
+            "bufferView": 0,
+            "byteOffset": 12
+        },
+        {
+            "type": "SCALAR",
+            "componentType": 5125,
+            "count": 20280,
+            "bufferView": 1,
+            "byteOffset": 0
         }
-      ]
-    }
-  ],
-  "nodes": [
-    {
-      "children": [
-        1
-      ]
-    },
-    {
-      "name": "Solid1",
-      "extras": {
-        "name": "Solid1"
-      },
-      "scale": [
-        0.01,
-        0.01,
-        0.01
-      ],
-      "mesh": 0
-    }
-  ],
-  "scenes": [
-    {
-      "name": "AuxScene",
-      "nodes": [
-        0
-      ]
-    }
-  ],
-  "scene": 0
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": 168336,
+            "byteStride": 24,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 168336,
+            "byteLength": 81120,
+            "target": 34963
+        }
+    ],
+    "buffers": [
+        {
+            "uri": "buffer.bin",
+            "byteLength": 249456
+        }
+    ],
+    "materials": [
+        {
+            "name": "CopperPolished",
+            "doubleSided": true,
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [
+                    0.5024979710578918,
+                    0.0803631991147995,
+                    0.028336700052022934,
+                    1
+                ],
+                "roughnessFactor": 0.10000000149011612
+            }
+        }
+    ],
+    "meshes": [
+        {
+            "primitives": [
+                {
+                    "attributes": {
+                        "NORMAL": 0,
+                        "POSITION": 1
+                    },
+                    "mode": 4,
+                    "material": 0,
+                    "indices": 2
+                }
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "children": [
+                1
+            ],
+            "matrix": [
+                0.966703,
+                0.009019,
+                0.255742,
+                0.0,
+                0.255901,
+                -0.034069,
+                -0.966103,
+                0.0,
+                -0.0,
+                0.999379,
+                -0.035242,
+                0.0,
+                0.098066,
+                -0.01781,
+                -0.091088,
+                1.0
+            ]
+        },
+        {
+            "name": "Solid1",
+            "extras": {
+                "name": "Solid1"
+            },
+            "scale": [
+                0.01,
+                0.01,
+                0.01
+            ],
+            "mesh": 0
+        }
+    ],
+    "scenes": [
+        {
+            "name": "AuxScene",
+            "nodes": [
+                0
+            ]
+        }
+    ],
+    "scene": 0
 }
