@@ -1,9 +1,10 @@
 'use client';
 
-import React, { Suspense, useRef, useState } from 'react';
+import React, { Suspense, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, TransformControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
 // GLTF 모델 컴포넌트
 function Model({ 
@@ -85,20 +86,89 @@ function Model({
   );
 }
 
+// 객체 정보 추출 함수
+function extractObjectInfo(object: THREE.Group | null): ObjectInfo | null {
+  if (!object) return null;
+
+  const matrix = object.matrixWorld.toArray();
+  const position = object.position;
+  const rotation = object.rotation;
+  const scale = object.scale;
+
+  const meshes: ObjectInfo['meshes'] = [];
+  
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const geometry = child.geometry;
+      const material = child.material;
+      
+      let vertices = 0;
+      let faces = 0;
+      
+      if (geometry) {
+        if (geometry.attributes.position) {
+          vertices = geometry.attributes.position.count;
+        }
+        if (geometry.index) {
+          faces = geometry.index.count / 3;
+        } else {
+          faces = vertices / 3;
+        }
+      }
+
+      const meshInfo: ObjectInfo['meshes'][0] = {
+        name: child.name || 'Unnamed Mesh',
+        vertices,
+        faces: Math.floor(faces),
+      };
+
+      if (material instanceof THREE.MeshStandardMaterial) {
+        meshInfo.material = {
+          name: material.name || 'Standard Material',
+          color: `#${material.color.getHexString()}`,
+          metalness: material.metalness,
+          roughness: material.roughness,
+        };
+      }
+
+      meshes.push(meshInfo);
+    }
+  });
+
+  return {
+    matrix,
+    position: { x: position.x, y: position.y, z: position.z },
+    rotation: { 
+      x: THREE.MathUtils.radToDeg(rotation.x),
+      y: THREE.MathUtils.radToDeg(rotation.y),
+      z: THREE.MathUtils.radToDeg(rotation.z)
+    },
+    scale: { x: scale.x, y: scale.y, z: scale.z },
+    meshes,
+  };
+}
+
 // 씬 내부 컨텐츠
-function SceneContent({ 
-  models, 
-  selectedModelIndex,
-  onModelSelect 
-}: { 
-  models: Array<{ url: string; id: string }>;
+const SceneContent = forwardRef<{ 
+  exportScene: () => void;
+  updateObjectTransform: (transform: { position?: { x?: number; y?: number; z?: number }; rotation?: { x?: number; y?: number; z?: number }; scale?: { x?: number; y?: number; z?: number } }) => void;
+  setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
+}, {
+  models: Array<{ url: string; id: string; name?: string }>;
   selectedModelIndex: number | null;
   onModelSelect: (index: number | null) => void;
-}) {
+  onObjectInfoChange?: (info: ObjectInfo | null) => void;
+}>(({ 
+  models, 
+  selectedModelIndex,
+  onModelSelect,
+  onObjectInfoChange
+}, ref) => {
   const { camera, gl, scene } = useThree();
   const transformControlsRef = useRef<any>(null);
   const orbitControlsRef = useRef<any>(null);
   const [orbitControlsEnabled, setOrbitControlsEnabled] = useState(true);
+  const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
@@ -165,6 +235,150 @@ function SceneContent({
 
   const selectedModel = selectedModelIndex !== null ? models[selectedModelIndex] : null;
   const selectedObjectRef = selectedModelIndex !== null ? modelRefs.current.get(selectedModelIndex) || null : null;
+  
+  // 이전 정보를 저장하여 변경 감지
+  const previousInfoRef = useRef<ObjectInfo | null>(null);
+
+  // 선택된 객체 정보 추출 및 전달
+  React.useEffect(() => {
+    if (selectedObjectRef && onObjectInfoChange) {
+      const info = extractObjectInfo(selectedObjectRef);
+      previousInfoRef.current = info;
+      onObjectInfoChange(info);
+    } else if (onObjectInfoChange) {
+      previousInfoRef.current = null;
+      onObjectInfoChange(null);
+    }
+  }, [selectedObjectRef, onObjectInfoChange]);
+
+  // TransformControls 조작 시 실시간 업데이트 (값이 변경되었을 때만)
+  useFrame(() => {
+    if (selectedObjectRef && onObjectInfoChange) {
+      const info = extractObjectInfo(selectedObjectRef);
+      
+      if (!info) return;
+      
+      // 이전 정보와 비교하여 실제로 변경되었을 때만 업데이트
+      const prev = previousInfoRef.current;
+      if (!prev || 
+          prev.position.x !== info.position.x || 
+          prev.position.y !== info.position.y || 
+          prev.position.z !== info.position.z ||
+          prev.rotation.x !== info.rotation.x || 
+          prev.rotation.y !== info.rotation.y || 
+          prev.rotation.z !== info.rotation.z ||
+          prev.scale.x !== info.scale.x || 
+          prev.scale.y !== info.scale.y || 
+          prev.scale.z !== info.scale.z) {
+        previousInfoRef.current = info;
+        onObjectInfoChange(info);
+      }
+    }
+  });
+
+  // 객체 변환 업데이트 함수
+  const updateObjectTransform = React.useCallback((transform: { 
+    position?: { x?: number; y?: number; z?: number }; 
+    rotation?: { x?: number; y?: number; z?: number }; 
+    scale?: { x?: number; y?: number; z?: number } 
+  }) => {
+    if (selectedObjectRef) {
+      if (transform.position !== undefined) {
+        if (transform.position.x !== undefined) selectedObjectRef.position.x = transform.position.x;
+        if (transform.position.y !== undefined) selectedObjectRef.position.y = transform.position.y;
+        if (transform.position.z !== undefined) selectedObjectRef.position.z = transform.position.z;
+      }
+      
+      if (transform.rotation !== undefined) {
+        if (transform.rotation.x !== undefined) selectedObjectRef.rotation.x = THREE.MathUtils.degToRad(transform.rotation.x);
+        if (transform.rotation.y !== undefined) selectedObjectRef.rotation.y = THREE.MathUtils.degToRad(transform.rotation.y);
+        if (transform.rotation.z !== undefined) selectedObjectRef.rotation.z = THREE.MathUtils.degToRad(transform.rotation.z);
+      }
+      
+      if (transform.scale !== undefined) {
+        if (transform.scale.x !== undefined) selectedObjectRef.scale.x = transform.scale.x;
+        if (transform.scale.y !== undefined) selectedObjectRef.scale.y = transform.scale.y;
+        if (transform.scale.z !== undefined) selectedObjectRef.scale.z = transform.scale.z;
+      }
+      
+      // 업데이트 후 정보 갱신
+      if (onObjectInfoChange) {
+        const info = extractObjectInfo(selectedObjectRef);
+        onObjectInfoChange(info);
+      }
+    }
+  }, [selectedObjectRef, onObjectInfoChange]);
+
+  // 씬 내보내기 함수
+  const exportScene = React.useCallback(() => {
+    if (modelRefs.current.size === 0) {
+      alert('내보낼 모델이 없습니다.');
+      return;
+    }
+
+    // 모든 모델을 하나의 그룹으로 합치기
+    const exportGroup = new THREE.Group();
+    exportGroup.name = 'ExportedScene';
+
+    modelRefs.current.forEach((modelGroup, index) => {
+      if (modelGroup) {
+        // 모델을 복제하여 추가 (원본은 유지)
+        const cloned = modelGroup.clone(true);
+        cloned.name = models[index]?.name || `Model_${index}`;
+        exportGroup.add(cloned);
+      }
+    });
+
+    // GLTFExporter를 사용하여 내보내기
+    const exporter = new GLTFExporter();
+    
+    exporter.parse(
+      exportGroup,
+      (result) => {
+        if (result instanceof ArrayBuffer) {
+          // GLB 형식 (바이너리)
+          const blob = new Blob([result], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'scene.glb';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } else if (result) {
+          // GLTF 형식 (JSON)
+          const output = JSON.stringify(result, null, 2);
+          const blob = new Blob([output], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'scene.gltf';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      },
+      (error) => {
+        console.error('GLTF export error:', error);
+        alert('씬 내보내기 중 오류가 발생했습니다.');
+      },
+      { binary: false, onlyVisible: false, truncateDrawRange: true }
+    );
+  }, [models]);
+
+  // TransformControls 모드 설정 함수
+  const handleSetTransformMode = React.useCallback((mode: 'translate' | 'rotate' | 'scale') => {
+    setTransformMode(mode);
+  }, []);
+
+  // ref를 통해 함수들 노출
+  useImperativeHandle(ref, () => ({
+    exportScene,
+    updateObjectTransform,
+    setTransformMode: handleSetTransformMode
+  }));
 
   return (
     <>
@@ -193,7 +407,7 @@ function SceneContent({
         <TransformControls
           ref={transformControlsRef}
           object={selectedObjectRef}
-          mode="translate"
+          mode={transformMode}
           showX
           showY
           showZ
@@ -221,28 +435,80 @@ function SceneContent({
       })}
     </>
   );
+});
+
+SceneContent.displayName = 'SceneContent';
+
+export interface ObjectInfo {
+  matrix: number[];
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  scale: { x: number; y: number; z: number };
+  meshes: Array<{
+    name: string;
+    vertices: number;
+    faces: number;
+    material?: {
+      name?: string;
+      color?: string;
+      metalness?: number;
+      roughness?: number;
+    };
+  }>;
 }
 
 interface Scene3DProps {
-  models: Array<{ url: string; id: string }>;
+  models: Array<{ url: string; id: string; name?: string }>;
   selectedModelIndex: number | null;
   onModelSelect: (index: number | null) => void;
+  onObjectInfoChange?: (info: ObjectInfo | null) => void;
 }
 
-export default function Scene3D({ models, selectedModelIndex, onModelSelect }: Scene3DProps) {
-  return (
-    <Canvas
-      camera={{ position: [0, 5, 15], fov: 50 }}
-      gl={{ antialias: true }}
-      style={{ background: '#1a1a1a', width: '100%', height: '100%' }}
-    >
-      <Suspense fallback={null}>
-        <SceneContent
-          models={models}
-          selectedModelIndex={selectedModelIndex}
-          onModelSelect={onModelSelect}
-        />
-      </Suspense>
-    </Canvas>
-  );
-}
+const Scene3D = forwardRef<{ 
+  exportScene: () => void;
+  updateObjectTransform: (transform: { position?: { x?: number; y?: number; z?: number }; rotation?: { x?: number; y?: number; z?: number }; scale?: { x?: number; y?: number; z?: number } }) => void;
+  setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
+}, Scene3DProps>(
+  ({ models, selectedModelIndex, onModelSelect, onObjectInfoChange }, ref) => {
+    const sceneContentRef = useRef<{ 
+      exportScene: () => void;
+      updateObjectTransform: (transform: { position?: { x?: number; y?: number; z?: number }; rotation?: { x?: number; y?: number; z?: number }; scale?: { x?: number; y?: number; z?: number } }) => void;
+      setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
+    }>(null);
+
+    // 외부 ref를 sceneContentRef에 연결
+    useImperativeHandle(ref, () => ({
+      exportScene: () => {
+        sceneContentRef.current?.exportScene();
+      },
+      updateObjectTransform: (transform) => {
+        sceneContentRef.current?.updateObjectTransform(transform);
+      },
+      setTransformMode: (mode) => {
+        sceneContentRef.current?.setTransformMode(mode);
+      }
+    }));
+
+    return (
+      <Canvas
+        camera={{ position: [0, 5, 15], fov: 50 }}
+        gl={{ antialias: true }}
+        style={{ background: '#1a1a1a', width: '100%', height: '100%' }}
+      >
+        <Suspense fallback={null}>
+          <SceneContent
+            ref={sceneContentRef}
+            models={models}
+            selectedModelIndex={selectedModelIndex}
+            onModelSelect={onModelSelect}
+            onObjectInfoChange={onObjectInfoChange}
+          />
+        </Suspense>
+      </Canvas>
+    );
+  }
+);
+
+Scene3D.displayName = 'Scene3D';
+
+export default Scene3D;

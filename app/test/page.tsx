@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import Scene3D from '../components/Scene3D';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import Scene3D, { ObjectInfo } from '../components/Scene3D';
 
 interface Folder {
   name: string;
@@ -27,6 +27,28 @@ export default function TestPage() {
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModelIndex, setSelectedModelIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [objectInfo, setObjectInfo] = useState<ObjectInfo | null>(null);
+  const scene3DRef = useRef<{ 
+    exportScene: () => void;
+    updateObjectTransform: (transform: { position?: { x?: number; y?: number; z?: number }; rotation?: { x?: number; y?: number; z?: number }; scale?: { x?: number; y?: number; z?: number } }) => void;
+    setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
+  }>(null);
+  
+  const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
+  
+  // 입력값 상태 관리
+  const [positionInput, setPositionInput] = useState({ x: 0, y: 0, z: 0 });
+  const [rotationInput, setRotationInput] = useState({ x: 0, y: 0, z: 0 });
+  const [scaleInput, setScaleInput] = useState({ x: 1, y: 1, z: 1 });
+
+  // objectInfo가 변경될 때 입력값 동기화
+  useEffect(() => {
+    if (objectInfo) {
+      setPositionInput(objectInfo.position);
+      setRotationInput(objectInfo.rotation);
+      setScaleInput(objectInfo.scale);
+    }
+  }, [objectInfo]);
 
   // 폴더 목록 가져오기
   useEffect(() => {
@@ -108,7 +130,7 @@ export default function TestPage() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      {/* 사이드바 */}
+      {/* 왼쪽 사이드바 */}
       <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto flex flex-col shrink-0">
         <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
           3D 테스트 환경
@@ -147,6 +169,26 @@ export default function TestPage() {
         {selectedFolder && loading && (
           <div className="mb-6">
             <div className="text-xs text-gray-400">모델 로딩 중...</div>
+          </div>
+        )}
+
+        {/* 씬 내보내기 버튼 */}
+        {models.length > 0 && (
+          <div className="mb-4">
+            <button
+              onClick={() => {
+                if (scene3DRef.current) {
+                  scene3DRef.current.exportScene();
+                }
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📥</span>
+              <span>씬을 GLTF로 내보내기</span>
+            </button>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+              모든 모델을 하나의 GLTF 파일로 저장합니다
+            </div>
           </div>
         )}
 
@@ -195,9 +237,11 @@ export default function TestPage() {
       {/* 3D 뷰어 */}
       <div className="flex-1 relative bg-black/90 overflow-hidden">
         <Scene3D
+          ref={scene3DRef}
           models={models}
           selectedModelIndex={selectedModelIndex}
           onModelSelect={setSelectedModelIndex}
+          onObjectInfoChange={setObjectInfo}
         />
 
         {models.length === 0 && (
@@ -209,6 +253,293 @@ export default function TestPage() {
           </div>
         )}
       </div>
+
+      {/* 우측 정보 패널 */}
+      {selectedModelIndex !== null && objectInfo && (
+        <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto shrink-0">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+            객체 정보
+          </h2>
+          
+          {/* 모델 이름 */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              모델 이름
+            </div>
+            <div className="text-sm text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 p-2 rounded">
+              {models[selectedModelIndex]?.name || 'Unnamed'}
+            </div>
+          </div>
+
+          {/* TransformControls 모드 전환 */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              조작 모드
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => {
+                  setTransformMode('translate');
+                  scene3DRef.current?.setTransformMode('translate');
+                }}
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  transformMode === 'translate'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                이동
+              </button>
+              <button
+                onClick={() => {
+                  setTransformMode('rotate');
+                  scene3DRef.current?.setTransformMode('rotate');
+                }}
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  transformMode === 'rotate'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                회전
+              </button>
+              <button
+                onClick={() => {
+                  setTransformMode('scale');
+                  scene3DRef.current?.setTransformMode('scale');
+                }}
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  transformMode === 'scale'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                크기
+              </button>
+            </div>
+          </div>
+
+          {/* Position */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              위치 (Position)
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">X</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={positionInput.x}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setPositionInput(prev => ({ ...prev, x: value }));
+                    scene3DRef.current?.updateObjectTransform({ position: { x: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Y</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={positionInput.y}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setPositionInput(prev => ({ ...prev, y: value }));
+                    scene3DRef.current?.updateObjectTransform({ position: { y: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Z</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={positionInput.z}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setPositionInput(prev => ({ ...prev, z: value }));
+                    scene3DRef.current?.updateObjectTransform({ position: { z: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Rotation */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              회전 (Rotation) - 도(°)
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">X</div>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={rotationInput.x}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setRotationInput(prev => ({ ...prev, x: value }));
+                    scene3DRef.current?.updateObjectTransform({ rotation: { x: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Y</div>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={rotationInput.y}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setRotationInput(prev => ({ ...prev, y: value }));
+                    scene3DRef.current?.updateObjectTransform({ rotation: { y: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Z</div>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={rotationInput.z}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setRotationInput(prev => ({ ...prev, z: value }));
+                    scene3DRef.current?.updateObjectTransform({ rotation: { z: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Scale */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              크기 (Scale)
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">X</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={scaleInput.x}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 1;
+                    setScaleInput(prev => ({ ...prev, x: value }));
+                    scene3DRef.current?.updateObjectTransform({ scale: { x: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Y</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={scaleInput.y}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 1;
+                    setScaleInput(prev => ({ ...prev, y: value }));
+                    scene3DRef.current?.updateObjectTransform({ scale: { y: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Z</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={scaleInput.z}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 1;
+                    setScaleInput(prev => ({ ...prev, z: value }));
+                    scene3DRef.current?.updateObjectTransform({ scale: { z: value } });
+                  }}
+                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Matrix */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Matrix (4x4)
+            </div>
+            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded font-mono text-xs overflow-x-auto">
+              <div className="grid grid-cols-4 gap-1">
+                {objectInfo.matrix.map((value, index) => (
+                  <div key={index} className="text-gray-900 dark:text-white">
+                    {value.toFixed(6)}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <div>인덱스 0-3: X축 변환</div>
+                <div>인덱스 4-7: Y축 변환</div>
+                <div>인덱스 8-11: Z축 변환</div>
+                <div>인덱스 12-14: 위치 (X, Y, Z)</div>
+                <div>인덱스 15: 동차 좌표</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Meshes */}
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Mesh 정보 ({objectInfo.meshes.length}개)
+            </div>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {objectInfo.meshes.map((mesh, index) => (
+                <div key={index} className="bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                  <div className="font-medium text-sm text-gray-900 dark:text-white mb-2">
+                    {mesh.name}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <div>정점: {mesh.vertices.toLocaleString()}개</div>
+                    <div>면: {mesh.faces.toLocaleString()}개</div>
+                    {mesh.material && (
+                      <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
+                        <div className="font-medium mb-1">재질: {mesh.material.name}</div>
+                        {mesh.material.color && (
+                          <div className="flex items-center gap-2">
+                            <span>색상:</span>
+                            <span 
+                              className="inline-block w-4 h-4 rounded border border-gray-300 dark:border-gray-600"
+                              style={{ backgroundColor: mesh.material.color }}
+                            />
+                            <span>{mesh.material.color}</span>
+                          </div>
+                        )}
+                        {mesh.material.metalness !== undefined && (
+                          <div>금속성: {mesh.material.metalness.toFixed(2)}</div>
+                        )}
+                        {mesh.material.roughness !== undefined && (
+                          <div>거칠기: {mesh.material.roughness.toFixed(2)}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
