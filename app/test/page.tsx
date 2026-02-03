@@ -20,6 +20,7 @@ export default function TestPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModelIndex, setSelectedModelIndex] = useState<number | null>(null);
+  const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]); // 다중 선택
   const [loading, setLoading] = useState(false);
   const [objectInfo, setObjectInfo] = useState<ObjectInfo | null>(null);
   const scene3DRef = useRef<Scene3DRef>(null);
@@ -191,16 +192,39 @@ export default function TestPage() {
             {models.length === 0 ? (
               <div className="text-xs text-gray-400">모델을 추가해주세요</div>
             ) : (
-              models.map((model, index) => (
-                <div
-                  key={model.id}
-                  onClick={() => setSelectedModelIndex(index)}
-                  className={`p-3 rounded-lg border-2 transition-colors cursor-pointer ${
-                    selectedModelIndex === index
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
+              models.map((model, index) => {
+                const isSelected = selectedModelIndices.includes(index) || selectedModelIndex === index;
+                return (
+                  <div
+                    key={model.id}
+                    onClick={(e) => {
+                      const isShiftClick = e.shiftKey;
+                      
+                      if (isShiftClick) {
+                        // Shift + 클릭: 다중 선택
+                        if (selectedModelIndices.includes(index)) {
+                          // 이미 선택된 경우 제거
+                          setSelectedModelIndices(prev => prev.filter(i => i !== index));
+                          if (selectedModelIndices.length === 1) {
+                            setSelectedModelIndex(null);
+                          }
+                        } else {
+                          // 추가 선택
+                          setSelectedModelIndices(prev => [...prev, index]);
+                          setSelectedModelIndex(index); // 마지막 선택을 단일 선택으로도 설정
+                        }
+                      } else {
+                        // 일반 클릭: 단일 선택
+                        setSelectedModelIndices([index]);
+                        setSelectedModelIndex(index);
+                      }
+                    }}
+                    className={`p-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 truncate mr-2">
                       <div className="font-medium text-gray-900 dark:text-white truncate text-sm">
@@ -218,7 +242,8 @@ export default function TestPage() {
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -230,7 +255,15 @@ export default function TestPage() {
           ref={scene3DRef}
           models={models}
           selectedModelIndex={selectedModelIndex}
-          onModelSelect={setSelectedModelIndex}
+          selectedModelIndices={selectedModelIndices.length > 1 ? selectedModelIndices : undefined}
+          onModelSelect={(index) => {
+            setSelectedModelIndex(index);
+            setSelectedModelIndices(index !== null ? [index] : []);
+          }}
+          onModelSelectMultiple={(indices) => {
+            setSelectedModelIndices(indices);
+            setSelectedModelIndex(indices.length > 0 ? indices[indices.length - 1] : null);
+          }}
           onObjectInfoChange={setObjectInfo}
         />
 

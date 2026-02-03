@@ -39,3 +39,12 @@ export interface Scene3DRef {
   updateObjectTransform: (transform: Transform) => void;
   setTransformMode: (mode: TransformMode) => void;
 }
+
+export interface SceneContentProps {
+  models: Model[];
+  selectedModelIndex: number | null;
+  selectedModelIndices?: number[]; // 다중 선택 지원
+  onModelSelect: (index: number | null) => void;
+  onModelSelectMultiple?: (indices: number[]) => void; // 다중 선택 콜백
+  onObjectInfoChange?: (info: ObjectInfo | null) => void;
+}

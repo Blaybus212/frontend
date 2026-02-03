@@ -12,7 +12,9 @@ import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DR
 interface SceneContentProps {
   models: ModelType[];
   selectedModelIndex: number | null;
+  selectedModelIndices?: number[]; // 다중 선택 지원
   onModelSelect: (index: number | null) => void;
+  onModelSelectMultiple?: (indices: number[]) => void; // 다중 선택 콜백
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
 }
 
@@ -22,7 +24,9 @@ interface SceneContentProps {
 export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({ 
   models, 
   selectedModelIndex,
+  selectedModelIndices = [],
   onModelSelect,
+  onModelSelectMultiple,
   onObjectInfoChange
 }, ref) => {
   const { camera, gl, scene } = useThree();
@@ -34,6 +38,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const mouse = useRef(new THREE.Vector2());
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
   const previousInfoRef = useRef<ObjectInfo | null>(null);
+  const selectionGroupRef = useRef<THREE.Group | null>(null); // 다중 선택 그룹
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]); // 내부 다중 선택 상태
+  const prevSelectedIndicesRef = useRef<number[]>([]); // 이전 선택 인덱스 추적
 
   // TransformControls 드래그 중 OrbitControls 비활성화
   useFrame(() => {
@@ -48,7 +55,136 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     }
   });
 
-  // 마우스 클릭 이벤트
+  // 외부에서 전달된 selectedModelIndices와 동기화 (실제 변경 시에만 업데이트)
+  React.useEffect(() => {
+    let newIndices: number[] = [];
+    
+    if (selectedModelIndices && selectedModelIndices.length > 0) {
+      newIndices = selectedModelIndices;
+    } else if (selectedModelIndex !== null) {
+      newIndices = [selectedModelIndex];
+    } else {
+      newIndices = [];
+    }
+    
+    // 배열이 실제로 다를 때만 업데이트 (무한 루프 방지)
+    const arraysEqual = (a: number[], b: number[]) => {
+      if (a.length !== b.length) return false;
+      return a.every((val, idx) => val === b[idx]);
+    };
+    
+    // 이전 값과 비교하여 실제로 변경되었을 때만 업데이트
+    if (!arraysEqual(prevSelectedIndicesRef.current, newIndices)) {
+      prevSelectedIndicesRef.current = newIndices;
+      setSelectedIndices(newIndices);
+    }
+  }, [selectedModelIndex, selectedModelIndices]);
+
+  // 다중 선택 그룹 생성 및 업데이트
+  React.useEffect(() => {
+    if (selectedIndices.length <= 1) {
+      if (selectionGroupRef.current) {
+        scene.remove(selectionGroupRef.current);
+        selectionGroupRef.current = null;
+      }
+      // 단일 선택 시 상대 위치 초기화
+      if (selectedIndices.length === 1) {
+        const obj = modelRefs.current.get(selectedIndices[0]);
+        if (obj) {
+          delete obj.userData.initialRelativePos;
+        }
+      }
+      return;
+    }
+
+    // 선택된 객체들의 중심점 계산
+    const selectedObjects: THREE.Group[] = [];
+    const positions: THREE.Vector3[] = [];
+    
+    selectedIndices.forEach(index => {
+      const obj = modelRefs.current.get(index);
+      if (obj) {
+        selectedObjects.push(obj);
+        obj.updateMatrixWorld(true);
+        positions.push(new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld));
+      }
+    });
+
+    if (selectedObjects.length === 0) return;
+
+    // 중심점 계산
+    const center = new THREE.Vector3();
+    positions.forEach(pos => center.add(pos));
+    center.divideScalar(positions.length);
+
+    // 그룹 생성 또는 업데이트
+    if (!selectionGroupRef.current) {
+      selectionGroupRef.current = new THREE.Group();
+      selectionGroupRef.current.name = 'SelectionGroup';
+      scene.add(selectionGroupRef.current);
+    }
+
+    // 그룹 위치를 중심점으로 설정
+    selectionGroupRef.current.position.copy(center);
+    selectionGroupRef.current.rotation.set(0, 0, 0);
+    selectionGroupRef.current.scale.set(1, 1, 1);
+
+    // 각 객체의 상대 위치 저장 (항상 업데이트)
+    selectedObjects.forEach((obj) => {
+      const relativePos = new THREE.Vector3().subVectors(
+        new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld),
+        center
+      );
+      obj.userData.initialRelativePos = relativePos.clone();
+      obj.userData.initialRotation = obj.rotation.clone();
+      obj.userData.initialScale = obj.scale.clone();
+    });
+
+  }, [selectedIndices, scene]);
+
+  // TransformControls가 그룹을 조작할 때 각 객체에 변환 적용
+  useFrame(() => {
+    if (!selectionGroupRef.current || selectedIndices.length <= 1) return;
+
+    const group = selectionGroupRef.current;
+    group.updateMatrixWorld(true);
+    const groupMatrix = group.matrixWorld;
+    const groupPosition = new THREE.Vector3().setFromMatrixPosition(groupMatrix);
+    const groupRotation = new THREE.Euler().setFromRotationMatrix(groupMatrix);
+    const groupScale = new THREE.Vector3().setFromMatrixScale(groupMatrix);
+
+    selectedIndices.forEach(index => {
+      const obj = modelRefs.current.get(index);
+      if (obj && obj.userData.initialRelativePos) {
+        const relativePos = obj.userData.initialRelativePos.clone();
+        const initialRot = obj.userData.initialRotation || new THREE.Euler();
+        const initialScale = obj.userData.initialScale || new THREE.Vector3(1, 1, 1);
+        
+        // 그룹의 회전과 스케일을 상대 위치에 적용
+        relativePos.applyEuler(groupRotation);
+        relativePos.multiply(groupScale);
+        
+        // 최종 위치 = 그룹 위치 + 변환된 상대 위치
+        obj.position.copy(groupPosition.clone().add(relativePos));
+        
+        // 회전: 초기 회전 + 그룹 회전
+        obj.rotation.set(
+          initialRot.x + groupRotation.x,
+          initialRot.y + groupRotation.y,
+          initialRot.z + groupRotation.z
+        );
+        
+        // 스케일: 초기 스케일 * 그룹 스케일
+        obj.scale.set(
+          initialScale.x * groupScale.x,
+          initialScale.y * groupScale.y,
+          initialScale.z * groupScale.z
+        );
+      }
+    });
+  });
+
+  // 마우스 클릭 이벤트 (다중 선택 지원)
   React.useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       if (transformControlsRef.current?.dragging) return;
@@ -82,10 +218,29 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         });
         
         if (foundIndex >= 0) {
-          onModelSelect(foundIndex);
+          const isMultiSelect = event.ctrlKey || event.metaKey; // Ctrl (Windows) 또는 Cmd (Mac)
+          
+          if (isMultiSelect) {
+            // 다중 선택 모드
+            const newIndices = selectedIndices.includes(foundIndex)
+              ? selectedIndices.filter(i => i !== foundIndex) // 이미 선택된 경우 제거
+              : [...selectedIndices, foundIndex]; // 추가
+            setSelectedIndices(newIndices);
+            if (onModelSelectMultiple) {
+              onModelSelectMultiple(newIndices);
+            }
+          } else {
+            // 단일 선택 모드
+            setSelectedIndices([foundIndex]);
+            onModelSelect(foundIndex);
+          }
         }
       } else {
-        onModelSelect(null);
+        // 빈 공간 클릭 시 선택 해제
+        if (!(event.ctrlKey || event.metaKey)) {
+          setSelectedIndices([]);
+          onModelSelect(null);
+        }
       }
     };
 
@@ -93,10 +248,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, scene, models, onModelSelect]);
+  }, [camera, gl, scene, models, onModelSelect, onModelSelectMultiple, selectedIndices]);
 
-  const selectedModel = selectedModelIndex !== null ? models[selectedModelIndex] : null;
-  const selectedObjectRef = selectedModelIndex !== null ? modelRefs.current.get(selectedModelIndex) || null : null;
+  // 다중 선택이 있으면 그룹 사용, 없으면 단일 객체 사용
+  const selectedObjectRef = selectedIndices.length > 1 
+    ? selectionGroupRef.current 
+    : selectedIndices.length === 1 
+      ? modelRefs.current.get(selectedIndices[0]) || null
+      : null;
 
   // 선택된 객체 정보 추출 및 전달
   React.useEffect(() => {
@@ -257,8 +416,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         dampingFactor={0.05}
       />
 
-      {/* TransformControls */}
-      {selectedModel && selectedObjectRef && (
+      {/* TransformControls - 단일 또는 다중 선택 지원 */}
+      {selectedObjectRef && selectedIndices.length > 0 && (
         <TransformControls
           ref={transformControlsRef}
           object={selectedObjectRef}
@@ -276,7 +435,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
             <Model
               url={model.url}
               position={[0, 0, 0]}
-              isSelected={selectedModelIndex === index}
+              isSelected={selectedIndices.includes(index)}
               onRef={(ref) => {
                 if (ref) {
                   modelRefs.current.set(index, ref);
