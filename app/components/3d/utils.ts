@@ -6,6 +6,17 @@ import * as THREE from 'three';
 import type { ObjectInfo } from './types';
 
 /**
+ * 두 숫자 배열이 동일한지 비교합니다
+ * @param a 첫 번째 배열
+ * @param b 두 번째 배열
+ * @returns 배열이 동일하면 true, 그렇지 않으면 false
+ */
+export function arraysEqual(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((val, idx) => val === b[idx]);
+}
+
+/**
  * Three.js 객체에서 정보를 추출하여 ObjectInfo 형태로 반환
  * 매트릭스 값을 직접 사용하고, position/rotation/scale은 매트릭스에서 추출
  */

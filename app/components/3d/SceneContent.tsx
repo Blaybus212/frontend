@@ -6,7 +6,7 @@ import { OrbitControls, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Model } from './Model';
-import { extractObjectInfo } from './utils';
+import { extractObjectInfo, arraysEqual } from './utils';
 import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
 
 /**
@@ -14,10 +14,8 @@ import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DR
  */
 export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({ 
   models, 
-  selectedModelIndex,
-  selectedModelIndices = [],
+  selectedModelIndices,
   onModelSelect,
-  onModelSelectMultiple,
   onObjectInfoChange
 }, ref) => {
   const { camera, gl, scene } = useThree();
@@ -48,28 +46,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
   // 외부에서 전달된 selectedModelIndices와 동기화 (실제 변경 시에만 업데이트)
   React.useEffect(() => {
-    let newIndices: number[] = [];
-    
-    if (selectedModelIndices && selectedModelIndices.length > 0) {
-      newIndices = selectedModelIndices;
-    } else if (selectedModelIndex !== null) {
-      newIndices = [selectedModelIndex];
-    } else {
-      newIndices = [];
+    // 이전 값과 비교하여 실제로 변경되었을 때만 업데이트 (무한 루프 방지)
+    if (!arraysEqual(prevSelectedIndicesRef.current, selectedModelIndices)) {
+      prevSelectedIndicesRef.current = selectedModelIndices;
+      setSelectedIndices(selectedModelIndices);
     }
-    
-    // 배열이 실제로 다를 때만 업데이트 (무한 루프 방지)
-    const arraysEqual = (a: number[], b: number[]) => {
-      if (a.length !== b.length) return false;
-      return a.every((val, idx) => val === b[idx]);
-    };
-    
-    // 이전 값과 비교하여 실제로 변경되었을 때만 업데이트
-    if (!arraysEqual(prevSelectedIndicesRef.current, newIndices)) {
-      prevSelectedIndicesRef.current = newIndices;
-      setSelectedIndices(newIndices);
-    }
-  }, [selectedModelIndex, selectedModelIndices]);
+  }, [selectedModelIndices]);
 
   // 다중 선택 그룹 생성 및 업데이트
   React.useEffect(() => {
@@ -241,20 +223,19 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
               ? selectedIndices.filter(i => i !== foundIndex) // 이미 선택된 경우 제거
               : [...selectedIndices, foundIndex]; // 추가
             setSelectedIndices(newIndices);
-            if (onModelSelectMultiple) {
-              onModelSelectMultiple(newIndices);
-            }
+            onModelSelect(newIndices);
           } else {
-            // 단일 선택 모드
-            setSelectedIndices([foundIndex]);
-            onModelSelect(foundIndex);
+            // 단일 선택 모드 (배열의 마지막 요소가 활성 인덱스)
+            const newIndices = [foundIndex];
+            setSelectedIndices(newIndices);
+            onModelSelect(newIndices);
           }
         }
       } else {
         // 빈 공간 클릭 시 선택 해제
         if (!(event.ctrlKey || event.metaKey)) {
           setSelectedIndices([]);
-          onModelSelect(null);
+          onModelSelect([]);
         }
       }
     };
@@ -263,7 +244,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, scene, models, onModelSelect, onModelSelectMultiple, selectedIndices]);
+  }, [camera, gl, scene, models, onModelSelect, selectedIndices]);
 
   // 다중 선택이 있으면 그룹 사용, 없으면 단일 객체 사용
   const selectedObjectRef = selectedIndices.length > 1 

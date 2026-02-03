@@ -44,9 +44,7 @@ export interface Scene3DRef {
 
 export interface SceneContentProps {
   models: Model[];
-  selectedModelIndex: number | null;
-  selectedModelIndices?: number[]; // 다중 선택 지원
-  onModelSelect: (index: number | null) => void;
-  onModelSelectMultiple?: (indices: number[]) => void; // 다중 선택 콜백
+  selectedModelIndices: number[]; // 선택된 모델 인덱스 배열 (단일 선택 시 배열의 마지막 요소가 활성 인덱스)
+  onModelSelect: (indices: number[]) => void; // 선택 변경 콜백 (항상 배열로 전달)
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
 }
