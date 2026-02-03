@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import Scene3D, { ObjectInfo } from '../components/Scene3D';
+import Scene3D, { ObjectInfo, Model, Scene3DRef } from '../components/Scene3D';
 
 interface Folder {
   name: string;
@@ -14,12 +14,6 @@ interface File {
   type?: 'gltf' | 'glb';
 }
 
-interface Model {
-  url: string;
-  id: string;
-  name: string;
-}
-
 export default function TestPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -28,11 +22,7 @@ export default function TestPage() {
   const [selectedModelIndex, setSelectedModelIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [objectInfo, setObjectInfo] = useState<ObjectInfo | null>(null);
-  const scene3DRef = useRef<{ 
-    exportScene: () => void;
-    updateObjectTransform: (transform: { position?: { x?: number; y?: number; z?: number }; rotation?: { x?: number; y?: number; z?: number }; scale?: { x?: number; y?: number; z?: number } }) => void;
-    setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
-  }>(null);
+  const scene3DRef = useRef<Scene3DRef>(null);
   
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   
