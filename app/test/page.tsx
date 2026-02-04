@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import Scene3D, { ObjectInfo, Model, Scene3DRef } from '../components/Scene3D';
-import { extractGLTFNodes } from '../components/3d/gltfUtils';
+import Scene3D, { ObjectInfo, Model, Scene3DRef } from '../_components/Scene3D';
+import { extractGLTFNodes } from '../_components/3d/gltfUtils';
 
 interface Folder {
   name: string;
