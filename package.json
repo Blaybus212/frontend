@@ -29,7 +29,13 @@
     "@types/three": "^0.169.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.0",
+    "msw": "^2.12.8",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
