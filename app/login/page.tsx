@@ -23,7 +23,7 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError('아이디 또는 비밀번호를 확인해주세요.');
+      setError(`아이디 또는 비밀번호를 확인해주세요.\n ${result?.error}`);
       setIsLoading(false);
     } else {
       router.push('/home');
