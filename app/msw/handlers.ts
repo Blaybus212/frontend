@@ -5,5 +5,11 @@
 // })
 import { HttpResponse, http } from "msw";
  
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export const handlers = [
+  // 로그인
+  http.post(`${API_URL}/login`, () => {
+    return HttpResponse.json({ accessToken: "mocked-spring-jwt-token" });
+  }),
 ];

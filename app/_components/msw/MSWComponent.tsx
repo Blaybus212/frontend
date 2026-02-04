@@ -14,7 +14,7 @@ export const MSWComponent = ({ children }: MSWComponentProps) => {
   const [mswReady, setMswReady] = useState(false);
   useEffect(() => {
     const init = async () => {
-      const initMsw = await import('@/src/msw/init').then((res) => res.initMsw);
+      const initMsw = await import('@/app/msw/init').then((res) => res.initMsw);
       await initMsw();
       setMswReady(true);
     };
