@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Scene3D, { ObjectInfo, Model, Scene3DRef } from '../components/Scene3D';
+import { extractGLTFNodes } from '../components/3d/gltfUtils';
 
 interface Folder {
   name: string;
@@ -19,7 +20,7 @@ export default function TestPage() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedModelIndex, setSelectedModelIndex] = useState<number | null>(null);
+  const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]); // 선택된 모델 인덱스 배열 (단일 선택 시 배열의 마지막 요소가 활성 인덱스)
   const [loading, setLoading] = useState(false);
   const [objectInfo, setObjectInfo] = useState<ObjectInfo | null>(null);
   const scene3DRef = useRef<Scene3DRef>(null);
@@ -55,10 +56,11 @@ export default function TestPage() {
     fetchFolders();
   }, []);
 
-  // 선택된 폴더의 파일 목록 가져오기 (재귀적으로 모든 하위 폴더 포함)
+  // 선택된 폴더의 파일 목록 가져오기 및 첫 번째 GLTF 파일의 노드 추출
   useEffect(() => {
     if (!selectedFolder) {
       setFiles([]);
+      setModels([]);
       return;
     }
 
@@ -70,22 +72,41 @@ export default function TestPage() {
         const data = await response.json();
         setFiles(data.files || []);
         
-        // 폴더 선택 시 모든 모델 자동 추가 (기존 모델 초기화)
-        if (data.files && data.files.length > 0) {
-          const newModels: Model[] = data.files.map((file: File, index: number) => ({
-            url: file.path,
-            id: `model_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-            name: file.name.replace('.gltf', '').replace('.glb', ''),
-          }));
-          setModels(newModels);
-          setSelectedModelIndex(null); // 선택 초기화
+        // 첫 번째 GLTF/GLB 파일 찾기
+        const gltfFile = data.files?.find((file: File) => 
+          file.type === 'gltf' || file.type === 'glb' || 
+          file.name.endsWith('.gltf') || file.name.endsWith('.glb')
+        );
+        
+        if (gltfFile) {
+          try {
+            // GLTF 파일의 노드 추출
+            const nodes = await extractGLTFNodes(gltfFile.path);
+            
+            // 각 노드를 모델로 변환
+            const newModels: Model[] = nodes.map((node, index) => ({
+              url: gltfFile.path,
+              id: `node_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+              name: node.name || `Node_${index}`,
+              nodeIndex: node.index,
+              nodePath: node.nodePath,
+            }));
+            
+            setModels(newModels);
+            setSelectedModelIndices([]); // 선택 초기화
+          } catch (error) {
+            console.error('Error extracting GLTF nodes:', error);
+            setModels([]);
+            setSelectedModelIndices([]);
+          }
         } else {
-          setModels([]); // 파일이 없으면 모델 초기화
-          setSelectedModelIndex(null);
+          setModels([]); // GLTF 파일이 없으면 모델 초기화
+          setSelectedModelIndices([]);
         }
       } catch (error) {
         console.error('Error fetching files:', error);
         setFiles([]);
+        setModels([]);
       } finally {
         setLoading(false);
       }
@@ -94,14 +115,10 @@ export default function TestPage() {
     fetchFiles();
   }, [selectedFolder]);
 
-  // 모델 추가
+  // 모델 추가 (더 이상 사용하지 않음 - GLTF 파일의 노드들이 자동으로 로드됨)
   const addModel = useCallback((file: File) => {
-    const newModel: Model = {
-      url: file.path,
-      id: `model_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: file.name,
-    };
-    setModels((prev) => [...prev, newModel]);
+    // 이 함수는 더 이상 사용되지 않습니다
+    // GLTF 파일의 노드들이 자동으로 로드됩니다
   }, []);
 
   // 모델 제거
@@ -109,14 +126,17 @@ export default function TestPage() {
     setModels((prev) => {
       const newModels = prev.filter((m) => m.id !== modelId);
       const removedIndex = prev.findIndex((m) => m.id === modelId);
-      if (selectedModelIndex === removedIndex) {
-        setSelectedModelIndex(null);
-      } else if (selectedModelIndex !== null && selectedModelIndex > removedIndex) {
-        setSelectedModelIndex(selectedModelIndex - 1);
-      }
+      
+      // 선택된 인덱스에서 제거된 인덱스를 필터링하고, 제거된 인덱스보다 큰 인덱스들을 조정
+      setSelectedModelIndices((prevIndices) => {
+        return prevIndices
+          .filter((idx) => idx !== removedIndex)
+          .map((idx) => idx > removedIndex ? idx - 1 : idx);
+      });
+      
       return newModels;
     });
-  }, [selectedModelIndex]);
+  }, []);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -155,10 +175,22 @@ export default function TestPage() {
           </div>
         </div>
 
-        {/* 파일 목록 - 숨김 (폴더 선택 시 자동 추가) */}
+        {/* 파일 목록 - 숨김 (폴더 선택 시 첫 번째 GLTF 파일의 노드들이 자동 추가) */}
         {selectedFolder && loading && (
           <div className="mb-6">
-            <div className="text-xs text-gray-400">모델 로딩 중...</div>
+            <div className="text-xs text-gray-400">GLTF 파일 로딩 및 노드 추출 중...</div>
+          </div>
+        )}
+        
+        {/* 선택된 GLTF 파일 정보 */}
+        {selectedFolder && !loading && files.length > 0 && (
+          <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs">
+            <div className="text-gray-700 dark:text-gray-300 font-semibold mb-1">
+              로드된 GLTF 파일:
+            </div>
+            <div className="text-gray-600 dark:text-gray-400">
+              {files.find((f: File) => f.type === 'gltf' || f.type === 'glb' || f.name.endsWith('.gltf') || f.name.endsWith('.glb'))?.name || '없음'}
+            </div>
           </div>
         )}
 
@@ -182,25 +214,43 @@ export default function TestPage() {
           </div>
         )}
 
-        {/* 추가된 모델 목록 */}
+        {/* 추가된 모델 목록 (GLTF 파일의 노드들) */}
         <div className="mb-6 flex-1 overflow-y-auto">
           <h3 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            추가된 모델 ({models.length})
+            모델 노드 ({models.length})
           </h3>
           <div className="space-y-2">
             {models.length === 0 ? (
               <div className="text-xs text-gray-400">모델을 추가해주세요</div>
             ) : (
-              models.map((model, index) => (
-                <div
-                  key={model.id}
-                  onClick={() => setSelectedModelIndex(index)}
-                  className={`p-3 rounded-lg border-2 transition-colors cursor-pointer ${
-                    selectedModelIndex === index
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
+              models.map((model, index) => {
+                const isSelected = selectedModelIndices.includes(index);
+                return (
+                  <div
+                    key={model.id}
+                    onClick={(e) => {
+                      const isMultiSelect = e.ctrlKey || e.metaKey || e.shiftKey;
+                      
+                      if (isMultiSelect) {
+                        // Ctrl/Cmd/Shift + 클릭: 다중 선택
+                        if (selectedModelIndices.includes(index)) {
+                          // 이미 선택된 경우 제거
+                          setSelectedModelIndices(prev => prev.filter(i => i !== index));
+                        } else {
+                          // 추가 선택
+                          setSelectedModelIndices(prev => [...prev, index]);
+                        }
+                      } else {
+                        // 일반 클릭: 단일 선택 (배열의 마지막 요소가 활성 인덱스)
+                        setSelectedModelIndices([index]);
+                      }
+                    }}
+                    className={`p-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 truncate mr-2">
                       <div className="font-medium text-gray-900 dark:text-white truncate text-sm">
@@ -218,7 +268,8 @@ export default function TestPage() {
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -229,37 +280,42 @@ export default function TestPage() {
         <Scene3D
           ref={scene3DRef}
           models={models}
-          selectedModelIndex={selectedModelIndex}
-          onModelSelect={setSelectedModelIndex}
+          selectedModelIndices={selectedModelIndices}
+          onModelSelect={(indices) => {
+            setSelectedModelIndices(indices);
+          }}
           onObjectInfoChange={setObjectInfo}
         />
 
         {models.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-gray-400 bg-black/50 p-6 rounded-xl backdrop-blur-md">
-              <div className="text-xl mb-2 font-bold">모델을 추가해주세요</div>
-              <div className="text-sm">왼쪽 사이드바에서 폴더를 선택하고 GLTF/GLB 파일을 추가하세요</div>
+              <div className="text-xl mb-2 font-bold">GLTF 파일을 로드해주세요</div>
+              <div className="text-sm">왼쪽 사이드바에서 폴더를 선택하면 첫 번째 GLTF 파일의 노드들이 자동으로 로드됩니다</div>
             </div>
           </div>
         )}
       </div>
 
       {/* 우측 정보 패널 */}
-      {selectedModelIndex !== null && objectInfo && (
-        <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto shrink-0">
-          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-            객체 정보
-          </h2>
-          
-          {/* 모델 이름 */}
-          <div className="mb-4">
-            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              모델 이름
+      {selectedModelIndices.length > 0 && objectInfo && (() => {
+        // 단일 선택 시 배열의 마지막 요소가 활성 인덱스
+        const activeIndex = selectedModelIndices[selectedModelIndices.length - 1];
+        return (
+          <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto shrink-0">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+              객체 정보
+            </h2>
+            
+            {/* 모델 이름 */}
+            <div className="mb-4">
+              <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                모델 이름
+              </div>
+              <div className="text-sm text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                {models[activeIndex]?.name || 'Unnamed'}
+              </div>
             </div>
-            <div className="text-sm text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 p-2 rounded">
-              {models[selectedModelIndex]?.name || 'Unnamed'}
-            </div>
-          </div>
 
           {/* TransformControls 모드 전환 */}
           <div className="mb-4">
@@ -529,7 +585,8 @@ export default function TestPage() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

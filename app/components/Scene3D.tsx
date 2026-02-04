@@ -7,8 +7,8 @@ import type { ObjectInfo, Model, Scene3DRef } from './3d/types';
 
 interface Scene3DProps {
   models: Model[];
-  selectedModelIndex: number | null;
-  onModelSelect: (index: number | null) => void;
+  selectedModelIndices: number[]; // 선택된 모델 인덱스 배열 (단일 선택 시 배열의 마지막 요소가 활성 인덱스)
+  onModelSelect: (indices: number[]) => void; // 선택 변경 콜백 (항상 배열로 전달)
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
 }
 
@@ -17,7 +17,7 @@ interface Scene3DProps {
  * Canvas를 래핑하고 SceneContent를 렌더링합니다.
  */
 const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
-  ({ models, selectedModelIndex, onModelSelect, onObjectInfoChange }, ref) => {
+  ({ models, selectedModelIndices, onModelSelect, onObjectInfoChange }, ref) => {
     const sceneContentRef = useRef<Scene3DRef>(null);
 
     // 외부 ref를 sceneContentRef에 연결
@@ -43,7 +43,7 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
           <SceneContent
             ref={sceneContentRef}
             models={models}
-            selectedModelIndex={selectedModelIndex}
+            selectedModelIndices={selectedModelIndices}
             onModelSelect={onModelSelect}
             onObjectInfoChange={onObjectInfoChange}
           />

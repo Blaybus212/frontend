@@ -1,250 +1,175 @@
 'use client';
 
 import React, { Suspense, useRef, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { OrbitControls, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Model } from './Model';
-import { extractObjectInfo } from './utils';
-import type { ObjectInfo, Model as ModelType, TransformMode, Transform, Scene3DRef } from './types';
-
-interface SceneContentProps {
-  models: ModelType[];
-  selectedModelIndex: number | null;
-  onModelSelect: (index: number | null) => void;
-  onObjectInfoChange?: (info: ObjectInfo | null) => void;
-}
+import { SceneLights } from './SceneLights';
+import { SceneHelpers } from './SceneHelpers';
+import { arraysEqual } from './utils';
+import { exportScene } from './utils/exportUtils';
+import { updateObjectTransform as updateTransform } from './utils/transformUtils';
+import { useSelectionGroup } from './hooks/useSelectionGroup';
+import { useGroupTransform } from './hooks/useGroupTransform';
+import { useClickHandler } from './hooks/useClickHandler';
+import { useObjectInfo } from './hooks/useObjectInfo';
+import { useTransformControls } from './hooks/useTransformControls';
+import type { Model as ModelType, TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
 
 /**
- * 3D 씬의 내부 컨텐츠 (조명, 컨트롤, 모델들)
+ * 3D 씬의 내부 컨텐츠 컴포넌트
+ * 
+ * 이 컴포넌트는 3D 씬의 모든 요소를 관리하는 메인 컴포넌트입니다.
+ * 
+ * 주요 기능:
+ * - 조명과 헬퍼 렌더링
+ * - 모델 로드 및 렌더링
+ * - 모델 선택 관리 (단일/다중 선택)
+ * - TransformControls와 OrbitControls 관리
+ * - 객체 변환 업데이트
+ * - 씬 내보내기
+ * 
+ * 여러 커스텀 훅을 사용하여 각 기능을 모듈화하여 관리합니다.
+ * 
+ * @param props - 컴포넌트의 props
+ * @param props.models - 렌더링할 모델 배열
+ * @param props.selectedModelIndices - 선택된 모델 인덱스 배열
+ * @param props.onModelSelect - 모델 선택 변경 콜백
+ * @param props.onObjectInfoChange - 객체 정보 변경 콜백
+ * @param ref - 부모 컴포넌트에서 접근할 수 있는 ref (exportScene, updateObjectTransform, setTransformMode 제공)
+ * 
+ * @example
+ * ```tsx
+ * <SceneContent
+ *   models={models}
+ *   selectedModelIndices={[0, 1]}
+ *   onModelSelect={(indices) => setSelectedIndices(indices)}
+ *   onObjectInfoChange={(info) => setObjectInfo(info)}
+ * />
+ * ```
  */
 export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({ 
   models, 
-  selectedModelIndex,
+  selectedModelIndices,
   onModelSelect,
   onObjectInfoChange
 }, ref) => {
-  const { camera, gl, scene } = useThree();
-  const transformControlsRef = useRef<any>(null);
-  const orbitControlsRef = useRef<any>(null);
-  const [orbitControlsEnabled, setOrbitControlsEnabled] = useState(true);
-  const [transformMode, setTransformMode] = useState<TransformMode>('translate');
-  const raycaster = useRef(new THREE.Raycaster());
-  const mouse = useRef(new THREE.Vector2());
+  /** Three.js 씬 객체 */
+  const { scene } = useThree();
+  /** 모델 객체들의 참조 맵 (인덱스 -> THREE.Group) */
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
-  const previousInfoRef = useRef<ObjectInfo | null>(null);
+  /** 내부 다중 선택 상태 (외부 props와 동기화됨) */
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  /** 이전 선택 인덱스를 추적하여 불필요한 업데이트 방지 */
+  const prevSelectedIndicesRef = useRef<number[]>([]);
 
-  // TransformControls 드래그 중 OrbitControls 비활성화
-  useFrame(() => {
-    if (transformControlsRef.current) {
-      const isDragging = transformControlsRef.current.dragging || false;
-      if (orbitControlsRef.current) {
-        orbitControlsRef.current.enabled = !isDragging;
-      }
-      if (isDragging !== !orbitControlsEnabled) {
-        setOrbitControlsEnabled(!isDragging);
-      }
+  // TransformControls와 OrbitControls 관리
+  // 드래그 중 OrbitControls를 자동으로 비활성화합니다
+  const {
+    transformControlsRef,
+    orbitControlsRef,
+    orbitControlsEnabled,
+    transformMode,
+    setTransformMode,
+  } = useTransformControls();
+
+  /**
+   * 외부에서 전달된 selectedModelIndices와 내부 상태를 동기화합니다
+   * 
+   * 이전 값과 비교하여 실제로 변경되었을 때만 업데이트하여
+   * 무한 루프를 방지합니다.
+   */
+  React.useEffect(() => {
+    if (!arraysEqual(prevSelectedIndicesRef.current, selectedModelIndices)) {
+      prevSelectedIndicesRef.current = selectedModelIndices;
+      setSelectedIndices(selectedModelIndices);
     }
+  }, [selectedModelIndices]);
+
+  // 다중 선택 그룹 관리
+  // 2개 이상의 객체가 선택되면 그룹을 생성하고 중심점을 계산합니다
+  const selectionGroupRef = useSelectionGroup({
+    selectedIndices,
+    modelRefs,
+    scene,
   });
 
-  // 마우스 클릭 이벤트
-  React.useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      if (transformControlsRef.current?.dragging) return;
-
-      const rect = gl.domElement.getBoundingClientRect();
-      mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      raycaster.current.setFromCamera(mouse.current, camera);
-      
-      // 모든 모델과 교차 검사
-      const objects: THREE.Object3D[] = [];
-      scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh || obj instanceof THREE.Group) {
-          objects.push(obj);
-        }
-      });
-
-      const intersects = raycaster.current.intersectObjects(objects, true);
-      
-      if (intersects.length > 0) {
-        // 클릭한 모델 찾기
-        const clickedObject = intersects[0].object;
-        let foundIndex = -1;
-        
-        // 모델 refs를 통해 클릭한 객체가 어느 모델에 속하는지 찾기
-        modelRefs.current.forEach((group, index) => {
-          if (group && (group === clickedObject || group.getObjectById(clickedObject.id))) {
-            foundIndex = index;
-          }
-        });
-        
-        if (foundIndex >= 0) {
-          onModelSelect(foundIndex);
-        }
-      } else {
-        onModelSelect(null);
-      }
-    };
-
-    gl.domElement.addEventListener('click', handleClick);
-    return () => {
-      gl.domElement.removeEventListener('click', handleClick);
-    };
-  }, [camera, gl, scene, models, onModelSelect]);
-
-  const selectedModel = selectedModelIndex !== null ? models[selectedModelIndex] : null;
-  const selectedObjectRef = selectedModelIndex !== null ? modelRefs.current.get(selectedModelIndex) || null : null;
-
-  // 선택된 객체 정보 추출 및 전달
-  React.useEffect(() => {
-    if (selectedObjectRef && onObjectInfoChange) {
-      const info = extractObjectInfo(selectedObjectRef);
-      previousInfoRef.current = info;
-      onObjectInfoChange(info);
-    } else if (onObjectInfoChange) {
-      previousInfoRef.current = null;
-      onObjectInfoChange(null);
-    }
-  }, [selectedObjectRef, onObjectInfoChange]);
-
-  // TransformControls 조작 시 실시간 업데이트 (값이 변경되었을 때만)
-  useFrame(() => {
-    if (selectedObjectRef && onObjectInfoChange) {
-      const info = extractObjectInfo(selectedObjectRef);
-      
-      if (!info) return;
-      
-      // 이전 정보와 비교하여 실제로 변경되었을 때만 업데이트
-      const prev = previousInfoRef.current;
-      if (!prev || 
-          prev.position.x !== info.position.x || 
-          prev.position.y !== info.position.y || 
-          prev.position.z !== info.position.z ||
-          prev.rotation.x !== info.rotation.x || 
-          prev.rotation.y !== info.rotation.y || 
-          prev.rotation.z !== info.rotation.z ||
-          prev.scale.x !== info.scale.x || 
-          prev.scale.y !== info.scale.y || 
-          prev.scale.z !== info.scale.z) {
-        previousInfoRef.current = info;
-        onObjectInfoChange(info);
-      }
-    }
+  // 그룹 변환 적용
+  // TransformControls로 그룹을 조작할 때 각 객체에 변환을 적용합니다
+  useGroupTransform({
+    selectionGroupRef,
+    selectedIndices,
+    modelRefs,
   });
 
-  // 객체 변환 업데이트 함수
+  // 클릭 이벤트 처리
+  // 레이캐스팅을 사용하여 클릭한 객체를 찾고 선택 상태를 관리합니다
+  useClickHandler({
+    selectedIndices,
+    modelRefs,
+    onModelSelect,
+    transformControlsRef,
+  });
+
+  /**
+   * 현재 선택된 객체의 참조를 계산합니다
+   * 
+   * - 다중 선택: 선택 그룹 사용
+   * - 단일 선택: 해당 모델 그룹 사용
+   * - 선택 없음: null
+   */
+  const selectedObjectRef = selectedIndices.length > 1 
+    ? selectionGroupRef.current 
+    : selectedIndices.length === 1 
+      ? modelRefs.current.get(selectedIndices[0]) || null
+      : null;
+
+  // 객체 정보 추출 및 전달
+  // 선택된 객체의 정보를 추출하여 외부 컴포넌트에 전달합니다
+  useObjectInfo({
+    selectedObjectRef,
+    onObjectInfoChange,
+  });
+
+  /**
+   * 객체의 변환(위치, 회전, 스케일)을 업데이트하는 함수
+   * 
+   * 외부에서 호출 가능하도록 ref를 통해 노출됩니다.
+   * 
+   * @param transform - 적용할 변환 값
+   */
   const updateObjectTransform = useCallback((transform: Transform) => {
-    if (selectedObjectRef) {
-      if (transform.position !== undefined) {
-        if (transform.position.x !== undefined) selectedObjectRef.position.x = transform.position.x;
-        if (transform.position.y !== undefined) selectedObjectRef.position.y = transform.position.y;
-        if (transform.position.z !== undefined) selectedObjectRef.position.z = transform.position.z;
-      }
-      
-      if (transform.rotation !== undefined) {
-        if (transform.rotation.x !== undefined) selectedObjectRef.rotation.x = THREE.MathUtils.degToRad(transform.rotation.x);
-        if (transform.rotation.y !== undefined) selectedObjectRef.rotation.y = THREE.MathUtils.degToRad(transform.rotation.y);
-        if (transform.rotation.z !== undefined) selectedObjectRef.rotation.z = THREE.MathUtils.degToRad(transform.rotation.z);
-      }
-      
-      if (transform.scale !== undefined) {
-        if (transform.scale.x !== undefined) selectedObjectRef.scale.x = transform.scale.x;
-        if (transform.scale.y !== undefined) selectedObjectRef.scale.y = transform.scale.y;
-        if (transform.scale.z !== undefined) selectedObjectRef.scale.z = transform.scale.z;
-      }
-      
-      // 업데이트 후 정보 갱신
-      if (onObjectInfoChange) {
-        const info = extractObjectInfo(selectedObjectRef);
-        onObjectInfoChange(info);
-      }
-    }
+    updateTransform(selectedObjectRef, transform, onObjectInfoChange);
   }, [selectedObjectRef, onObjectInfoChange]);
 
-  // 씬 내보내기 함수
-  const exportScene = useCallback(() => {
-    if (modelRefs.current.size === 0) {
-      alert('내보낼 모델이 없습니다.');
-      return;
-    }
-
-    // 모든 모델을 하나의 그룹으로 합치기
-    const exportGroup = new THREE.Group();
-    exportGroup.name = 'ExportedScene';
-
-    modelRefs.current.forEach((modelGroup, index) => {
-      if (modelGroup) {
-        // 모델을 복제하여 추가 (원본은 유지)
-        const cloned = modelGroup.clone(true);
-        cloned.name = models[index]?.name || `Model_${index}`;
-        exportGroup.add(cloned);
-      }
-    });
-
-    // GLTFExporter를 사용하여 내보내기
-    const exporter = new GLTFExporter();
-    
-    exporter.parse(
-      exportGroup,
-      (result) => {
-        if (result instanceof ArrayBuffer) {
-          // GLB 형식 (바이너리)
-          const blob = new Blob([result], { type: 'application/octet-stream' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'scene.glb';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        } else if (result) {
-          // GLTF 형식 (JSON)
-          const output = JSON.stringify(result, null, 2);
-          const blob = new Blob([output], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'scene.gltf';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }
-      },
-      (error) => {
-        console.error('GLTF export error:', error);
-        alert('씬 내보내기 중 오류가 발생했습니다.');
-      },
-      { binary: false, onlyVisible: false, truncateDrawRange: true }
-    );
+  /**
+   * 씬을 GLTF/GLB 파일로 내보내는 함수
+   * 
+   * 외부에서 호출 가능하도록 ref를 통해 노출됩니다.
+   */
+  const handleExportScene = useCallback(() => {
+    exportScene(modelRefs.current, models);
   }, [models]);
 
-  // TransformControls 모드 설정 함수
-  const handleSetTransformMode = useCallback((mode: TransformMode) => {
-    setTransformMode(mode);
-  }, []);
-
-  // ref를 통해 함수들 노출
+  /**
+   * 부모 컴포넌트에서 접근할 수 있는 함수들을 노출합니다
+   * 
+   * useImperativeHandle을 사용하여 ref를 통해 다음 함수들을 제공합니다:
+   * - exportScene: 씬 내보내기
+   * - updateObjectTransform: 객체 변환 업데이트
+   * - setTransformMode: 변환 모드 설정
+   */
   useImperativeHandle(ref, () => ({
-    exportScene,
+    exportScene: handleExportScene,
     updateObjectTransform,
-    setTransformMode: handleSetTransformMode
+    setTransformMode,
   }));
 
   return (
     <>
-      {/* 조명 */}
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-
-      {/* 헬퍼 */}
-      <gridHelper args={[20, 20]} />
-      <axesHelper args={[5]} />
+      <SceneLights />
+      <SceneHelpers />
 
       {/* OrbitControls */}
       <OrbitControls
@@ -257,8 +182,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         dampingFactor={0.05}
       />
 
-      {/* TransformControls */}
-      {selectedModel && selectedObjectRef && (
+      {/* TransformControls - 단일 또는 다중 선택 지원 */}
+      {selectedObjectRef && selectedIndices.length > 0 && (
         <TransformControls
           ref={transformControlsRef}
           object={selectedObjectRef}
@@ -275,8 +200,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           <Suspense key={model.id} fallback={null}>
             <Model
               url={model.url}
-              position={[0, 0, 0]}
-              isSelected={selectedModelIndex === index}
+              nodeIndex={model.nodeIndex ?? 0}
+              nodePath={model.nodePath}
+              isSelected={selectedIndices.includes(index)}
               onRef={(ref) => {
                 if (ref) {
                   modelRefs.current.set(index, ref);
