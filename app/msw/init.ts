@@ -7,6 +7,7 @@ export async function initMsw() {
     console.log('✅ MSW Server-side Started');
   } else {
     const { worker } = await import('./worker');
+    worker.start();
     console.log('✅ MSW Client-side Started');
   }
 }
