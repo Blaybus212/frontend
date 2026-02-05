@@ -3,6 +3,7 @@ import BottomObjectCard from "@/app/_components/home/BottomObjectCard";
 import CategoryChip from "@/app/_components/home/CategoryChip";
 import Dropdown from "@/app/_components/home/Dropdown";
 import ObjectCard from "@/app/_components/home/ObjectCard";
+import PageButton from "@/app/_components/home/PageButton";
 import StudiedList, { StudiedItem } from "@/app/_components/home/StudiedList";
 import SummaryCard, { GrassLevel } from "@/app/_components/home/SummaryCard";
 import { useState } from "react";
@@ -26,6 +27,8 @@ export default function Playground() {
 
   return (
     <div className="p-4 bg-white">
+      <PageButton page="1" onClick={()=>{}} />
+      <br/>
       <Dropdown options={["인기순", "가나다순"]} />
       <br/>
       <BottomObjectCard
