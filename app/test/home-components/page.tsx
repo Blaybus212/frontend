@@ -9,7 +9,7 @@ import StudiedList, { StudiedItem } from "@/app/_components/home/StudiedList";
 import SummaryCard, { GrassLevel } from "@/app/_components/home/SummaryCard";
 import { useState } from "react";
 
-export default function Playground() {
+export default function HomeComponents() {
   const categories = ["기계공학", "전기공학", "소프트웨어", "데이터분석"];
   const [selectedCategory, setSelectedCategory] = useState("기계공학");
   const studiedListData = [
