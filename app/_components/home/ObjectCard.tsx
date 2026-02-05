@@ -26,7 +26,7 @@ const ObjectCard: React.FC<ObjectCardProps> = ({
           src={imageSrc}
           alt={title}
           layout='fill'
-          objectFit="cover"
+          object-cover
           className="transition-transform duration-250 ease-out group-hover:scale-105"
         />
         
