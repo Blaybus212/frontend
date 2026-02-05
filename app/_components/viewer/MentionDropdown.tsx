@@ -45,35 +45,11 @@ export function MentionDropdown({
   };
 
   return (
-    <>
-      <style>{`
-        .mention-dropdown-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .mention-dropdown-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .mention-dropdown-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--color-border-default);
-          border-radius: 3px;
-        }
-
-        .mention-dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--color-border-hovered);
-        }
-
-        .mention-dropdown-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-border-default) transparent;
-        }
-      `}</style>
-      <div
+    <div
         className="w-[267px] h-[195px] bg-bg-default rounded-xl border border-border-default overflow-hidden"
         style={{ maxHeight: `${maxHeight}px` }}
       >
-        <div className="overflow-y-auto mention-dropdown-scrollbar" style={{ maxHeight: `${maxHeight}px` }}>
+        <div className="overflow-y-auto custom-scrollbar px-1 py-1" style={{ maxHeight: `${maxHeight}px` }}>
           {items.map((item) => {
             const isSelected = currentSelectedId === item.id;
             return (
@@ -82,7 +58,7 @@ export function MentionDropdown({
                 type="button"
                 onClick={() => handleSelect(item.id)}
                 className={`
-                  w-full h-[52px] mx-1 my-1 px-3 text-left transition-colors duration-150 rounded-xl
+                  w-full h-[52px] my-1 px-3 text-left transition-colors duration-150 rounded-xl
                   flex flex-col items-start justify-center
                   ${isSelected ? 'bg-bg-sub' : 'bg-bg-default hover:bg-bg-sub'}
                 `}
@@ -98,6 +74,5 @@ export function MentionDropdown({
           })}
         </div>
       </div>
-    </>
   );
 }
