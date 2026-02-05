@@ -33,7 +33,7 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
   }
 
   // 5. 요청 실패 시 에러 발생, 성공 시 데이터(JSON) 반환
-  if (!response.ok) throw new Error("API 요청 실패");
+  if (!response.ok) throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
 
   return response.json();
 }
