@@ -60,7 +60,7 @@ export function QuizModal({
       : 'bg-bg-sub text-sub';
 
   return (
-    <div className="w-[256px] bg-bg-default rounded-2xl border 0.8px solid border-border-default px-5 py-5 shadow-lg space-y-4">
+    <div className="w-[256px] bg-bg-default rounded-2xl border border-border-default px-5 py-5 shadow-lg space-y-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h2 className="text-b-md font-weight-semibold text-text-title">퀴즈를 풀러 가볼까요?</h2>
