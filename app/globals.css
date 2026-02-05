@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* [1. Base Background] */
+  --color-surface: #161921;
+
+  /* [2. Background System] -> bg-bg-default 등으로 호출 */
+  --color-bg-default: #252931;
+  --color-bg-hovered: #2A2F3A;
+  --color-bg-sub: #1A1D24;
+  --color-bg-selected: #CFFF5E;
+
+  /* [3. Point Color] -> bg-point-500, text-point-500 */
+  --color-point-500: #CFFF5E;
+
+  /* [4. Text System] -> text-title 등으로 호출 */
+  --color-title: #FFFFFF;
+  --color-sub: #99A1AF;
+  --color-sub2: #D1D5DC;
+  --color-sub3: #6A7282;
+  --color-description: #B8BEC8;
+  --color-placeholder: #4A5565;
+  --color-selected: #CFFF5E;
+
+  /* [5. Brand/Sub] -> text-sub-red 등 */
+  --color-sub-red: #FF8581;
+  --color-sub-green: #00C950;
+
+  /* [6. Base] -> text-base-white 등 */
+  --color-base-white: #FFFFFF;
+  --color-base-black: #000000;
+
+  /* [7. Border System] -> border-border-default 등 */
+  --color-border-default: #364153;
+  --color-border-hovered: #6E798C;
+  --color-border-focus: #CFFF5E;
+
+  /* [8. Grass Color System] -> bg-grass-green-4 등 */
+  --color-grass-green-0: #2E3138;
+  --color-grass-green-1: #556B2A;
+  --color-grass-green-2: #7FA03D;
+  --color-grass-green-3: #91C32D;
+  --color-grass-green-4: #CFFF5E;
+
+  --color-grass-orange-0: #2E3138;
+  --color-grass-orange-1: #FFE1D6;
+  --color-grass-orange-2: #FFB8A0;
+  --color-grass-orange-3: #FF8A5A;
+  --color-grass-orange-4: #FF672E;
+
+  --color-grass-blue-0: #2E3138;
+  --color-grass-blue-1: #2C3F6E;
+  --color-grass-blue-2: #3F63A8;
+  --color-grass-blue-3: #5B8BEE;
+  --color-grass-blue-4: #1868FB;
+
+  --color-grass-pink-0: #2E3138;
+  --color-grass-pink-1: #4B3A47;
+  --color-grass-pink-2: #7A4B6D;
+  --color-grass-pink-3: #B85A8B;
+  --color-grass-pink-4: #EC4B99;
+
+  /* [Typography] */
+  --font-pretendard: "var(--font-pretendard)", "Pretendard", sans-serif;
+  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-medium: 500;
+  --font-weight-regular: 400;
+
+  --text-h-1xl: 32px; --text-h-1xl--line-height: 44px;
+  --text-h-xl: 28px;  --text-h-xl--line-height: 36px;
+  --text-h-lg: 24px;  --text-h-lg--line-height: 28px;
+  --text-h-md: 22px;  --text-h-md--line-height: 32px;
+  --text-h-sm: 20px;  --text-h-sm--line-height: 32px;
+  --text-b-xl: 18px;  --text-b-xl--line-height: 28px;
+  --text-b-lg: 16px;  --text-b-lg--line-height: 24px;
+  --text-b-md: 14px;  --text-b-md--line-height: 20px;
+  --text-b-sm: 12px;  --text-b-sm--line-height: 16px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-title);
+    font-family: var(--font-pretendard);
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
