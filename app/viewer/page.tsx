@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ViewerIcon, HomeIcon, Note, PdfModal, QuizModal } from '@/app/_components/viewer';
+import { ViewerIcon, HomeIcon, Note, PdfModal, QuizModal, AiPanel } from '@/app/_components/viewer';
 
 export default function ViewerTestPage() {
   const [isIconSelected, setIsIconSelected] = useState(false);
@@ -59,6 +59,14 @@ export default function ViewerTestPage() {
         <h2 className="text-h-lg font-semibold text-point-500">QuizModal</h2>
         <div className="bg-bg-sub rounded-lg p-6 border border-default flex justify-center">
           <QuizModal />
+        </div>
+      </section>
+
+      {/* AiPanel 컴포넌트 */}
+      <section className="space-y-6">
+        <h2 className="text-h-lg font-semibold text-point-500">AiPanel</h2>
+        <div className="bg-bg-sub rounded-lg p-6 border border-default flex justify-center">
+          <AiPanel />
         </div>
       </section>
     </main>
