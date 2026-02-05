@@ -131,7 +131,7 @@ export function AiPanel({
             aria-label={expanded ? '접기' : '펼치기'}
           >
             <img
-              src="/ViewerIcons/Expand.svg"
+              src="/Assets/ViewerIcons/Expand.svg"
               alt={expanded ? '접기' : '펼치기'}
               className="w-4 h-4"
             />
