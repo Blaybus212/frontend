@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ViewerIcon, HomeIcon } from '@/app/_components/viewer';
-import { Note } from '@/app/_components/note';
+import { ViewerIcon, HomeIcon, Note, PdfModal } from '@/app/_components/viewer';
 
 export default function ViewerTestPage() {
   const [isIconSelected, setIsIconSelected] = useState(false);
@@ -44,6 +43,14 @@ export default function ViewerTestPage() {
             onBlur={() => setIsNoteSelected(false)}
             onClick={() => setIsNoteSelected(true)}
           />
+        </div>
+      </section>
+
+      {/* PdfModal 컴포넌트 */}
+      <section className="space-y-6">
+        <h2 className="text-h-lg font-semibold text-point-500">PdfModal</h2>
+        <div className="bg-bg-sub rounded-lg p-6 border border-default flex justify-center">
+          <PdfModal />
         </div>
       </section>
     </main>
