@@ -3,3 +3,4 @@ export * from './icons';
 export { Note } from './Note';
 export { PdfModal } from './PdfModal';
 export { QuizModal } from './QuizModal';
+export { AiPanel } from './AiPanel';
