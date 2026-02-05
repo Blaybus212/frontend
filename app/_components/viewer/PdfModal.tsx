@@ -48,7 +48,7 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
       : 'bg-bg-sub text-sub';
 
   return (
-    <div className="w-[256px] bg-bg-default rounded-2xl border 0.8px solid border-border-default px-5 py-5 shadow-lg space-y-4">
+    <div className="w-[256px] bg-bg-default rounded-2xl border border-border-default px-5 py-5 shadow-lg space-y-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h2 className="text-b-md font-weight-semibold text-text-title">PDF 출력</h2>
@@ -108,7 +108,7 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
         <p className="text-b-sm font-weight-regular text-sub2">추가(선택)</p>
         <div className="space-y-2">
         {/* AI 대화 요약 */}
-        <div className="h-[32px] space-y-1">
+        <div className="space-y-1">
           <input
             type="text"
             value={summary}
@@ -119,7 +119,7 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
         </div>
 
         {/* 핵심 키워드 */}
-        <div className="h-[32px] space-y-1">
+        <div className="space-y-1">
           <input
             type="text"
             value={keywords}
