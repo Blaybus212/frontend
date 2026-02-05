@@ -50,6 +50,7 @@ const SearchBar = ({
   );
 };
 
+// TODO: 병합 후 아이콘 분리
 // --- 아이콘 컴포넌트 ---
 const SearchIcon = () => (
   <svg 
