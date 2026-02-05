@@ -14,7 +14,7 @@ export function QuizProgressModal({
   total = 10,
   onClose,
 }: QuizProgressModalProps) {
-  const progress = Math.min(Math.max((current / total) * 100, 0), 100);
+  const progress = total > 0 ? Math.min(Math.max((current / total) * 100, 0), 100) : 0;
 
   return (
     <div className="w-[256px] bg-bg-default rounded-2xl border 0.8px solid border-border-default px-5 py-5 shadow-lg space-y-4">
