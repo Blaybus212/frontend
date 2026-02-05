@@ -10,7 +10,8 @@ import SummaryCard, { GrassLevel } from "@/app/_components/home/SummaryCard";
 import { useState } from "react";
 
 export default function HomeComponents() {
-  const categories = ["기계공학", "전기공학", "소프트웨어", "데이터분석"];
+  // TODO: 카테고리 정해지면 constants.ts 만들어서 옮길 예정
+  const CATEGORIES = ["기계공학", "전기공학", "소프트웨어", "데이터분석"];
   const [selectedCategory, setSelectedCategory] = useState("기계공학");
   const studiedListData = [
     { id: 1, rank: 1, title: "드론", subTitle: "Drone" },
@@ -43,7 +44,7 @@ export default function HomeComponents() {
         participantCount={32}
       />
       <br/>
-      {categories.map((category) => (
+      {CATEGORIES.map((category) => (
         <CategoryChip
           key={category}
           label={category}
