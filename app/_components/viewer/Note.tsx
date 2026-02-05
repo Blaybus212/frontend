@@ -109,7 +109,7 @@ export function Note({
         rounded-2xl
         p-6
         transition-all duration-200
-        border 1px solid border-border-default
+        border border-border-default
         ${className}
       `}
     >

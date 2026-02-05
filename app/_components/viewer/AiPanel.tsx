@@ -58,7 +58,7 @@ export function AiPanel({
     // 내부 상태 관리
     if (!controlledMessages) {
       const newMessage: AiMessage = {
-        id: `${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'user',
         content: trimmed,
       };
