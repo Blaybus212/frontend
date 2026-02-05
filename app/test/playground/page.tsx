@@ -1,4 +1,5 @@
 'use client';
+import BottomObjectCard from "@/app/_components/home/BottomObjectCard";
 import CategoryChip from "@/app/_components/home/CategoryChip";
 import ObjectCard from "@/app/_components/home/ObjectCard";
 import StudiedList, { StudiedItem } from "@/app/_components/home/StudiedList";
@@ -24,6 +25,15 @@ export default function Playground() {
 
   return (
     <div className="p-4 bg-white">
+      <BottomObjectCard
+        imageSrc="/images/objectcard_example.png"
+        title="로봇 팔"
+        subtitle="Robot Arm"
+        description="로봇 팔은 총 32개의 부품으로 구성되어 있으며, 정밀 조립과 반복 작업 등 다양한 산업 현장에서 활용되고 있어요."
+        category="기계공학"
+        participantCount={32}
+      />
+      <br/>
       {categories.map((category) => (
         <CategoryChip
           key={category}
