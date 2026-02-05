@@ -50,7 +50,7 @@ const BottomObjectCard: React.FC<BottomObjectCardProps> = ({
           </span>
           
           <div className="flex items-center gap-0.5 text-sub2">
-            <UsersIcon />
+            {/* TODO: 유저 svg 추가 */}
             <span className="text-b-md font-medium">{participantCount}</span>
           </div>
         </div>
@@ -58,14 +58,5 @@ const BottomObjectCard: React.FC<BottomObjectCardProps> = ({
     </div>
   );
 };
-
-// --- 아이콘 컴포넌트 ---
-const UsersIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-sub3">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="8.5" cy="7" r="4" />
-    <path d="M17 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm5 10v-2a4 4 0 0 0-3-3.87" />
-  </svg>
-);
 
 export default BottomObjectCard;
