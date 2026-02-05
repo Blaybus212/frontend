@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 type ScreenshotMode = 'full' | 'current';
 type PartMode = 'all' | 'viewed';
