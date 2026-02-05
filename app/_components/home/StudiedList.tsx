@@ -8,12 +8,12 @@ export interface StudiedItem {
   diff?: number;
 }
 
-export interface StudiedList {
+export interface StudiedListProps {
   items: StudiedItem[];
   onItemClick: (item: StudiedItem) => void;
 }
 
-const StudiedList = ({ items, onItemClick }: StudiedList ) => {
+const StudiedList = ({ items, onItemClick }: StudiedListProps ) => {
   return (
     <div className="w-109.25 px-6 py-[12.5px] rounded-[14px] bg-bg-default">
       <div className="flex flex-col gap-2">
