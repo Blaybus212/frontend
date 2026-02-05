@@ -19,7 +19,7 @@ const ObjectCard: React.FC<ObjectCardProps> = ({
   isPopular = false,
 }) => {
   return (
-    <div className="w-70 rounded-[14px] overflow-hidden bg-bg-default">
+    <div className="w-70 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered">
       {/* 상단 이미지 영역 */}
       <div className="relative w-70 h-52.5">
         <Image
