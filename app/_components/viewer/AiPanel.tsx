@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 type AiMessageRole = 'user' | 'assistant';
 
@@ -106,10 +107,11 @@ export function AiPanel({
             className="w-[32px] h-[32px] flex items-center justify-center rounded-full bg-bg-sub border border-border-default hover:bg-bg-hovered transition-colors"
             aria-label={expanded ? '접기' : '펼치기'}
           >
-            <img
+            <Image
               src="/Assets/ViewerIcons/Expand.svg"
               alt={expanded ? '접기' : '펼치기'}
-              className="w-4 h-4"
+              width={16}
+              height={16}
             />
           </button>
 

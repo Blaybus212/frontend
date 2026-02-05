@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ViewerIcon, HomeIcon, Note, PdfModal, QuizModal, QuizProgressModal, QuizButton, QuizSubmitButton, QuizInput, QuizAnswer, MentionDropdown, AiPanel } from '@/app/_components/viewer';
 
 export default function ViewerTestPage() {
@@ -9,7 +9,6 @@ export default function ViewerTestPage() {
   const [noteValue, setNoteValue] = useState<string>('');
   const [quizButtonSelected, setQuizButtonSelected] = useState(false);
   const [quizInputValue, setQuizInputValue] = useState<string>('');
-  const [quizAnswerVisible, setQuizAnswerVisible] = useState(false);
 
   const handleNoteChange = (value: string) => {
     setNoteValue(value);
