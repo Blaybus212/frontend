@@ -17,7 +17,7 @@ const PageButton = ({ page, isSelected = false, onClick }: PageButtonProps) => {
         
         ${
           isSelected
-            ? "bg-[#151A09] border-border-focused text-selected " // Selected: 테두리 포인트 컬러
+            ? "bg-bg-hovered-green border-border-focused text-selected " // Selected: 테두리 포인트 컬러
             : "bg-base-black border-border-default text-sub2 hover:border-border-hovered" // Default & Hover
         }
       `}

@@ -16,7 +16,7 @@ const CategoryChip = ({ label, isSelected = false, onClick }: CategoryChipProps)
         
         ${
           isSelected
-            ? "bg-[#151A09] border-border-focus text-selected" // Selected 상태
+            ? "bg-bg-hovered-green border-border-focus text-selected" // Selected 상태
             : "bg-bg-default border-border-default text-sub2 hover:bg-bg-default hover:border-border-hovered hover:text-title" // Default & Hover 상태
         }
       `}

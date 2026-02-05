@@ -7,6 +7,7 @@
   /* [2. Background System] -> bg-bg-default 등으로 호출 */
   --color-bg-default: #252931;
   --color-bg-hovered: #2A2F3A;
+  --color-bg-hovered-green: #151A09;
   --color-bg-sub: #1A1D24;
   --color-bg-selected: #CFFF5E;
 
