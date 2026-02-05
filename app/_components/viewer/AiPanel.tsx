@@ -74,31 +74,7 @@ export function AiPanel({
     : 'max-h-[376px] h-[376px]';
 
   return (
-    <>
-      <style>{`
-        .ai-panel-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .ai-panel-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .ai-panel-scrollbar::-webkit-scrollbar-thumb {
-          background: var(--color-border-default);
-          border-radius: 3px;
-        }
-
-        .ai-panel-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: var(--color-border-hovered);
-        }
-
-        .ai-panel-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-border-default) transparent;
-        }
-      `}</style>
-      <div
+    <div
         className={`
           w-full max-w-[960px]
           bg-bg-default
@@ -149,7 +125,7 @@ export function AiPanel({
       </header>
 
       {/* 메시지 영역 */}
-      <div className={`${expanded ? 'flex-1' : 'h-[206px]'} px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default ai-panel-scrollbar`}>
+      <div className={`${expanded ? 'flex-1' : 'h-[206px]'} px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default custom-scrollbar`}>
         {currentMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-b-sm text-sub3">
@@ -248,7 +224,6 @@ export function AiPanel({
         </div>
       </div>
     </div>
-    </>
   );
 }
 
