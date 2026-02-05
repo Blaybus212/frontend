@@ -57,15 +57,17 @@ export function ViewerIcon({
         icon: 'var(--color-border-focus)',
       };
     }
+    // 호버와 기본 상태는 아이콘 색상이 동일, 보더만 다름
+    const defaultIconColor = 'var(--color-sub)';
     if (isHovered) {
       return {
         border: 'var(--color-border-hovered)',
-        icon: 'var(--color-description)',
+        icon: defaultIconColor,
       };
     }
     return {
       border: 'var(--color-border-default)',
-      icon: 'var(--color-sub3)',
+      icon: defaultIconColor,
     };
   };
 
@@ -109,23 +111,14 @@ export function ViewerIcon({
       return defaultIcon;
     }
 
-    // icon이 ReactElement이고 color prop을 받을 수 있는 경우
+    // icon이 ReactElement인 경우 색상과 크기 주입
     if (React.isValidElement(icon)) {
       const iconProps = (icon as React.ReactElement<any>).props;
-      // color prop이 있는 경우 색상 주입
-      if (typeof iconProps === 'object' && 'color' in iconProps) {
-        return React.cloneElement(icon as React.ReactElement<any>, {
-          color: colors.icon,
-          size: iconSize,
-        });
-      }
-      // color prop이 없는 경우 style로 주입 시도
+      // 항상 color와 size prop을 전달
       return React.cloneElement(icon as React.ReactElement<any>, {
-        style: {
-          ...iconProps?.style,
-          color: colors.icon,
-        },
+        color: colors.icon,
         size: iconSize,
+        ...iconProps,
       });
     }
 
@@ -152,7 +145,9 @@ export function ViewerIcon({
       }}
       aria-label={ariaLabel}
     >
-      {renderIcon()}
+      <div style={{ color: colors.icon }}>
+        {renderIcon()}
+      </div>
     </button>
   );
 }
