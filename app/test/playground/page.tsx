@@ -1,6 +1,7 @@
 'use client';
 import BottomObjectCard from "@/app/_components/home/BottomObjectCard";
 import CategoryChip from "@/app/_components/home/CategoryChip";
+import Dropdown from "@/app/_components/home/Dropdown";
 import ObjectCard from "@/app/_components/home/ObjectCard";
 import StudiedList, { StudiedItem } from "@/app/_components/home/StudiedList";
 import SummaryCard, { GrassLevel } from "@/app/_components/home/SummaryCard";
@@ -25,6 +26,8 @@ export default function Playground() {
 
   return (
     <div className="p-4 bg-white">
+      <Dropdown options={["인기순", "가나다순"]} />
+      <br/>
       <BottomObjectCard
         imageSrc="/images/objectcard_example.png"
         title="로봇 팔"
