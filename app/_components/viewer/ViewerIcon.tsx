@@ -2,42 +2,52 @@
 
 import React, { useState, ReactNode } from 'react';
 
+/**
+ * ViewerIcon 컴포넌트의 Props 인터페이스
+ * @interface ViewerIconProps
+ * @property {boolean} [selected=false] - 아이콘의 선택 상태 (true일 경우 네온 그린 테두리)
+ * @property {number} [size=54] - 아이콘의 크기 (픽셀 단위)
+ * @property {() => void} [onClick] - 아이콘 클릭 시 호출되는 콜백 함수
+ * @property {string} [className=''] - 추가 CSS 클래스명
+ * @property {ReactNode} [icon] - 표시할 아이콘 컴포넌트 (색상은 자동으로 상태에 따라 적용됨)
+ * @property {string} [aria-label='Viewer 아이콘'] - 접근성을 위한 aria-label 속성
+ * @property {string} [backgroundColor] - 커스텀 배경색 (CSS 변수 또는 색상 값)
+ * @property {string} [iconColor] - 커스텀 아이콘 색상 (CSS 변수 또는 색상 값)
+ */
 interface ViewerIconProps {
-  /**
-   * 아이콘의 선택 상태
-   * - true: 선택된 상태 (네온 그린)
-   * - false: 기본 상태
-   */
   selected?: boolean;
-  /**
-   * 아이콘 크기 (px)
-   * @default 54
-   */
   size?: number;
-  /**
-   * 클릭 핸들러
-   */
   onClick?: () => void;
-  /**
-   * 추가 클래스명
-   */
   className?: string;
-  /**
-   * 아이콘 컴포넌트
-   * 색상은 자동으로 상태에 따라 적용됩니다.
-   */
   icon?: ReactNode;
-  /**
-   * aria-label
-   */
   'aria-label'?: string;
+  backgroundColor?: string;
+  iconColor?: string;
 }
 
 /**
- * Viewer 아이콘 컴포넌트
- * 기본, 호버, 선택 상태를 지원하는 원형 아이콘 버튼
+ * 뷰어 컨트롤 아이콘 컴포넌트
  * 
- * 모든 색상은 globals.css의 CSS 변수를 사용합니다.
+ * 3D 뷰어의 좌측 사이드바에 표시되는 원형 아이콘 버튼입니다.
+ * 기본, 호버, 선택 상태를 지원하며, 상태에 따라 테두리 색상이 자동으로 변경됩니다.
+ * 
+ * **상태별 스타일:**
+ * - 기본: 회색 테두리
+ * - 호버: 밝은 회색 테두리
+ * - 선택: 네온 그린 테두리 (border-focus 색상)
+ * 
+ * **사용 예시:**
+ * ```tsx
+ * <ViewerIcon
+ *   icon={<HomeIcon />}
+ *   selected={isSelected}
+ *   onClick={() => handleClick()}
+ *   aria-label="홈"
+ * />
+ * ```
+ * 
+ * @param {ViewerIconProps} props - 컴포넌트 props
+ * @returns {JSX.Element} ViewerIcon 컴포넌트
  */
 export function ViewerIcon({
   selected = false,
@@ -46,19 +56,25 @@ export function ViewerIcon({
   className = '',
   icon,
   'aria-label': ariaLabel = 'Viewer 아이콘',
+  backgroundColor,
+  iconColor,
 }: ViewerIconProps) {
+  /** 마우스 호버 상태 */
   const [isHovered, setIsHovered] = useState(false);
 
-  // 상태에 따른 CSS 변수 결정
+  /**
+   * 현재 상태(선택, 호버, 기본)에 따른 테두리 및 아이콘 색상 결정
+   * @returns {Object} 테두리 색상과 아이콘 색상을 포함한 객체
+   */
   const getColorClasses = () => {
     if (selected) {
       return {
         border: 'var(--color-border-focus)',
-        icon: 'var(--color-border-focus)',
+        icon: iconColor || 'var(--color-border-focus)',
       };
     }
     // 호버와 기본 상태는 아이콘 색상이 동일, 보더만 다름
-    const defaultIconColor = 'var(--color-sub)';
+    const defaultIconColor = iconColor || 'var(--color-sub)';
     if (isHovered) {
       return {
         border: 'var(--color-border-hovered)',
@@ -72,9 +88,12 @@ export function ViewerIcon({
   };
 
   const colors = getColorClasses();
-  const iconSize = size * 0.5; // 아이콘은 원의 절반 크기
+  /** 아이콘의 실제 크기 (원 크기의 절반) */
+  const iconSize = size * 0.5;
 
-  // 아이콘이 제공되지 않으면 기본 집 아이콘 사용
+  /**
+   * 기본 아이콘: 아이콘이 제공되지 않았을 때 사용되는 집 모양 아이콘
+   */
   const defaultIcon = (
     <svg
       width={iconSize}
@@ -105,16 +124,19 @@ export function ViewerIcon({
     </svg>
   );
 
-  // 아이콘에 색상 적용
+  /**
+   * 아이콘 렌더링 함수
+   * 아이콘이 ReactElement인 경우 색상과 크기를 자동으로 주입합니다.
+   * @returns {ReactNode} 렌더링된 아이콘 컴포넌트
+   */
   const renderIcon = () => {
     if (!icon) {
       return defaultIcon;
     }
 
-    // icon이 ReactElement인 경우 색상과 크기 주입
+    // ReactElement인 경우 color와 size prop을 자동으로 주입
     if (React.isValidElement(icon)) {
       const iconProps = (icon as React.ReactElement<any>).props;
-      // 항상 color와 size prop을 전달
       return React.cloneElement(icon as React.ReactElement<any>, {
         color: colors.icon,
         size: iconSize,
@@ -125,6 +147,9 @@ export function ViewerIcon({
     return icon;
   };
 
+  /** 배경색 (커스텀 배경색이 제공되지 않으면 기본값 사용) */
+  const bgColor = backgroundColor || 'var(--color-grass-green-0)';
+
   return (
     <button
       onClick={onClick}
@@ -134,14 +159,14 @@ export function ViewerIcon({
         rounded-full
         flex items-center justify-center
         transition-all duration-200
-        bg-grass-green-0
-        ${selected ? 'cursor-default' : 'cursor-pointer'}
+        ${onClick ? 'cursor-pointer' : 'cursor-default'}
         ${className}
       `}
       style={{
         width: `${size}px`,
         height: `${size}px`,
         border: `1px solid ${colors.border}`,
+        backgroundColor: bgColor,
       }}
       aria-label={ariaLabel}
     >

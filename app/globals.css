@@ -122,4 +122,76 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-default) transparent;
   }
+
+  /* 커스텀 슬라이더 스타일 */
+  .slider-custom::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-point-500);
+    cursor: pointer;
+    border: 2px solid var(--color-bg-default);
+  }
+
+  .slider-custom::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-point-500);
+    cursor: pointer;
+    border: 2px solid var(--color-bg-default);
+  }
+
+  /* AI 패널 슬라이드 업 애니메이션 */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  /* AI 아이콘 물결 애니메이션 */
+  @keyframes ripple {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.5;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1.3);
+      opacity: 0;
+    }
+  }
+
+  .ai-icon-ripple {
+    position: relative;
+  }
+
+  .ai-icon-ripple::before,
+  .ai-icon-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--color-point-500);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+    animation: ripple 3s infinite;
+    pointer-events: none;
+  }
+
+  .ai-icon-ripple::after {
+    animation-delay: 3s;
+  }
 }

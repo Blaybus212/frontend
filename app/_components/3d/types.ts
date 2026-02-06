@@ -87,6 +87,29 @@ export interface Transform {
 }
 
 /**
+ * 씬 상태 정보 인터페이스 (서버에 전송할 전체 데이터)
+ */
+export interface SceneState {
+  /** 노드 변환 정보 배열 */
+  nodeTransforms: Array<{
+    nodeId: string;
+    nodeName: string;
+    modelIndex: number;
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+    scale: { x: number; y: number; z: number };
+    matrix: number[];
+  }>;
+  /** 카메라 시점 정보 */
+  camera: {
+    position: { x: number; y: number; z: number };
+    target: { x: number; y: number; z: number };
+  };
+  /** 조립/분해 값 (0-100) */
+  assemblyValue: number;
+}
+
+/**
  * Scene3D 컴포넌트의 ref 인터페이스
  * 
  * 부모 컴포넌트에서 Scene3D의 메서드에 접근하기 위한 인터페이스입니다.
@@ -98,6 +121,10 @@ export interface Scene3DRef {
   updateObjectTransform: (transform: Transform) => void;
   /** TransformControls의 변환 모드를 설정하는 함수 */
   setTransformMode: (mode: TransformMode) => void;
+  /** 현재 씬 상태를 추출하여 반환하는 함수 (서버 전송용) */
+  getSceneState: () => SceneState | null;
+  /** 현재 조립/분해 값 기준으로 위치를 초기 상태로 되돌리는 함수 */
+  resetToAssembly: () => void;
 }
 
 /**
@@ -114,4 +141,6 @@ export interface SceneContentProps {
   onModelSelect: (indices: number[]) => void;
   /** 선택된 객체의 정보가 변경될 때 호출되는 콜백 함수 (선택적) */
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
+  assemblyValue?: number;
 }

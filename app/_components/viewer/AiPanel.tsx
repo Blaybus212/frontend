@@ -3,47 +3,115 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
+/**
+ * AI 메시지의 역할 타입
+ * @typedef {'user' | 'assistant'} AiMessageRole
+ */
 type AiMessageRole = 'user' | 'assistant';
 
+/**
+ * AI 대화 메시지 데이터 구조
+ * @typedef {Object} AiMessage
+ * @property {string} id - 메시지의 고유 식별자
+ * @property {AiMessageRole} role - 메시지 작성자 역할 (사용자 또는 어시스턴트)
+ * @property {string} content - 메시지 내용
+ */
 export type AiMessage = {
   id: string;
   role: AiMessageRole;
   content: string;
 };
 
+/**
+ * AI 패널 컴포넌트의 Props 인터페이스
+ * @interface AiPanelProps
+ * @property {AiMessage[]} [messages] - 대화 메시지 리스트 (제어형 컴포넌트 사용 시 필수)
+ * @property {(content: string) => void} [onSendMessage] - 메시지 전송 시 호출되는 콜백 함수 (제어형 컴포넌트 사용 시 필수)
+ * @property {boolean} [isLoading=false] - AI 응답 생성 중 여부
+ * @property {boolean} [isExpanded] - 패널의 펼쳐진 상태 (제어형 컴포넌트 사용 시 필수)
+ * @property {(expanded: boolean) => void} [onToggleExpand] - 펼치기/접기 토글 시 호출되는 콜백 함수
+ * @property {() => void} [onClose] - 닫기 버튼 클릭 시 호출되는 콜백 함수
+ * @property {boolean} [isVisible=true] - 패널 표시 여부
+ * @property {string} [maxExpandedHeight='922px'] - 확대 시 최대 높이 (CSS 값)
+ */
 interface AiPanelProps {
-  /** 대화 메시지 리스트 (제어형) */
   messages?: AiMessage[];
-  /** 메시지 전송 시 호출 (제어형) */
   onSendMessage?: (content: string) => void;
-  /** 응답 생성 중 여부 */
   isLoading?: boolean;
-  /** 펼쳐진 상태 (제어형) */
   isExpanded?: boolean;
-  /** 펼치기/접기 토글 시 호출 */
   onToggleExpand?: (expanded: boolean) => void;
+  onClose?: () => void;
+  isVisible?: boolean;
+  maxExpandedHeight?: string;
 }
 
+/** 기본 메시지 리스트 (비제어형 컴포넌트 사용 시 초기값) */
 const DEFAULT_MESSAGES: AiMessage[] = [];
 
+/**
+ * AI 어시스턴트 패널 컴포넌트
+ * 
+ * 3D 뷰어 하단에 표시되는 AI 채팅 인터페이스입니다. 사용자가 AI에게 질문하고 답변을 받을 수 있습니다.
+ * 
+ * **주요 기능:**
+ * - 제어형/비제어형 컴포넌트 모두 지원
+ * - 메시지 입력 및 전송
+ * - 패널 확대/축소 기능
+ * - 로딩 상태 표시
+ * - 메시지 스크롤 영역
+ * 
+ * **사용 예시:**
+ * ```tsx
+ * // 비제어형 컴포넌트 (내부 상태 관리)
+ * <AiPanel
+ *   isVisible={true}
+ *   onClose={() => setIsVisible(false)}
+ * />
+ * 
+ * // 제어형 컴포넌트 (외부 상태 관리)
+ * <AiPanel
+ *   messages={messages}
+ *   onSendMessage={handleSend}
+ *   isExpanded={isExpanded}
+ *   onToggleExpand={setIsExpanded}
+ *   isLoading={isLoading}
+ * />
+ * ```
+ * 
+ * @param {AiPanelProps} props - 컴포넌트 props
+ * @returns {JSX.Element | null} AI 패널 컴포넌트 또는 null (isVisible이 false일 때)
+ */
 export function AiPanel({
   messages,
   onSendMessage,
   isLoading = false,
   isExpanded,
   onToggleExpand,
+  onClose,
+  isVisible = true,
+  maxExpandedHeight = '922px',
 }: AiPanelProps) {
+  /** 비제어형 컴포넌트용 내부 메시지 상태 */
   const [internalMessages, setInternalMessages] = useState<AiMessage[]>(
     messages ?? DEFAULT_MESSAGES,
   );
+  /** 입력 필드의 현재 값 */
   const [input, setInput] = useState('');
+  /** 비제어형 컴포넌트용 내부 확대 상태 */
   const [internalExpanded, setInternalExpanded] = useState(false);
 
+  /** 메시지가 제어형인지 여부 */
   const controlledMessages = messages !== undefined;
+  /** 현재 사용할 메시지 리스트 (제어형이면 props, 아니면 내부 상태) */
   const currentMessages = controlledMessages ? messages! : internalMessages;
 
+  /** 현재 확대 상태 (제어형이면 props, 아니면 내부 상태) */
   const expanded = isExpanded !== undefined ? isExpanded : internalExpanded;
 
+  /**
+   * 패널 확대/축소 토글 핸들러
+   * 제어형 컴포넌트가 아닌 경우 내부 상태를 업데이트하고, 콜백 함수를 호출합니다.
+   */
   const handleToggleExpand = () => {
     const next = !expanded;
     if (isExpanded === undefined) {
@@ -52,11 +120,16 @@ export function AiPanel({
     onToggleExpand?.(next);
   };
 
+  /**
+   * 메시지 전송 핸들러
+   * 입력값을 검증하고, 비제어형 컴포넌트인 경우 내부 메시지 상태를 업데이트한 후,
+   * onSendMessage 콜백을 호출합니다.
+   */
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
 
-    // 내부 상태 관리
+    // 비제어형 컴포넌트인 경우 내부 상태에 메시지 추가
     if (!controlledMessages) {
       const newMessage: AiMessage = {
         id: crypto.randomUUID(),
@@ -70,14 +143,17 @@ export function AiPanel({
     setInput('');
   };
 
-  const containerHeightClass = expanded
-    ? 'max-h-[922px] h-[922px]'
-    : 'max-h-[376px] h-[376px]';
+  /** 확대 상태에 따른 컨테이너 높이 스타일 */
+  const containerHeightStyle = expanded
+    ? { maxHeight: maxExpandedHeight, height: maxExpandedHeight }
+    : { maxHeight: '376px', height: '376px' };
+
+  if (!isVisible) return null;
 
   return (
     <div
         className={`
-          w-full max-w-[960px]
+          w-full
           bg-bg-default
           rounded-t-2xl
           border border-border-default
@@ -85,10 +161,11 @@ export function AiPanel({
           flex flex-col
           overflow-hidden
           transition-all duration-300
-          ${containerHeightClass}
+          animate-slide-up
         `}
+        style={containerHeightStyle}
       >
-      {/* 헤더 */}
+      {/* 헤더 영역: 제목, 설명, 확대/축소 버튼, 닫기 버튼 */}
       <header className="h-[86px] flex items-center justify-between px-6 border-b border-border-default">
         <div>
           <h2 className="text-b-xl font-weight-semibold text-text-title">
@@ -100,7 +177,7 @@ export function AiPanel({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* 펼치기 버튼 */}
+          {/* 패널 확대/축소 토글 버튼 */}
           <button
             type="button"
             onClick={handleToggleExpand}
@@ -115,9 +192,10 @@ export function AiPanel({
             />
           </button>
 
-          {/* 닫기 버튼 (현재는 UI만) */}
+          {/* 패널 닫기 버튼 */}
           <button
             type="button"
+            onClick={onClose}
             className="w-[32px] h-[32px] flex items-center justify-center rounded-full bg-bg-sub border border-border-default text-text-sub3 text-[16px] hover:bg-bg-hovered transition-colors"
             aria-label="닫기"
           >
@@ -126,8 +204,8 @@ export function AiPanel({
         </div>
       </header>
 
-      {/* 메시지 영역 */}
-      <div className={`${expanded ? 'flex-1' : 'h-[206px]'} px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default custom-scrollbar`}>
+      {/* 메시지 표시 영역: 사용자와 AI의 대화 내용을 표시하며 스크롤 가능 */}
+      <div className="flex-1 px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default custom-scrollbar">
         {currentMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-b-sm text-sub3">
@@ -152,7 +230,7 @@ export function AiPanel({
           ))
         )}
 
-        {/* 로딩 상태 표시 */}
+        {/* AI 응답 생성 중일 때 표시되는 로딩 인디케이터 */}
         {isLoading && (
           <div className="w-fit max-w-[60%] px-4 py-2 rounded-2xl bg-bg-sub text-text-sub3 text-b-sm">
             답변 생성 중...
@@ -160,7 +238,7 @@ export function AiPanel({
         )}
       </div>
 
-      {/* 하단 입력 영역 */}
+      {/* 하단 입력 영역: 사용자가 메시지를 입력하고 전송하는 영역 */}
       <div className="h-[83px] px-6 py-3">
         <div className="flex items-center gap-3">
           <div className="flex-1 h-[44px] rounded-xl bg-bg-sub border border-border-default flex items-center px-4">
