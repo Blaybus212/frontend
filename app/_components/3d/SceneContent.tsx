@@ -185,65 +185,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
               }
             }
           }}
-          onChange={() => {
-            // TransformControls가 변환을 변경할 때 노드의 변환을 직접 업데이트
-            // useNodeTransform 훅이 useFrame에서 처리하지만, onChange에서도 처리하여 더 확실하게 함
-            if (selectedNodesRef.current && selectedNodesRef.current.length === 1) {
-              const node = selectedNodesRef.current[0].nodeRef;
-              const controlledObject = transformControlsRef.current?.object;
-
-              if (node && controlledObject === node) {
-                // TransformControls가 변경한 변환을 노드에 직접 적용
-                // TransformControls는 객체의 월드 좌표계에서 변환을 수행하지만,
-                // 객체의 로컬 position을 변경합니다.
-                // 노드가 부모를 가지고 있으면, TransformControls가 변경한 월드 위치를
-                // 로컬 위치로 변환해야 합니다.
-                
-                // 드래그 시작 위치 가져오기 (없으면 현재 위치 사용)
-                const controlledDragStartLocalPos = controlledObject.userData.dragStartLocalPos || controlledObject.position.clone();
-                
-                // TransformControls가 실제로 변경했는지 확인 (드래그 시작 위치와 비교)
-                const controlledLocalChanged = !controlledDragStartLocalPos.equals(controlledObject.position);
-                
-                // TransformControls가 로컬 position을 변경했으면 노드에 적용
-                if (controlledLocalChanged) {
-                  // TransformControls가 변경한 로컬 position을 노드에 직접 적용
-                  node.position.copy(controlledObject.position);
-                  node.rotation.copy(controlledObject.rotation);
-                  node.scale.copy(controlledObject.scale);
-                  
-                  // 매트릭스 업데이트
-                  node.updateMatrix();
-                  node.updateMatrixWorld(true);
-                  
-                }
-                
-                
-                // 사용자가 변경한 위치를 userData에 저장 (useAssemblyDisassembly가 덮어쓰지 않도록)
-                if (!node.userData.userModifiedPosition) {
-                  node.userData.userModifiedPosition = new THREE.Vector3();
-                }
-                node.userData.userModifiedPosition.copy(node.position);
-                
-                if (!node.userData.userModifiedRotation) {
-                  node.userData.userModifiedRotation = new THREE.Euler();
-                }
-                node.userData.userModifiedRotation.copy(node.rotation);
-                
-                if (!node.userData.userModifiedScale) {
-                  node.userData.userModifiedScale = new THREE.Vector3();
-                }
-                node.userData.userModifiedScale.copy(node.scale);
-                
-                // 사용자가 수정했음을 표시
-                node.userData.isUserModified = true;
-                
-                // 매트릭스 업데이트
-                node.updateMatrix();
-                node.updateMatrixWorld(true);
-              }
-            }
-          }}
         />
       )}
 
