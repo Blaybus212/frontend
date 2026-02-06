@@ -37,16 +37,6 @@ interface UseCameraAdjustmentReturn {
 }
 
 /**
- * 카메라 자동 조정 훅의 반환 타입
- */
-interface UseCameraAdjustmentReturn {
-  /** OrbitControls의 onStart 핸들러 */
-  onOrbitStart: () => void;
-  /** OrbitControls의 onEnd 핸들러 */
-  onOrbitEnd: () => void;
-}
-
-/**
  * 카메라를 자동으로 모델에 맞춰 조정하는 훅
  * 
  * **주요 기능:**
