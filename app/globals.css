@@ -142,4 +142,56 @@
     cursor: pointer;
     border: 2px solid var(--color-bg-default);
   }
+
+  /* AI 패널 슬라이드 업 애니메이션 */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  /* AI 아이콘 물결 애니메이션 */
+  @keyframes ripple {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.6;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  .ai-icon-ripple {
+    position: relative;
+  }
+
+  .ai-icon-ripple::before,
+  .ai-icon-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--color-point-500);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+    animation: ripple 2s infinite;
+    pointer-events: none;
+  }
+
+  .ai-icon-ripple::after {
+    animation-delay: 1s;
+  }
 }

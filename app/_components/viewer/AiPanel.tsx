@@ -22,6 +22,12 @@ interface AiPanelProps {
   isExpanded?: boolean;
   /** 펼치기/접기 토글 시 호출 */
   onToggleExpand?: (expanded: boolean) => void;
+  /** 닫기 버튼 클릭 시 호출 */
+  onClose?: () => void;
+  /** 표시 여부 */
+  isVisible?: boolean;
+  /** 확대 시 최대 높이 (기본값: 922px) */
+  maxExpandedHeight?: string;
 }
 
 const DEFAULT_MESSAGES: AiMessage[] = [];
@@ -32,6 +38,9 @@ export function AiPanel({
   isLoading = false,
   isExpanded,
   onToggleExpand,
+  onClose,
+  isVisible = true,
+  maxExpandedHeight = '922px',
 }: AiPanelProps) {
   const [internalMessages, setInternalMessages] = useState<AiMessage[]>(
     messages ?? DEFAULT_MESSAGES,
@@ -70,14 +79,16 @@ export function AiPanel({
     setInput('');
   };
 
-  const containerHeightClass = expanded
-    ? 'max-h-[922px] h-[922px]'
-    : 'max-h-[376px] h-[376px]';
+  const containerHeightStyle = expanded
+    ? { maxHeight: maxExpandedHeight, height: maxExpandedHeight }
+    : { maxHeight: '376px', height: '376px' };
+
+  if (!isVisible) return null;
 
   return (
     <div
         className={`
-          w-full max-w-[960px]
+          w-full
           bg-bg-default
           rounded-t-2xl
           border border-border-default
@@ -85,8 +96,9 @@ export function AiPanel({
           flex flex-col
           overflow-hidden
           transition-all duration-300
-          ${containerHeightClass}
+          animate-slide-up
         `}
+        style={containerHeightStyle}
       >
       {/* 헤더 */}
       <header className="h-[86px] flex items-center justify-between px-6 border-b border-border-default">
@@ -115,9 +127,10 @@ export function AiPanel({
             />
           </button>
 
-          {/* 닫기 버튼 (현재는 UI만) */}
+          {/* 닫기 버튼 */}
           <button
             type="button"
+            onClick={onClose}
             className="w-[32px] h-[32px] flex items-center justify-center rounded-full bg-bg-sub border border-border-default text-text-sub3 text-[16px] hover:bg-bg-hovered transition-colors"
             aria-label="닫기"
           >
@@ -127,7 +140,7 @@ export function AiPanel({
       </header>
 
       {/* 메시지 영역 */}
-      <div className={`${expanded ? 'flex-1' : 'h-[206px]'} px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default custom-scrollbar`}>
+      <div className="flex-1 px-6 py-4 overflow-y-auto space-y-3 border-b border-border-default custom-scrollbar">
         {currentMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-b-sm text-sub3">

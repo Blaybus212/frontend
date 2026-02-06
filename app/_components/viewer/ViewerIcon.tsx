@@ -31,6 +31,14 @@ interface ViewerIconProps {
    * aria-label
    */
   'aria-label'?: string;
+  /**
+   * 커스텀 배경색 (CSS 변수 또는 색상 값)
+   */
+  backgroundColor?: string;
+  /**
+   * 커스텀 아이콘 색상 (CSS 변수 또는 색상 값)
+   */
+  iconColor?: string;
 }
 
 /**
@@ -46,6 +54,8 @@ export function ViewerIcon({
   className = '',
   icon,
   'aria-label': ariaLabel = 'Viewer 아이콘',
+  backgroundColor,
+  iconColor,
 }: ViewerIconProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -54,11 +64,11 @@ export function ViewerIcon({
     if (selected) {
       return {
         border: 'var(--color-border-focus)',
-        icon: 'var(--color-border-focus)',
+        icon: iconColor || 'var(--color-border-focus)',
       };
     }
     // 호버와 기본 상태는 아이콘 색상이 동일, 보더만 다름
-    const defaultIconColor = 'var(--color-sub)';
+    const defaultIconColor = iconColor || 'var(--color-sub)';
     if (isHovered) {
       return {
         border: 'var(--color-border-hovered)',
@@ -125,6 +135,8 @@ export function ViewerIcon({
     return icon;
   };
 
+  const bgColor = backgroundColor || 'var(--color-grass-green-0)';
+
   return (
     <button
       onClick={onClick}
@@ -134,7 +146,6 @@ export function ViewerIcon({
         rounded-full
         flex items-center justify-center
         transition-all duration-200
-        bg-grass-green-0
         ${selected ? 'cursor-default' : 'cursor-pointer'}
         ${className}
       `}
@@ -142,6 +153,7 @@ export function ViewerIcon({
         width: `${size}px`,
         height: `${size}px`,
         border: `1px solid ${colors.border}`,
+        backgroundColor: bgColor,
       }}
       aria-label={ariaLabel}
     >
