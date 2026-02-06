@@ -34,6 +34,14 @@ interface UseAssemblyDisassemblyProps {
 }
 
 /**
+ * 조립/분해 훅의 반환 타입
+ */
+interface UseAssemblyDisassemblyReturn {
+  /** 현재 조립/분해 값 기준으로 위치를 초기 상태로 되돌림 */
+  resetToAssembly: () => void;
+}
+
+/**
  * 조립/분해 훅
  * 
  * 모델의 각 노드를 추출하고, 슬라이더 값에 따라 조립/분해 상태로 이동시킵니다.
@@ -60,7 +68,7 @@ export function useAssemblyDisassembly({
   modelRefs,
   assemblyValue,
   transformControlsRef,
-}: UseAssemblyDisassemblyProps) {
+}: UseAssemblyDisassemblyProps): UseAssemblyDisassemblyReturn {
   /** 각 모델의 노드 분해 데이터를 저장하는 맵 (모델 인덱스 -> 노드 데이터 배열) */
   const disassemblyDataRef = useRef<Map<number, NodeDisassemblyData[]>>(new Map());
   /** 모델이 이미 분석되었는지 추적하는 맵 */
@@ -189,6 +197,32 @@ export function useAssemblyDisassembly({
   };
 
   /**
+   * 현재 조립/분해 값 기준으로 모든 노드 위치를 초기 상태로 되돌립니다
+   * 사용자가 수정한 위치 플래그를 제거한 뒤 재계산합니다.
+   */
+  const resetToAssembly = () => {
+    // TransformControls 드래그 중이면 안전하게 무시
+    if (transformControlsRef?.current?.dragging) {
+      return;
+    }
+
+    disassemblyDataRef.current.forEach((nodes, modelIndex) => {
+      nodes.forEach(({ node }) => {
+        node.userData.isUserModified = false;
+        delete node.userData.userModifiedPosition;
+        delete node.userData.userModifiedRotation;
+        delete node.userData.userModifiedScale;
+      });
+
+      applyDisassembly(modelIndex, assemblyValue);
+      const modelRef = modelRefs.current.get(modelIndex);
+      if (modelRef) {
+        modelRef.updateMatrixWorld(true);
+      }
+    });
+  };
+
+  /**
    * 모델이 변경되면 분석을 다시 수행합니다
    * 모델이 완전히 로드된 후에 분석하도록 약간의 지연을 둡니다
    */
@@ -240,4 +274,6 @@ export function useAssemblyDisassembly({
       }
     });
   }, [assemblyValue, modelRefs, transformControlsRef]);
+
+  return { resetToAssembly };
 }

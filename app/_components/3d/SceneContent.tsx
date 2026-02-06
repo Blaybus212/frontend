@@ -69,6 +69,42 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const justEndedDragRef = useRef(false);
   /** 현재 선택된 노드들 */
   const selectedNodesRef = useRef<SelectedNode[] | null>(null);
+  /** 선택된 노드 변경 트리거 */
+  const [selectedNodesVersion, setSelectedNodesVersion] = React.useState(0);
+  /** 렌더링 모드 */
+  const [renderMode, setRenderMode] = React.useState<'normal' | 'wireframe'>('normal');
+  /** 뷰 모드 */
+  const [viewMode, setViewMode] = React.useState<'lit' | 'dim' | 'wireframe'>('lit');
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName?.toLowerCase();
+        const isEditable =
+          tagName === 'input' ||
+          tagName === 'textarea' ||
+          (target as HTMLElement).isContentEditable;
+        if (isEditable) return;
+      }
+
+      if (event.key === '1') {
+        setViewMode('lit');
+        setRenderMode('normal');
+      } else if (event.key === '2') {
+        setViewMode('dim');
+        setRenderMode('normal');
+      } else if (event.key === '3') {
+        setViewMode('wireframe');
+        setRenderMode('wireframe');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // TransformControls와 OrbitControls 관리
   // 드래그 중 OrbitControls를 자동으로 비활성화합니다
@@ -97,7 +133,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
   // 조립/분해 처리
   // 슬라이더 값에 따라 모델의 노드들을 조립/분해 상태로 이동시킵니다
-  useAssemblyDisassembly({
+  const { resetToAssembly } = useAssemblyDisassembly({
     modelRefs,
     assemblyValue,
     transformControlsRef,
@@ -134,6 +170,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     onModelSelect,
     onNodeSelect: (nodes) => {
       selectedNodesRef.current = nodes;
+      setSelectedNodesVersion((prev) => prev + 1);
     },
     transformControlsRef,
     justEndedDragRef,
@@ -200,6 +237,70 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   }, [camera, orbitControlsRef, assemblyValue]);
 
   /**
+   * 선택된 오브젝트에 테두리(Outline) 효과를 적용합니다
+   */
+  const previousOutlinedRef = useRef<THREE.Object3D[]>([]);
+
+  const clearOutline = useCallback((targets: THREE.Object3D[]) => {
+    targets.forEach((target) => {
+      target.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.userData.selectionOutline) {
+          const outline = child.userData.selectionOutline as THREE.LineSegments;
+          child.remove(outline);
+          if (outline.geometry) outline.geometry.dispose();
+          if (outline.material) {
+            const materials = Array.isArray(outline.material) ? outline.material : [outline.material];
+            materials.forEach((mat) => mat.dispose());
+          }
+          delete child.userData.selectionOutline;
+        }
+      });
+    });
+  }, []);
+
+  const applyOutline = useCallback((targets: THREE.Object3D[]) => {
+    targets.forEach((target) => {
+      target.traverse((child) => {
+        if (child instanceof THREE.Mesh && !child.userData.selectionOutline) {
+          const edges = new THREE.EdgesGeometry(child.geometry, 40);
+          const material = new THREE.LineBasicMaterial({
+            color: 0x00e5ff,
+            transparent: true,
+            opacity: 0.9,
+            depthTest: false,
+          });
+          const outline = new THREE.LineSegments(edges, material);
+          outline.scale.set(1.01, 1.01, 1.01);
+          outline.renderOrder = 10;
+          child.add(outline);
+          child.userData.selectionOutline = outline;
+        }
+      });
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const targets: THREE.Object3D[] = [];
+    if (selectedNodesRef.current && selectedNodesRef.current.length > 0) {
+      selectedNodesRef.current.forEach((node) => {
+        if (node.nodeRef) targets.push(node.nodeRef);
+      });
+    } else if (selectedIndices.length > 0) {
+      selectedIndices.forEach((index) => {
+        const model = modelRefs.current.get(index);
+        if (model) targets.push(model);
+      });
+    }
+
+    clearOutline(previousOutlinedRef.current);
+    applyOutline(targets);
+    previousOutlinedRef.current = targets;
+    return () => {
+      clearOutline(targets);
+    };
+  }, [applyOutline, clearOutline, selectedIndices, selectedNodesVersion]);
+
+  /**
    * 부모 컴포넌트에서 접근할 수 있는 함수들을 노출합니다
    * 
    * useImperativeHandle을 사용하여 ref를 통해 다음 함수들을 제공합니다:
@@ -213,11 +314,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     updateObjectTransform,
     setTransformMode,
     getSceneState,
+    resetToAssembly,
   }));
 
   return (
     <>
-      <SceneLights />
+      <SceneLights mode={viewMode === 'lit' ? 'lit' : 'dim'} />
       <SceneHelpers />
 
       {/* OrbitControls */}
@@ -320,6 +422,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       <ModelList
         models={models}
         selectedIndices={selectedIndices}
+        renderMode={renderMode}
         onModelRef={(index, ref) => {
           if (ref) {
             modelRefs.current.set(index, ref);

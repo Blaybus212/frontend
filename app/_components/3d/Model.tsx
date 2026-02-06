@@ -30,6 +30,8 @@ interface ModelProps {
   nodePath?: string;
   /** 이 모델이 선택되었는지 여부 */
   isSelected: boolean;
+  /** 렌더링 모드 */
+  renderMode: 'normal' | 'wireframe';
   /** 모델 그룹의 참조를 전달하는 콜백 함수 (선택적) */
   onRef?: (ref: THREE.Group | null) => void;
 }
@@ -68,6 +70,7 @@ export function Model({
   nodeIndex,
   nodePath,
   isSelected,
+  renderMode,
   onRef 
 }: ModelProps) {
   /** GLTF 파일을 로드한 결과 (씬 객체) */
@@ -202,6 +205,79 @@ export function Model({
       });
     }
   }, [scene, url]);
+
+  /**
+   * 렌더링 품질 향상을 위한 재질/그림자 설정
+   */
+  React.useEffect(() => {
+    if (!modelRef.current) return;
+
+    modelRef.current.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        // 그림자 품질 향상
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          if (material instanceof THREE.MeshStandardMaterial) {
+            // 광택감 향상 (과도한 변화 방지)
+            material.metalness = Math.max(material.metalness ?? 0, 0.2);
+            material.roughness = Math.min(material.roughness ?? 1, 0.4);
+            material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.8, 0.8);
+            material.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }, [scene, url]);
+
+  /**
+   * 렌더링 모드(일반/와이어프레임)를 적용합니다
+   */
+  React.useEffect(() => {
+    if (!modelRef.current) return;
+
+    modelRef.current.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => {
+        const materialAny = material as THREE.Material & {
+          wireframe?: boolean;
+          color?: THREE.Color;
+        };
+
+        if (!materialAny.userData) {
+          materialAny.userData = {};
+        }
+
+        if (renderMode === 'wireframe') {
+          if (materialAny.userData.originalWireframe === undefined) {
+            materialAny.userData.originalWireframe = materialAny.wireframe ?? false;
+          }
+          if (materialAny.userData.originalColor === undefined && materialAny.color) {
+            materialAny.userData.originalColor = materialAny.color.clone();
+          }
+          materialAny.wireframe = true;
+          if (materialAny.color) {
+            materialAny.color.set('#cfd6df');
+          }
+        } else {
+          if (materialAny.userData.originalWireframe !== undefined) {
+            materialAny.wireframe = materialAny.userData.originalWireframe;
+          } else {
+            materialAny.wireframe = false;
+          }
+          if (materialAny.userData.originalColor && materialAny.color) {
+            materialAny.color.copy(materialAny.userData.originalColor);
+          }
+        }
+
+        materialAny.needsUpdate = true;
+      });
+    });
+  }, [renderMode]);
 
   /**
    * 지오메트리의 정점 노말을 계산합니다

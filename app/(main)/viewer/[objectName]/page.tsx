@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
+import type { Scene3DRef } from '@/app/_components/3d/types';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -41,6 +42,8 @@ export default function ViewerPage() {
   const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]);
   /** AI 패널 표시 여부 */
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  /** 3D 씬 ref */
+  const scene3DRef = useRef<Scene3DRef>(null);
 
   /**
    * 객체 정보 데이터
@@ -66,11 +69,19 @@ export default function ViewerPage() {
     },
   ];
 
+  const handleIconSelect = (iconId: string) => {
+    setSelectedIcon(iconId);
+    if (iconId === 'refresh') {
+      scene3DRef.current?.resetToAssembly();
+    }
+  };
+
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
       {/* 3D 씬 렌더링 영역: 상단 네비게이션 바와 우측 패널을 제외한 전체 영역 (전체 너비의 70%) */}
       <div className="absolute top-[0px] right-[30%] left-0 bottom-0">
         <Scene3D
+          ref={scene3DRef}
           models={models}
           selectedModelIndices={selectedModelIndices}
           onModelSelect={setSelectedModelIndices}
@@ -104,7 +115,7 @@ export default function ViewerPage() {
       {/* 좌측 컨트롤 사이드바 */}
       <ViewerSidebar
         selectedIcon={selectedIcon}
-        onIconSelect={setSelectedIcon}
+        onIconSelect={handleIconSelect}
         isAiPanelOpen={isAiPanelOpen}
         onOpenAiPanel={() => setIsAiPanelOpen(true)}
       />

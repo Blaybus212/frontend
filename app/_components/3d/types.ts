@@ -123,6 +123,8 @@ export interface Scene3DRef {
   setTransformMode: (mode: TransformMode) => void;
   /** 현재 씬 상태를 추출하여 반환하는 함수 (서버 전송용) */
   getSceneState: () => SceneState | null;
+  /** 현재 조립/분해 값 기준으로 위치를 초기 상태로 되돌리는 함수 */
+  resetToAssembly: () => void;
 }
 
 /**

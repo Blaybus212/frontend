@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useRef, useImperativeHandle, forwardRef } from 'react';
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { SceneContent } from './3d/SceneContent';
 import type { ObjectInfo, Model, Scene3DRef } from './3d/types';
@@ -32,13 +33,25 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
       },
       setTransformMode: (mode) => {
         sceneContentRef.current?.setTransformMode(mode);
-      }
+      },
+      getSceneState: () => {
+        return sceneContentRef.current?.getSceneState() || null;
+      },
+      resetToAssembly: () => {
+        sceneContentRef.current?.resetToAssembly();
+      },
     }));
 
     return (
       <Canvas
-        camera={{ position: [0, 5, 15], fov: 50 }}
-        gl={{ antialias: true }}
+        camera={{ position: [0, 5, 15], fov: 50, near: 0.01, far: 10000 }}
+        dpr={[1, 2]}
+        shadows
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          outputColorSpace: THREE.SRGBColorSpace,
+        }}
         style={{ background: 'var(--color-surface)', width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>

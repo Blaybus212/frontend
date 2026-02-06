@@ -17,6 +17,8 @@ interface ModelListProps {
   models: ModelType[];
   /** 선택된 모델 인덱스 배열 */
   selectedIndices: number[];
+  /** 렌더링 모드 */
+  renderMode: 'normal' | 'wireframe';
   /** 모델 참조 설정 콜백 (인덱스, 참조) */
   onModelRef: (index: number, ref: THREE.Group | null) => void;
   /** 모델이 로드될 때 호출할 콜백 (카메라 조정용) */
@@ -47,6 +49,7 @@ interface ModelListProps {
 export function ModelList({
   models,
   selectedIndices,
+  renderMode,
   onModelRef,
   onModelLoaded,
 }: ModelListProps) {
@@ -60,6 +63,7 @@ export function ModelList({
               nodeIndex={model.nodeIndex ?? 0}
               nodePath={model.nodePath}
               isSelected={selectedIndices.includes(index)}
+              renderMode={renderMode}
               onRef={(ref) => {
                 onModelRef(index, ref);
                 // 모델이 로드되면 카메라 조정 시도
