@@ -4,7 +4,11 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 // import SaveStatus from '@/components/SaveStatus';
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+interface MainLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   // const isViewer = pathname.startsWith('/viewer');
   const isLoggined = !pathname.startsWith('/login');
