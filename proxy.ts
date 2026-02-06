@@ -14,6 +14,6 @@ export const config = {
      * - mockServiceWorker.js (MSW 사용 시)
      * - public 폴더 내의 정적 이미지나 파일들 (.png, .jpg, .svg 등)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|mockServiceWorker.js|.*\\.png$|.*\\.jpg$|robots.txt).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|mockServiceWorker.js|.*\\.png$|.*\\.jpg$|.*\\.svg$|robots.txt).*)",
   ],
 };
