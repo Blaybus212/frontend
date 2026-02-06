@@ -21,7 +21,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <Image 
             src="/images/logo.svg" 
             unoptimized
-            alt={"로고"} 
+            alt="로고" 
             width={24}
             height={24}
           />
@@ -37,7 +37,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <Image 
             src="/images/profile.svg" 
             unoptimized
-            alt={"로고"} 
+            alt="프로필" 
             width={34}
             height={34}
           />
