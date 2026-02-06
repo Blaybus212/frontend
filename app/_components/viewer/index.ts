@@ -11,3 +11,7 @@ export { QuizAnswer } from './QuizAnswer';
 export { MentionDropdown } from './MentionDropdown';
 export type { MentionItem } from './MentionDropdown';
 export { AiPanel } from './AiPanel';
+export { ViewerSidebar } from './ViewerSidebar';
+export { AssemblySlider } from './AssemblySlider';
+export { ObjectInfoPanel } from './ObjectInfoPanel';
+export { ViewerRightPanel } from './ViewerRightPanel';

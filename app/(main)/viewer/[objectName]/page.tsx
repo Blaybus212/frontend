@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ViewerIcon, HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, Note, AiPanel } from '@/app/_components/viewer';
+import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 
 /**
@@ -100,143 +100,26 @@ export default function ViewerPage() {
         </div>
       )}
 
-      {/* 좌측 컨트롤 사이드바: 뷰어 조작 아이콘들이 세로로 배치된 오버레이 영역 */}
-      <aside className="absolute left-12 top-[96px] bottom-4 flex flex-col items-center gap-[22px] py-4 z-10">
-        {/* 뷰어 컨트롤 아이콘들 */}
-        <ViewerIcon
-          icon={<HomeIcon />}
-          selected={selectedIcon === 'home'}
-          onClick={() => setSelectedIcon('home')}
-          aria-label="홈"
-        />
-        <ViewerIcon
-          icon={<ZoomInIcon />}
-          selected={selectedIcon === 'zoomin'}
-          onClick={() => setSelectedIcon('zoomin')}
-          aria-label="줌인"
-        />
-        <ViewerIcon
-          icon={<ZoomOutIcon />}
-          selected={selectedIcon === 'zoomout'}
-          onClick={() => setSelectedIcon('zoomout')}
-          aria-label="줌아웃"
-        />
-        <ViewerIcon
-          icon={<RefreshIcon />}
-          selected={selectedIcon === 'refresh'}
-          onClick={() => setSelectedIcon('refresh')}
-          aria-label="리프레시"
-        />
-        <ViewerIcon
-          icon={<FileIcon />}
-          selected={selectedIcon === 'pdf'}
-          onClick={() => setSelectedIcon('pdf')}
-          aria-label="PDF"
-        />
-        
-        {/* 퀴즈 진행도 표시 버튼: 현재 퀴즈 완료율을 표시 */}
-        <button className="w-[54px] h-[54px] rounded-full bg-bg-sub border border-border-default flex flex-col items-center justify-center hover:bg-bg-hovered transition-colors">
-          <span className="text-b-sm font-weight-semibold text-text-title">퀴즈</span>
-          <span className="text-b-xs text-point-500">50%</span>
-        </button>
+      {/* 좌측 컨트롤 사이드바 */}
+      <ViewerSidebar
+        selectedIcon={selectedIcon}
+        onIconSelect={setSelectedIcon}
+        isAiPanelOpen={isAiPanelOpen}
+        onOpenAiPanel={() => setIsAiPanelOpen(true)}
+      />
 
-        {/* AI 패널 열기 버튼: AI 아이콘이 하단에 고정되어 있으며, 클릭 시 AI 패널을 엽니다 */}
-        {!isAiPanelOpen && (
-          <div className="mt-auto mb-[40px] ai-icon-ripple">
-            <ViewerIcon
-              icon={<AiIcon />}
-              selected={true}
-              onClick={() => setIsAiPanelOpen(true)}
-              aria-label="AI"
-              backgroundColor="var(--color-point-500)"
-              iconColor="var(--color-base-black)"
-            />
-          </div>
-        )}
-      </aside>
+      {/* 조립/분해 슬라이더 */}
+      <AssemblySlider
+        value={assemblyValue}
+        onChange={setAssemblyValue}
+      />
 
-      {/* 조립/분해 슬라이더: 3D 모델의 조립/분해 상태를 조절하는 컨트롤 (3D 뷰어 영역 상단 중앙에 배치) */}
-      <div className="absolute flex flex-row items-center gap-4 top-10 left-[35%] transform -translate-x-1/2 w-[550px] h-[54px] px-[37.5px] bg-bg-default rounded-full border border-border-default z-10">
-        <span className="text-b-md font-weight-medium text-sub whitespace-nowrap">조립</span>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={assemblyValue}
-          onChange={(e) => setAssemblyValue(Number(e.target.value))}
-          className="flex-1 h-2 bg-bg-sub rounded-full appearance-none cursor-pointer slider-custom"
-          style={{
-            background: `linear-gradient(to right, var(--color-point-500) 0%, var(--color-point-500) ${assemblyValue}%, var(--color-bg-sub) ${assemblyValue}%, var(--color-bg-sub) 100%)`,
-          }}
-        />
-        <span className="text-b-md font-weight-medium text-sub whitespace-nowrap">분해</span>
-      </div>
-
-      {/* 우측 정보 사이드바: 객체 정보와 메모를 표시하는 오버레이 영역 (전체 너비의 30%) */}
-      <aside className="absolute right-0 top-0 bottom-0 w-[30%] flex flex-col gap-4 z-10 border-l border-border-default pt-4 pb-4 pl-4 pr-12 bg-surface">
-        {/* 객체 정보 패널: 제목, 설명, 재질, 활용 분야를 표시 (전체 높이의 4/9 비율) */}
-        <div className="flex-[4] bg-bg-default rounded-2xl border border-border-default overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 space-y-6">
-            {/* 객체 제목 영역: 한글명과 영문명 표시 */}
-            <div>
-              <h1 className="text-h-xl font-weight-semibold text-text-title mb-1">
-                {objectData.korean}
-              </h1>
-              <p className="text-b-md text-sub">
-                {objectData.english}
-              </p>
-            </div>
-
-            {/* 객체 설명 섹션 */}
-            <section>
-              <h2 className="text-b-md font-weight-semibold text-text-title mb-3">설명</h2>
-              <p className="text-b-md text-sub2 leading-relaxed">
-                {objectData.description}
-              </p>
-            </section>
-
-            {/* 재질 정보 섹션: 객체를 구성하는 재질들을 태그 형태로 표시 */}
-            <section>
-              <h2 className="text-b-md font-weight-semibold text-text-title mb-3">재질</h2>
-              <div className="flex flex-wrap gap-2">
-                {objectData.materials.map((material, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
-                  >
-                    {material}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            {/* 활용 분야 섹션: 객체의 활용 분야를 태그 형태로 표시 */}
-            <section>
-              <h2 className="text-b-md font-weight-semibold text-text-title mb-3">활용</h2>
-              <div className="flex flex-wrap gap-2">
-                {objectData.applications.map((app, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
-                  >
-                    {app}
-                  </span>
-                ))}
-              </div>
-            </section>
-          </div>
-        </div>
-
-        {/* 메모 작성 패널: 사용자가 학습 내용을 기록할 수 있는 텍스트 영역 (전체 높이의 5/9 비율) */}
-        <div className="flex-[5] bg-bg-default rounded-2xl border border-border-default flex flex-col overflow-hidden">
-          <Note
-            value={noteValue}
-            onChange={setNoteValue}
-            placeholder="메모를 입력하세요..."
-            className="flex-1 flex flex-col"
-          />
-        </div>
-      </aside>
+      {/* 우측 정보 사이드바 */}
+      <ViewerRightPanel
+        objectData={objectData}
+        noteValue={noteValue}
+        onNoteChange={setNoteValue}
+      />
 
     </div>
   );
