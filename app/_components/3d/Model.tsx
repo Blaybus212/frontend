@@ -1,15 +1,7 @@
 /**
- * GLTF/GLB 모델의 개별 노드를 렌더링하는 컴포넌트
- * 
- * 하나의 GLTF 파일에서 특정 노드(객체)만 추출하여 렌더링합니다.
- * nodePath를 사용하여 정확한 노드를 찾고, 복제하여 원본을 유지합니다.
- * 
- * 주요 기능:
- * - GLTF 파일에서 특정 노드 추출
- * - 노드 복제 (원본 유지)
- * - 클릭 감지를 위한 userData 설정
- * - 정점 노말 계산 (조명 계산용)
- * - 선택 상태에 따른 재질 강조
+ * GLTF/GLB 모델의 개별 노드를 렌더링합니다.
+ *
+ * 노드를 복제해 렌더링하고, 선택/클릭을 위한 userData와 렌더 품질 설정을 적용합니다.
  */
 
 'use client';
@@ -18,9 +10,6 @@ import React, { useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-/**
- * Model 컴포넌트의 props 인터페이스
- */
 interface ModelProps {
   /** GLTF/GLB 파일의 URL 경로 */
   url: string;
@@ -37,33 +26,14 @@ interface ModelProps {
 }
 
 /**
- * GLTF/GLB 모델의 개별 노드를 렌더링하는 컴포넌트
- * 
- * 이 컴포넌트는 다음과 같은 작업을 수행합니다:
- * 1. GLTF 파일을 로드합니다
- * 2. nodePath 또는 nodeIndex를 사용하여 특정 노드를 찾습니다
- * 3. 노드를 복제하여 렌더링합니다 (원본은 유지)
- * 4. 모든 하위 객체에 userData를 설정하여 클릭 감지를 가능하게 합니다
- * 5. 정점 노말을 계산하여 조명이 올바르게 적용되도록 합니다
- * 6. 선택 상태에 따라 재질을 강조합니다
- * 
- * @param props - 컴포넌트의 props
- * @param props.url - GLTF/GLB 파일의 URL
- * @param props.nodeIndex - 노드 인덱스 (하위 호환성)
- * @param props.nodePath - 노드 경로 (우선 사용)
+ * GLTF/GLB 모델을 로드하고 노드 선택/렌더링 설정을 적용합니다.
+ *
+ * @param props.url - GLTF/GLB 파일 경로
+ * @param props.nodeIndex - 노드 인덱스(하위 호환)
+ * @param props.nodePath - 노드 경로(우선)
  * @param props.isSelected - 선택 상태
- * @param props.onRef - 참조 콜백 함수
- * 
- * @example
- * ```tsx
- * <Model
- *   url="/models/scene.gltf"
- *   nodeIndex={0}
- *   nodePath="0/1/2"
- *   isSelected={true}
- *   onRef={(ref) => console.log('Model ref:', ref)}
- * />
- * ```
+ * @param props.renderMode - 렌더 모드
+ * @param props.onRef - 모델 그룹 ref 콜백
  */
 export function Model({ 
   url, 
@@ -73,24 +43,15 @@ export function Model({
   renderMode,
   onRef 
 }: ModelProps) {
-  /** GLTF 파일을 로드한 결과 (씬 객체) */
   const { scene } = useGLTF(url);
-  /** 모델 그룹의 참조 (렌더링된 노드를 담는 컨테이너) */
   const modelRef = useRef<THREE.Group>(null);
-  /** 최신 onRef 콜백을 보관하여 불필요한 재클론 방지 */
   const onRefLatest = useRef<ModelProps['onRef']>(onRef);
 
   React.useEffect(() => {
     onRefLatest.current = onRef;
   }, [onRef]);
   
-  /**
-   * 모델 그룹의 참조를 외부로 전달합니다
-   * 
-   * 컴포넌트가 마운트되면 참조를 전달하고,
-   * 언마운트되면 null을 전달하여 정리합니다.
-   * 모델이 로드된 후에도 참조를 다시 전달합니다.
-   */
+  /** 모델 그룹 ref를 외부로 전달합니다. */
   React.useEffect(() => {
     if (modelRef.current && onRefLatest.current) {
       onRefLatest.current(modelRef.current);
@@ -102,11 +63,7 @@ export function Model({
     };
   }, [scene]); // scene이 변경되면 참조를 다시 전달
 
-  /**
-   * 전체 GLTF 씬을 로드하고 모든 노드를 개별적으로 선택 가능하게 렌더링합니다
-   * 
-   * 각 노드에 고유 ID를 부여하고 userData에 저장하여 개별 선택이 가능하도록 합니다.
-   */
+  /** 씬을 복제하고 선택 가능한 노드 정보를 userData에 부여합니다. */
   React.useEffect(() => {
     if (!scene || !modelRef.current) {
       return;
@@ -120,26 +77,12 @@ export function Model({
     // 전체 씬을 복제하여 추가
     const clonedScene = scene.clone(true);
     
-    // 모든 노드를 순회하며 개별 선택 가능하도록 설정
-    // 선택 가능한 노드: 이름이 있고, "Solid"로 시작하지 않으며, children이 있는 부품 노드
+    // 선택 가능한 노드: 이름이 있고, "Solid"가 아니며, children이 있는 부품 노드
     let nodeIdCounter = 0;
-    const selectableParts: Array<{ name: string; nodeId: string; type: string }> = [];
-    let totalNodes = 0;
-    let nodesWithName = 0;
-    let nodesWithChildren = 0;
     
     clonedScene.traverse((child) => {
-      totalNodes++;
       const hasName = child.name && child.name.trim() !== '';
       const name = child.name?.trim() || '';
-      
-      if (hasName) {
-        nodesWithName++;
-      }
-      
-      if (child.children.length > 0) {
-        nodesWithChildren++;
-      }
       
       // "Solid"로 시작하는 노드는 선택 불가능 (메시 그룹화 노드)
       if (name.startsWith('Solid')) {
@@ -158,13 +101,6 @@ export function Model({
       if (isSelectablePart) {
         // 각 노드에 고유 ID 부여
         const nodeId = `node_${nodeIdCounter++}`;
-        
-        // 선택 가능한 부품 목록에 추가
-        selectableParts.push({
-          name: child.name || nodeId,
-          nodeId: nodeId,
-          type: child.type,
-        });
         
         // userData에 모델 참조와 노드 ID 저장
         child.userData.modelRef = modelRef.current;
@@ -206,22 +142,18 @@ export function Model({
     }
   }, [scene, url]);
 
-  /**
-   * 렌더링 품질 향상을 위한 재질/그림자 설정
-   */
+  /** 렌더 품질(그림자/광택) 기본값을 적용합니다. */
   React.useEffect(() => {
     if (!modelRef.current) return;
 
     modelRef.current.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        // 그림자 품질 향상
         child.castShadow = true;
         child.receiveShadow = true;
 
         const materials = Array.isArray(child.material) ? child.material : [child.material];
         materials.forEach((material) => {
           if (material instanceof THREE.MeshStandardMaterial) {
-            // 광택감 향상 (과도한 변화 방지)
             material.metalness = Math.max(material.metalness ?? 0, 0.2);
             material.roughness = Math.min(material.roughness ?? 1, 0.4);
             material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.8, 0.8);
@@ -232,9 +164,7 @@ export function Model({
     });
   }, [scene, url]);
 
-  /**
-   * 렌더링 모드(일반/와이어프레임)를 적용합니다
-   */
+  /** 렌더링 모드(일반/와이어프레임)를 적용합니다. */
   React.useEffect(() => {
     if (!modelRef.current) return;
 
@@ -280,13 +210,8 @@ export function Model({
   }, [renderMode]);
 
   /**
-   * 지오메트리의 정점 노말을 계산합니다
-   * 
-   * 정점 노말은 조명 계산에 사용되며, 면의 방향을 나타냅니다.
-   * GLTF 파일에 노말 정보가 없거나 불완전한 경우를 대비하여
-   * 지오메트리에서 자동으로 계산합니다.
-   * 
-   * 노드가 추가된 후에 실행되어야 하므로 별도의 useEffect로 분리했습니다.
+   * 정점 노말을 계산해 조명 품질을 보정합니다.
+   * (GLTF에 노말이 없거나 불완전한 경우 대비)
    */
   React.useEffect(() => {
     if (modelRef.current && modelRef.current.children.length > 0) {
@@ -301,12 +226,7 @@ export function Model({
     }
   }, [scene, url, nodeIndex]);
 
-  /**
-   * 선택 상태에 따라 재질을 강조합니다
-   * 
-   * 모델이 선택되면 emissive(자체 발광) 속성을 설정하여
-   * 약간 밝게 표시하여 선택 상태를 시각적으로 나타냅니다.
-   */
+  /** 선택 상태에 따라 emissive를 조정해 시각적으로 강조합니다. */
   React.useEffect(() => {
     if (!modelRef.current) return;
     
