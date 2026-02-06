@@ -5,6 +5,7 @@
  */
 
 import { Suspense } from 'react';
+import * as THREE from 'three';
 import { Model } from '../Model';
 import type { Model as ModelType } from '../types';
 
