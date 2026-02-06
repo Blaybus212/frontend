@@ -60,8 +60,6 @@ export function ModelList({
           <Suspense key={model.id} fallback={null}>
             <Model
               url={model.url}
-              nodeIndex={model.nodeIndex ?? 0}
-              nodePath={model.nodePath}
               isSelected={selectedIndices.includes(index)}
               renderMode={renderMode}
               onRef={(ref) => {

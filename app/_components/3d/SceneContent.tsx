@@ -99,15 +99,16 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     justEndedDragRef,
   });
 
-  const selectedObjectRef = selectedNodesRef.current && selectedNodesRef.current.length > 0
-    ? selectedNodesRef.current.length === 1
-      ? selectedNodesRef.current[0].nodeRef as THREE.Object3D // 단일 노드 선택 (이미 Group)
-      : selectionGroupRef.current // 다중 노드 선택 (그룹 사용)
-    : selectedIndices.length > 1 
-      ? selectionGroupRef.current 
-      : selectedIndices.length === 1 
-        ? modelRefs.current.get(selectedIndices[0]) || null
-        : null;
+  let selectedObjectRef: THREE.Object3D | THREE.Group | null = null;
+  if (selectedNodesRef.current && selectedNodesRef.current.length > 0) {
+    selectedObjectRef = selectedNodesRef.current.length === 1
+      ? selectedNodesRef.current[0].nodeRef as THREE.Object3D
+      : selectionGroupRef.current;
+  } else if (selectedIndices.length > 1) {
+    selectedObjectRef = selectionGroupRef.current;
+  } else if (selectedIndices.length === 1) {
+    selectedObjectRef = modelRefs.current.get(selectedIndices[0]) || null;
+  }
 
   useObjectInfo({
     selectedObjectRef,

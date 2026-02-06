@@ -13,10 +13,6 @@ import * as THREE from 'three';
 interface ModelProps {
   /** GLTF/GLB 파일의 URL 경로 */
   url: string;
-  /** 노드 인덱스 (nodePath가 없을 때 사용하는 하위 호환 방식) */
-  nodeIndex: number;
-  /** 노드 경로 (예: "0/1/2" - scene의 첫 번째 자식의 두 번째 자식의 세 번째 자식) */
-  nodePath?: string;
   /** 이 모델이 선택되었는지 여부 */
   isSelected: boolean;
   /** 렌더링 모드 */
@@ -29,16 +25,12 @@ interface ModelProps {
  * GLTF/GLB 모델을 로드하고 노드 선택/렌더링 설정을 적용합니다.
  *
  * @param props.url - GLTF/GLB 파일 경로
- * @param props.nodeIndex - 노드 인덱스(하위 호환)
- * @param props.nodePath - 노드 경로(우선)
  * @param props.isSelected - 선택 상태
  * @param props.renderMode - 렌더 모드
  * @param props.onRef - 모델 그룹 ref 콜백
  */
 export function Model({ 
   url, 
-  nodeIndex,
-  nodePath,
   isSelected,
   renderMode,
   onRef 
@@ -224,7 +216,7 @@ export function Model({
         }
       });
     }
-  }, [scene, url, nodeIndex]);
+  }, [scene, url]);
 
   /** 선택 상태에 따라 emissive를 조정해 시각적으로 강조합니다. */
   React.useEffect(() => {
