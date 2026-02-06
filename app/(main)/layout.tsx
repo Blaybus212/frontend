@@ -10,12 +10,12 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
-  // const isViewer = pathname.startsWith('/viewer');
+  const isViewer = pathname.startsWith('/viewer');
   const isLoggedIn = !pathname.startsWith('/login');
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f1014]">
-      <nav className="h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939]">
+    <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-[#0f1014]`}>
+      <nav className="h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0">
         {/* 좌측: 로고 (고정) */}
         <div className="flex items-center gap-2">
           <Image 
@@ -44,7 +44,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         }
       </nav>
 
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 ${isViewer ? 'overflow-hidden' : 'overflow-auto'}`}>
         {children}
       </main>
     </div>

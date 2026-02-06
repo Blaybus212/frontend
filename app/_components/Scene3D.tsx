@@ -37,7 +37,7 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
       <Canvas
         camera={{ position: [0, 5, 15], fov: 50 }}
         gl={{ antialias: true }}
-        style={{ background: '#1a1a1a', width: '100%', height: '100%' }}
+        style={{ background: 'var(--color-surface)', width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
           <SceneContent

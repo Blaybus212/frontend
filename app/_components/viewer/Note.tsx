@@ -132,9 +132,9 @@ export function Note({
         onBlur={handleBlur}
         onClick={onClick}
         placeholder={placeholder}
-        className="
+        className={`
           w-full
-          min-h-[200px]
+          ${className.includes('flex-1') ? 'flex-1' : 'min-h-[200px]'}
           p-4
           rounded-2xl
           bg-bg-sub
@@ -144,7 +144,7 @@ export function Note({
           resize-none
           transition-all duration-200
           focus:outline-none
-        "
+        `}
         style={{
           border: `1px solid ${getBorderColor()}`,
         }}
