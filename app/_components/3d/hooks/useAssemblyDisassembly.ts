@@ -6,6 +6,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { isSelectablePart } from '../utils/nodeSelection';
 
 interface NodeDisassemblyData {
   /** 노드 참조 */
@@ -67,11 +68,7 @@ export function useAssemblyDisassembly({
     modelRef.updateMatrixWorld(true);
     
     modelRef.traverse((child) => {
-      const hasName = child.name && child.name.trim() !== '';
-      const hasMesh = child instanceof THREE.Mesh || 
-        (child.children.length > 0 && child.children.some(c => c instanceof THREE.Mesh));
-      
-      if (hasName || hasMesh) {
+      if (isSelectablePart(child)) {
         const worldPosition = new THREE.Vector3();
         child.getWorldPosition(worldPosition);
         
@@ -92,7 +89,7 @@ export function useAssemblyDisassembly({
           nodes.push({
             node: child,
             initialPosition: initialLocalPosition, // 로컬 좌표로 저장
-            direction: direction.length() > 0.01 ? direction : new THREE.Vector3(1, 0, 0),
+            direction: direction.length() > 0.0001 ? direction : new THREE.Vector3(1, 0, 0),
             distance,
           });
         }

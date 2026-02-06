@@ -9,6 +9,7 @@
 import React, { useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { isSelectablePart } from './utils/nodeSelection';
 
 interface ModelProps {
   /** GLTF/GLB 파일의 URL 경로 */
@@ -73,24 +74,7 @@ export function Model({
     let nodeIdCounter = 0;
     
     clonedScene.traverse((child) => {
-      const hasName = child.name && child.name.trim() !== '';
-      const name = child.name?.trim() || '';
-      
-      // "Solid"로 시작하는 노드는 선택 불가능 (메시 그룹화 노드)
-      if (name.startsWith('Solid')) {
-        // Solid 노드는 선택 불가능하도록 표시
-        child.userData.selectable = false;
-        return;
-      }
-      
-      // 선택 가능한 노드 조건:
-      // 1. 이름이 있어야 함
-      // 2. children이 있어야 함 (부품 노드)
-      // 3. "Solid"로 시작하지 않아야 함
-      const hasChildren = child.children.length > 0;
-      const isSelectablePart = hasName && hasChildren && !name.startsWith('Solid');
-      
-      if (isSelectablePart) {
+      if (isSelectablePart(child)) {
         // 각 노드에 고유 ID 부여
         const nodeId = `node_${nodeIdCounter++}`;
         
