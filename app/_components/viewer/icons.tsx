@@ -2,13 +2,26 @@
 
 import React from 'react';
 
+/**
+ * 아이콘 컴포넌트의 공통 Props 인터페이스
+ * @interface IconProps
+ * @property {number} [size=24] - 아이콘의 크기 (픽셀 단위)
+ * @property {string} [color='currentColor'] - 아이콘의 색상 (CSS 색상 값 또는 'currentColor')
+ */
 interface IconProps {
   size?: number;
   color?: string;
 }
 
 /**
- * 집 아이콘 (새 디자인)
+ * 홈 아이콘 컴포넌트
+ * 
+ * 뷰어의 홈 화면으로 이동하는 기능을 나타내는 집 모양 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 홈 아이콘 SVG 요소
  */
 export function HomeIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -38,7 +51,14 @@ export function HomeIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 파일/PDF 아이콘 (새 디자인)
+ * 파일/PDF 아이콘 컴포넌트
+ * 
+ * PDF 파일을 열거나 관련 기능을 나타내는 문서 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 파일 아이콘 SVG 요소
  */
 export function FileIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -58,7 +78,14 @@ export function FileIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 폴더 아이콘
+ * 폴더 아이콘 컴포넌트
+ * 
+ * 폴더나 디렉토리를 나타내는 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 폴더 아이콘 SVG 요소
  */
 export function FolderIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -82,7 +109,14 @@ export function FolderIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 설정 아이콘
+ * 설정 아이콘 컴포넌트
+ * 
+ * 설정 메뉴나 옵션을 나타내는 톱니바퀴 모양 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 설정 아이콘 SVG 요소
  */
 export function SettingsIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -113,7 +147,14 @@ export function SettingsIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 사용자 아이콘
+ * 사용자 아이콘 컴포넌트
+ * 
+ * 사용자 프로필이나 계정 관련 기능을 나타내는 사람 모양 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 사용자 아이콘 SVG 요소
  */
 export function UserIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -144,7 +185,14 @@ export function UserIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 줌인 아이콘 (새 디자인)
+ * 줌인 아이콘 컴포넌트
+ * 
+ * 3D 뷰어의 확대 기능을 나타내는 돋보기와 플러스 기호가 결합된 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 줌인 아이콘 SVG 요소
  */
 export function ZoomInIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -188,7 +236,14 @@ export function ZoomInIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 줌아웃 아이콘 (새 디자인)
+ * 줌아웃 아이콘 컴포넌트
+ * 
+ * 3D 뷰어의 축소 기능을 나타내는 돋보기와 마이너스 기호가 결합된 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 줌아웃 아이콘 SVG 요소
  */
 export function ZoomOutIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -225,7 +280,14 @@ export function ZoomOutIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 리프레시/리셋 아이콘 (새 디자인)
+ * 리프레시/리셋 아이콘 컴포넌트
+ * 
+ * 뷰어를 초기 상태로 되돌리거나 새로고침하는 기능을 나타내는 화살표가 원형으로 배치된 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 리프레시 아이콘 SVG 요소
  */
 export function RefreshIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -255,7 +317,14 @@ export function RefreshIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * 별/스파클 아이콘
+ * 별/스파클 아이콘 컴포넌트
+ * 
+ * 즐겨찾기나 중요 표시 기능을 나타내는 별 모양 아이콘입니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} 별 아이콘 SVG 요소
  */
 export function StarIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (
@@ -279,7 +348,15 @@ export function StarIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
- * AI 라인 아이콘
+ * AI 아이콘 컴포넌트
+ * 
+ * AI 어시스턴트 기능을 나타내는 별과 스파클이 결합된 아이콘입니다.
+ * AI 패널을 여는 버튼에 사용됩니다.
+ * 
+ * @param {IconProps} props - 아이콘 props
+ * @param {number} [props.size=24] - 아이콘 크기
+ * @param {string} [props.color='currentColor'] - 아이콘 색상
+ * @returns {JSX.Element} AI 아이콘 SVG 요소
  */
 export function AiIcon({ size = 24, color = 'currentColor' }: IconProps) {
   return (

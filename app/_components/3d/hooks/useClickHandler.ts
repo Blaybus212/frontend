@@ -22,6 +22,8 @@ interface UseClickHandlerProps {
   onModelSelect: (indices: number[]) => void;
   /** TransformControls의 참조 (드래그 중인지 확인하기 위해 사용) */
   transformControlsRef: React.MutableRefObject<any>;
+  /** OrbitControls가 방금 드래그를 끝냈는지 여부 (클릭 이벤트와의 충돌 방지) */
+  justEndedDragRef?: React.MutableRefObject<boolean>;
 }
 
 /**
@@ -56,6 +58,7 @@ export function useClickHandler({
   modelRefs,
   onModelSelect,
   transformControlsRef,
+  justEndedDragRef,
 }: UseClickHandlerProps) {
   const { camera, gl, scene } = useThree();
   /** 레이캐스팅을 위한 Raycaster 객체 (클릭한 위치에서 광선을 발사하여 객체와의 교차를 검사) */
@@ -79,6 +82,13 @@ export function useClickHandler({
       // TransformControls로 객체를 드래그 중일 때는 클릭 이벤트 무시
       // (드래그 종료 시 클릭으로 인식되는 것을 방지)
       if (transformControlsRef.current?.dragging) return;
+      
+      // OrbitControls의 드래그가 방금 끝났는지 확인
+      // 마우스를 뗄 때 클릭 이벤트가 발생하는 것을 방지
+      // (onEnd 이벤트가 먼저 처리되도록 함)
+      if (justEndedDragRef?.current) {
+        return;
+      }
 
       // 캔버스 요소의 위치와 크기 정보 가져오기
       const rect = gl.domElement.getBoundingClientRect();
@@ -170,5 +180,5 @@ export function useClickHandler({
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, scene, modelRefs, onModelSelect, selectedIndices, transformControlsRef]);
+  }, [camera, gl, scene, modelRefs, onModelSelect, selectedIndices, transformControlsRef, justEndedDragRef]);
 }
