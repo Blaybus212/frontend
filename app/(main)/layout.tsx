@@ -11,7 +11,7 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   // const isViewer = pathname.startsWith('/viewer');
-  const isLoggined = !pathname.startsWith('/login');
+  const isLoggedIn = !pathname.startsWith('/login');
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0f1014]">
@@ -33,7 +33,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* 우측: 프로필 (고정) */}
         {
-          isLoggined &&
+          isLoggedIn &&
           <Image 
             src="/images/profile.svg" 
             unoptimized
