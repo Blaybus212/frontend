@@ -163,10 +163,10 @@
   @keyframes ripple {
     0% {
       transform: translate(-50%, -50%) scale(1);
-      opacity: 0.6;
+      opacity: 0.5;
     }
     100% {
-      transform: translate(-50%, -50%) scale(1.5);
+      transform: translate(-50%, -50%) scale(1.3);
       opacity: 0;
     }
   }
@@ -187,11 +187,11 @@
     background: var(--color-point-500);
     transform: translate(-50%, -50%) scale(1);
     opacity: 0;
-    animation: ripple 2s infinite;
+    animation: ripple 3s infinite;
     pointer-events: none;
   }
 
   .ai-icon-ripple::after {
-    animation-delay: 1s;
+    animation-delay: 3s;
   }
 }

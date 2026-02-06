@@ -159,7 +159,7 @@ export function ViewerIcon({
         rounded-full
         flex items-center justify-center
         transition-all duration-200
-        ${selected ? 'cursor-default' : 'cursor-pointer'}
+        ${onClick ? 'cursor-pointer' : 'cursor-default'}
         ${className}
       `}
       style={{
