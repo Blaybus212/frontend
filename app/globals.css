@@ -77,6 +77,18 @@
   --text-b-lg: 16px;  --text-b-lg--line-height: 24px;
   --text-b-md: 14px;  --text-b-md--line-height: 20px;
   --text-b-sm: 12px;  --text-b-sm--line-height: 16px;
+
+  /* 로그인페이지 아이콘 위아래 움직이는 애니메이션 */
+  --animate-float: float 3s ease-in-out infinite;
+  @keyframes float {
+    0%,
+    100% {
+      transform: none;
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
 }
 
 @layer base {
