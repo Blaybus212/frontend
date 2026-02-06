@@ -74,122 +74,134 @@ export function Model({
   const { scene } = useGLTF(url);
   /** 모델 그룹의 참조 (렌더링된 노드를 담는 컨테이너) */
   const modelRef = useRef<THREE.Group>(null);
+  /** 최신 onRef 콜백을 보관하여 불필요한 재클론 방지 */
+  const onRefLatest = useRef<ModelProps['onRef']>(onRef);
+
+  React.useEffect(() => {
+    onRefLatest.current = onRef;
+  }, [onRef]);
   
   /**
    * 모델 그룹의 참조를 외부로 전달합니다
    * 
    * 컴포넌트가 마운트되면 참조를 전달하고,
    * 언마운트되면 null을 전달하여 정리합니다.
+   * 모델이 로드된 후에도 참조를 다시 전달합니다.
    */
   React.useEffect(() => {
-    if (modelRef.current && onRef) {
-      onRef(modelRef.current);
+    if (modelRef.current && onRefLatest.current) {
+      onRefLatest.current(modelRef.current);
     }
     return () => {
-      if (onRef) {
-        onRef(null);
+      if (onRefLatest.current) {
+        onRefLatest.current(null);
       }
     };
-  }, [onRef]);
+  }, [scene]); // scene이 변경되면 참조를 다시 전달
 
   /**
-   * 특정 노드를 추출하여 그룹으로 렌더링합니다
+   * 전체 GLTF 씬을 로드하고 모든 노드를 개별적으로 선택 가능하게 렌더링합니다
    * 
-   * nodePath가 있으면 경로를 따라 노드를 찾고,
-   * 없으면 nodeIndex를 사용하여 재귀적으로 탐색합니다.
-   * 찾은 노드를 복제하여 렌더링합니다 (원본은 유지).
+   * 각 노드에 고유 ID를 부여하고 userData에 저장하여 개별 선택이 가능하도록 합니다.
    */
   React.useEffect(() => {
-    if (!scene || !modelRef.current) return;
+    if (!scene || !modelRef.current) {
+      return;
+    }
 
     // 기존 자식 제거 (이전 노드 정리)
     while (modelRef.current.children.length > 0) {
       modelRef.current.remove(modelRef.current.children[0]);
     }
 
-    let targetNode: THREE.Object3D | null = null;
-
-    // 방법 1: nodePath를 사용하여 노드 찾기 (우선순위, 더 정확함)
-    // nodePath는 "0/1/2" 형식으로, scene의 첫 번째 자식의 두 번째 자식의 세 번째 자식을 의미
-    if (nodePath) {
-      const pathParts = nodePath.split('/').map(Number); // ["0", "1", "2"] -> [0, 1, 2]
-      let current: THREE.Object3D = scene;
+    // 전체 씬을 복제하여 추가
+    const clonedScene = scene.clone(true);
+    
+    // 모든 노드를 순회하며 개별 선택 가능하도록 설정
+    // 선택 가능한 노드: 이름이 있고, "Solid"로 시작하지 않으며, children이 있는 부품 노드
+    let nodeIdCounter = 0;
+    const selectableParts: Array<{ name: string; nodeId: string; type: string }> = [];
+    let totalNodes = 0;
+    let nodesWithName = 0;
+    let nodesWithChildren = 0;
+    
+    clonedScene.traverse((child) => {
+      totalNodes++;
+      const hasName = child.name && child.name.trim() !== '';
+      const name = child.name?.trim() || '';
       
-      // 경로를 따라 노드를 찾습니다
-      for (const index of pathParts) {
-        if (current.children[index]) {
-          current = current.children[index];
-        } else {
-          // 경로가 유효하지 않으면 null로 설정
-          current = null as any;
-          break;
-        }
+      if (hasName) {
+        nodesWithName++;
       }
       
-      if (current) {
-        targetNode = current;
+      if (child.children.length > 0) {
+        nodesWithChildren++;
       }
-    } else {
-      // 방법 2: nodePath가 없으면 기존 방식으로 찾기 (하위 호환성)
-      // 모든 노드를 재귀적으로 탐색하여 nodeIndex번째 노드를 찾습니다
-      // 이름이 있거나 메시를 포함한 노드만 카운트합니다
-      let currentIndex = 0;
       
-      /**
-       * 재귀적으로 노드를 탐색하여 nodeIndex번째 노드를 찾는 함수
-       * 
-       * @param object - 탐색할 객체
-       * @returns 찾은 노드 또는 null
-       */
-      const findNodeByIndex = (object: THREE.Object3D): THREE.Object3D | null => {
-        // 이름이 있거나 메시를 포함한 노드만 카운트
-        const hasName = object.name && object.name.trim() !== '';
-        const hasMeshValue = object instanceof THREE.Mesh || 
-          (object.children.length > 0 && object.children.some(child => child instanceof THREE.Mesh));
+      // "Solid"로 시작하는 노드는 선택 불가능 (메시 그룹화 노드)
+      if (name.startsWith('Solid')) {
+        // Solid 노드는 선택 불가능하도록 표시
+        child.userData.selectable = false;
+        return;
+      }
+      
+      // 선택 가능한 노드 조건:
+      // 1. 이름이 있어야 함
+      // 2. children이 있어야 함 (부품 노드)
+      // 3. "Solid"로 시작하지 않아야 함
+      const hasChildren = child.children.length > 0;
+      const isSelectablePart = hasName && hasChildren && !name.startsWith('Solid');
+      
+      if (isSelectablePart) {
+        // 각 노드에 고유 ID 부여
+        const nodeId = `node_${nodeIdCounter++}`;
         
-        if (hasName || hasMeshValue) {
-          if (currentIndex === nodeIndex) {
-            return object; // 찾은 노드 반환
+        // 선택 가능한 부품 목록에 추가
+        selectableParts.push({
+          name: child.name || nodeId,
+          nodeId: nodeId,
+          type: child.type,
+        });
+        
+        // userData에 모델 참조와 노드 ID 저장
+        child.userData.modelRef = modelRef.current;
+        child.userData.nodeId = nodeId;
+        child.userData.nodeName = child.name || nodeId;
+        child.userData.selectable = true;
+        
+        // 모든 하위 객체에도 동일한 정보 전파
+        child.traverse((descendant) => {
+          if (descendant instanceof THREE.Mesh || descendant instanceof THREE.Group || descendant instanceof THREE.Object3D) {
+            if (!descendant.userData.modelRef) {
+              descendant.userData.modelRef = modelRef.current;
+            }
+            if (!descendant.userData.nodeId) {
+              descendant.userData.nodeId = nodeId;
+            }
+            if (!descendant.userData.nodeName) {
+              descendant.userData.nodeName = child.name || nodeId;
+            }
+            descendant.userData.selectable = true;
           }
-          currentIndex++; // 다음 노드로 이동
-        }
-        
-        // 자식 노드들을 재귀적으로 탐색
-        for (const child of object.children) {
-          const found = findNodeByIndex(child);
-          if (found) return found;
-        }
-        
-        return null;
-      };
-      
-      // scene의 직접 자식들부터 시작하여 탐색
-      for (const child of scene.children) {
-        const found = findNodeByIndex(child);
-        if (found) {
-          targetNode = found;
-          break;
-        }
+        });
+      } else {
+        // 선택 불가능한 노드는 표시만
+        child.userData.selectable = false;
       }
-    }
-
-    // 노드를 찾은 경우 복제하여 렌더링
-    if (targetNode) {
-      // 노드를 깊은 복제하여 추가 (원본은 유지)
-      // clone(true)는 모든 하위 객체도 함께 복제합니다
-      const cloned = targetNode.clone(true);
-      
-      // 클릭 감지를 위해 모든 하위 객체에 userData 추가
-      // 이렇게 하면 어떤 하위 객체를 클릭해도 모델을 찾을 수 있습니다
-      cloned.traverse((child) => {
-        if (child instanceof THREE.Mesh || child instanceof THREE.Group) {
-          child.userData.modelRef = modelRef.current;
+    });
+    
+    modelRef.current.add(clonedScene);
+    
+    // 모델이 추가된 후 참조를 다시 전달
+    if (onRefLatest.current && modelRef.current) {
+      // 다음 프레임에 참조 전달 (렌더링 완료 후)
+      requestAnimationFrame(() => {
+        if (onRefLatest.current && modelRef.current) {
+          onRefLatest.current(modelRef.current);
         }
       });
-      
-      modelRef.current.add(cloned);
     }
-  }, [scene, url, nodeIndex, nodePath]);
+  }, [scene, url]);
 
   /**
    * 지오메트리의 정점 노말을 계산합니다

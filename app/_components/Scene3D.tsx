@@ -10,6 +10,8 @@ interface Scene3DProps {
   selectedModelIndices: number[]; // 선택된 모델 인덱스 배열 (단일 선택 시 배열의 마지막 요소가 활성 인덱스)
   onModelSelect: (indices: number[]) => void; // 선택 변경 콜백 (항상 배열로 전달)
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
+  assemblyValue?: number;
 }
 
 /**
@@ -17,7 +19,7 @@ interface Scene3DProps {
  * Canvas를 래핑하고 SceneContent를 렌더링합니다.
  */
 const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
-  ({ models, selectedModelIndices, onModelSelect, onObjectInfoChange }, ref) => {
+  ({ models, selectedModelIndices, onModelSelect, onObjectInfoChange, assemblyValue = 0 }, ref) => {
     const sceneContentRef = useRef<Scene3DRef>(null);
 
     // 외부 ref를 sceneContentRef에 연결
@@ -46,6 +48,7 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
             selectedModelIndices={selectedModelIndices}
             onModelSelect={onModelSelect}
             onObjectInfoChange={onObjectInfoChange}
+            assemblyValue={assemblyValue}
           />
         </Suspense>
       </Canvas>

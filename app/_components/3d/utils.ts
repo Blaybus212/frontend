@@ -55,7 +55,7 @@ export function arraysEqual(a: number[], b: number[]): boolean {
  * }
  * ```
  */
-export function extractObjectInfo(object: THREE.Group | null): ObjectInfo | null {
+export function extractObjectInfo(object: THREE.Object3D | null): ObjectInfo | null {
   // 객체가 없으면 null 반환
   if (!object) return null;
 

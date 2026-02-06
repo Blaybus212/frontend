@@ -10,13 +10,16 @@ import { exportScene } from './utils/exportUtils';
 import { updateObjectTransform as updateTransform } from './utils/transformUtils';
 import { useSelectionGroup } from './hooks/useSelectionGroup';
 import { useGroupTransform } from './hooks/useGroupTransform';
-import { useClickHandler } from './hooks/useClickHandler';
+import { useNodeTransform } from './hooks/useNodeTransform';
+import { useClickHandler, type SelectedNode } from './hooks/useClickHandler';
 import { useObjectInfo } from './hooks/useObjectInfo';
 import { useTransformControls } from './hooks/useTransformControls';
 import { useCameraAdjustment } from './hooks/useCameraAdjustment';
 import { useSelectionSync } from './hooks/useSelectionSync';
+import { useAssemblyDisassembly } from './hooks/useAssemblyDisassembly';
 import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
+import { extractSceneState } from './utils/nodeTransformStorage';
 import type { TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
 
 /**
@@ -55,14 +58,17 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   models, 
   selectedModelIndices,
   onModelSelect,
-  onObjectInfoChange
+  onObjectInfoChange,
+  assemblyValue = 0,
 }, ref) => {
   /** Three.js 씬 객체 */
-  const { scene } = useThree();
+  const { scene, camera } = useThree();
   /** 모델 객체들의 참조 맵 (인덱스 -> THREE.Group) */
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
   /** OrbitControls가 방금 드래그를 끝냈는지 여부 (클릭 이벤트와의 충돌 방지) */
   const justEndedDragRef = useRef(false);
+  /** 현재 선택된 노드들 */
+  const selectedNodesRef = useRef<SelectedNode[] | null>(null);
 
   // TransformControls와 OrbitControls 관리
   // 드래그 중 OrbitControls를 자동으로 비활성화합니다
@@ -89,6 +95,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     justEndedDragRef,
   });
 
+  // 조립/분해 처리
+  // 슬라이더 값에 따라 모델의 노드들을 조립/분해 상태로 이동시킵니다
+  useAssemblyDisassembly({
+    modelRefs,
+    assemblyValue,
+    transformControlsRef,
+  });
+
   // 다중 선택 그룹 관리
   // 2개 이상의 객체가 선택되면 그룹을 생성하고 중심점을 계산합니다
   const selectionGroupRef = useSelectionGroup({
@@ -105,12 +119,22 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     modelRefs,
   });
 
+  // 개별 노드 변환 적용
+  // TransformControls로 개별 노드를 조작할 때 노드의 변환을 직접 적용합니다
+  useNodeTransform({
+    selectedNodesRef,
+    transformControlsRef,
+  });
+
   // 클릭 이벤트 처리
   // 레이캐스팅을 사용하여 클릭한 객체를 찾고 선택 상태를 관리합니다
   useClickHandler({
     selectedIndices,
     modelRefs,
     onModelSelect,
+    onNodeSelect: (nodes) => {
+      selectedNodesRef.current = nodes;
+    },
     transformControlsRef,
     justEndedDragRef,
   });
@@ -118,15 +142,20 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   /**
    * 현재 선택된 객체의 참조를 계산합니다
    * 
+   * - 개별 노드 선택: 선택된 노드 참조 사용 (이미 Group인 노드만 선택됨)
    * - 다중 선택: 선택 그룹 사용
    * - 단일 선택: 해당 모델 그룹 사용
    * - 선택 없음: null
    */
-  const selectedObjectRef = selectedIndices.length > 1 
-    ? selectionGroupRef.current 
-    : selectedIndices.length === 1 
-      ? modelRefs.current.get(selectedIndices[0]) || null
-      : null;
+  const selectedObjectRef = selectedNodesRef.current && selectedNodesRef.current.length > 0
+    ? selectedNodesRef.current.length === 1
+      ? selectedNodesRef.current[0].nodeRef as THREE.Object3D // 단일 노드 선택 (이미 Group)
+      : selectionGroupRef.current // 다중 노드 선택 (그룹 사용)
+    : selectedIndices.length > 1 
+      ? selectionGroupRef.current 
+      : selectedIndices.length === 1 
+        ? modelRefs.current.get(selectedIndices[0]) || null
+        : null;
 
   // 객체 정보 추출 및 전달
   // 선택된 객체의 정보를 추출하여 외부 컴포넌트에 전달합니다
@@ -156,17 +185,34 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   }, [models]);
 
   /**
+   * 현재 씬 상태를 추출하여 반환하는 함수
+   * 
+   * 서버에 전송하거나 로컬 스토리지에 저장할 수 있습니다.
+   */
+  const getSceneState = useCallback(() => {
+    const orbitControlsTarget = orbitControlsRef.current?.target;
+    return extractSceneState(
+      modelRefs.current,
+      camera,
+      orbitControlsTarget,
+      assemblyValue
+    );
+  }, [camera, orbitControlsRef, assemblyValue]);
+
+  /**
    * 부모 컴포넌트에서 접근할 수 있는 함수들을 노출합니다
    * 
    * useImperativeHandle을 사용하여 ref를 통해 다음 함수들을 제공합니다:
    * - exportScene: 씬 내보내기
    * - updateObjectTransform: 객체 변환 업데이트
    * - setTransformMode: 변환 모드 설정
+   * - getSceneState: 현재 씬 상태 추출 (서버 전송용)
    */
   useImperativeHandle(ref, () => ({
     exportScene: handleExportScene,
     updateObjectTransform,
     setTransformMode,
+    getSceneState,
   }));
 
   return (
@@ -183,14 +229,90 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       />
 
       {/* TransformControls - 단일 또는 다중 선택 지원 */}
-      {selectedObjectRef && selectedIndices.length > 0 && (
+      {/* 개별 노드 선택 또는 모델 선택 시 TransformControls 렌더링 */}
+      {selectedObjectRef && (selectedNodesRef.current && selectedNodesRef.current.length > 0 || selectedIndices.length > 0) && (
         <TransformControls
           ref={transformControlsRef}
-          object={selectedObjectRef}
+          object={selectedObjectRef as THREE.Object3D}
           mode={transformMode}
           showX
           showY
           showZ
+          onMouseDown={() => {
+            // 드래그 시작 시점의 위치 저장
+            if (selectedNodesRef.current && selectedNodesRef.current.length === 1) {
+              const node = selectedNodesRef.current[0].nodeRef;
+              const controlledObject = transformControlsRef.current?.object;
+              
+              if (node && controlledObject === node) {
+                // 드래그 시작 위치 저장
+                node.userData.dragStartLocalPos = node.position.clone();
+                node.userData.dragStartWorldPos = node.getWorldPosition(new THREE.Vector3());
+                controlledObject.userData.dragStartLocalPos = controlledObject.position.clone();
+                controlledObject.userData.dragStartWorldPos = controlledObject.getWorldPosition(new THREE.Vector3());
+                
+              }
+            }
+          }}
+          onChange={() => {
+            // TransformControls가 변환을 변경할 때 노드의 변환을 직접 업데이트
+            // useNodeTransform 훅이 useFrame에서 처리하지만, onChange에서도 처리하여 더 확실하게 함
+            if (selectedNodesRef.current && selectedNodesRef.current.length === 1) {
+              const node = selectedNodesRef.current[0].nodeRef;
+              const controlledObject = transformControlsRef.current?.object;
+
+              if (node && controlledObject === node) {
+                // TransformControls가 변경한 변환을 노드에 직접 적용
+                // TransformControls는 객체의 월드 좌표계에서 변환을 수행하지만,
+                // 객체의 로컬 position을 변경합니다.
+                // 노드가 부모를 가지고 있으면, TransformControls가 변경한 월드 위치를
+                // 로컬 위치로 변환해야 합니다.
+                
+                // 드래그 시작 위치 가져오기 (없으면 현재 위치 사용)
+                const controlledDragStartLocalPos = controlledObject.userData.dragStartLocalPos || controlledObject.position.clone();
+                
+                // TransformControls가 실제로 변경했는지 확인 (드래그 시작 위치와 비교)
+                const controlledLocalChanged = !controlledDragStartLocalPos.equals(controlledObject.position);
+                
+                // TransformControls가 로컬 position을 변경했으면 노드에 적용
+                if (controlledLocalChanged) {
+                  // TransformControls가 변경한 로컬 position을 노드에 직접 적용
+                  node.position.copy(controlledObject.position);
+                  node.rotation.copy(controlledObject.rotation);
+                  node.scale.copy(controlledObject.scale);
+                  
+                  // 매트릭스 업데이트
+                  node.updateMatrix();
+                  node.updateMatrixWorld(true);
+                  
+                }
+                
+                
+                // 사용자가 변경한 위치를 userData에 저장 (useAssemblyDisassembly가 덮어쓰지 않도록)
+                if (!node.userData.userModifiedPosition) {
+                  node.userData.userModifiedPosition = new THREE.Vector3();
+                }
+                node.userData.userModifiedPosition.copy(node.position);
+                
+                if (!node.userData.userModifiedRotation) {
+                  node.userData.userModifiedRotation = new THREE.Euler();
+                }
+                node.userData.userModifiedRotation.copy(node.rotation);
+                
+                if (!node.userData.userModifiedScale) {
+                  node.userData.userModifiedScale = new THREE.Vector3();
+                }
+                node.userData.userModifiedScale.copy(node.scale);
+                
+                // 사용자가 수정했음을 표시
+                node.userData.isUserModified = true;
+                
+                // 매트릭스 업데이트
+                node.updateMatrix();
+                node.updateMatrixWorld(true);
+              }
+            }
+          }}
         />
       )}
 

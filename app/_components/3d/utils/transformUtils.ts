@@ -51,7 +51,7 @@ import type { Transform, ObjectInfo } from '../types';
  * ```
  */
 export function updateObjectTransform(
-  object: THREE.Group | null,
+  object: THREE.Object3D | null,
   transform: Transform,
   onObjectInfoChange?: (info: ObjectInfo | null) => void
 ): void {

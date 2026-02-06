@@ -31,8 +31,8 @@ export default function ViewerPage() {
   /** URL에서 추출한 객체 이름 */
   const objectName = params.objectName as string;
 
-  /** 조립/분해 슬라이더 값 (0-100, 기본값: 50) */
-  const [assemblyValue, setAssemblyValue] = useState(50);
+  /** 조립/분해 슬라이더 값 (0-100, 기본값: 0=조립 상태) */
+  const [assemblyValue, setAssemblyValue] = useState(0);
   /** 메모 입력 필드의 값 */
   const [noteValue, setNoteValue] = useState('');
   /** 현재 선택된 뷰어 아이콘 (홈, 줌인, 줌아웃 등) */
@@ -74,6 +74,7 @@ export default function ViewerPage() {
           models={models}
           selectedModelIndices={selectedModelIndices}
           onModelSelect={setSelectedModelIndices}
+          assemblyValue={assemblyValue}
         />
       </div>
 

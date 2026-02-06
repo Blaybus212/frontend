@@ -11,6 +11,18 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 /**
+ * 선택된 노드 정보 인터페이스
+ */
+export interface SelectedNode {
+  /** 모델 인덱스 */
+  modelIndex: number;
+  /** 노드 ID */
+  nodeId: string;
+  /** 노드 참조 */
+  nodeRef: THREE.Object3D;
+}
+
+/**
  * useClickHandler 훅의 매개변수 인터페이스
  */
 interface UseClickHandlerProps {
@@ -20,6 +32,8 @@ interface UseClickHandlerProps {
   modelRefs: React.MutableRefObject<Map<number, THREE.Group>>;
   /** 모델 선택이 변경될 때 호출되는 콜백 함수 */
   onModelSelect: (indices: number[]) => void;
+  /** 선택된 노드가 변경될 때 호출되는 콜백 함수 */
+  onNodeSelect?: (nodes: SelectedNode[] | null) => void;
   /** TransformControls의 참조 (드래그 중인지 확인하기 위해 사용) */
   transformControlsRef: React.MutableRefObject<any>;
   /** OrbitControls가 방금 드래그를 끝냈는지 여부 (클릭 이벤트와의 충돌 방지) */
@@ -57,9 +71,12 @@ export function useClickHandler({
   selectedIndices,
   modelRefs,
   onModelSelect,
+  onNodeSelect,
   transformControlsRef,
   justEndedDragRef,
 }: UseClickHandlerProps) {
+  /** 현재 선택된 노드들 */
+  const selectedNodesRef = useRef<SelectedNode[]>([]);
   const { camera, gl, scene } = useThree();
   /** 레이캐스팅을 위한 Raycaster 객체 (클릭한 위치에서 광선을 발사하여 객체와의 교차를 검사) */
   const raycaster = useRef(new THREE.Raycaster());
@@ -81,13 +98,18 @@ export function useClickHandler({
     const handleClick = (event: MouseEvent) => {
       // TransformControls로 객체를 드래그 중일 때는 클릭 이벤트 무시
       // (드래그 종료 시 클릭으로 인식되는 것을 방지)
-      if (transformControlsRef.current?.dragging) return;
+      if (transformControlsRef.current?.dragging) {
+        return;
+      }
       
       // OrbitControls의 드래그가 방금 끝났는지 확인
       // 마우스를 뗄 때 클릭 이벤트가 발생하는 것을 방지
-      // (onEnd 이벤트가 먼저 처리되도록 함)
+      // 단, 너무 오래 막지 않도록 짧은 시간만 체크
+      // justEndedDragRef가 true이면 리셋하고 계속 진행 (드래그 종료 직후 클릭만 막음)
       if (justEndedDragRef?.current) {
-        return;
+        justEndedDragRef.current = false;
+        // 드래그 종료 직후 클릭은 무시하지 않고 계속 진행
+        // (실제로는 드래그가 끝난 직후 클릭이 발생하는 경우는 드물기 때문)
       }
 
       // 캔버스 요소의 위치와 크기 정보 가져오기
@@ -118,31 +140,68 @@ export function useClickHandler({
         // 가장 가까운 객체 (첫 번째 교차점) 가져오기
         const clickedObject = intersects[0].object;
         let foundIndex = -1; // 클릭한 객체가 속한 모델의 인덱스
+        let clickedNode: THREE.Object3D | null = null;
+        let nodeId: string | null = null;
         
-        // 클릭한 객체가 어느 모델에 속하는지 찾기
-        // 객체의 userData에 저장된 modelRef를 확인하거나, 부모 노드를 추적하여 찾습니다
+        // 클릭한 객체가 어느 모델에 속하는지 찾고, 개별 노드도 찾기
         let current: THREE.Object3D | null = clickedObject;
-        while (current) {
+        let depth = 0; // 무한 루프 방지
+        const maxDepth = 20;
+        
+        while (current && depth < maxDepth && foundIndex < 0) {
+          depth++;
           const currentObj: THREE.Object3D = current;
           
-          // 방법 1: userData에 저장된 modelRef 확인
-          // Model 컴포넌트에서 모든 하위 객체의 userData에 modelRef를 저장했으므로
-          // 이를 통해 빠르게 모델을 찾을 수 있습니다
-          if (currentObj.userData.modelRef) {
-            modelRefs.current.forEach((group, index) => {
+          // 개별 노드 찾기 (userData에 nodeId가 있고 selectable이 true인 경우만)
+          // Group인 노드를 우선적으로 선택 (TransformControls가 Group과 잘 작동함)
+          if (!clickedNode && currentObj.userData && currentObj.userData.nodeId && currentObj.userData.selectable !== false) {
+            // 선택 가능한 노드인지 확인
+            if (currentObj.userData.selectable === true) {
+              // Group인 노드를 우선적으로 선택
+              if (currentObj instanceof THREE.Group) {
+                clickedNode = currentObj;
+                nodeId = currentObj.userData.nodeId;
+              } else if (!clickedNode) {
+                // Group이 아니면 일단 저장하고, 나중에 Group인 부모를 찾음
+                clickedNode = currentObj;
+                nodeId = currentObj.userData.nodeId;
+              }
+            }
+          }
+          
+          // 방법 1: userData에 저장된 modelRef 확인 (가장 빠른 방법)
+          if (currentObj.userData && currentObj.userData.modelRef) {
+            for (const [index, group] of modelRefs.current.entries()) {
               if (group === currentObj.userData.modelRef) {
                 foundIndex = index;
+                break;
               }
-            });
+            }
             if (foundIndex >= 0) break;
           }
           
-          // 방법 2: 모델 refs를 순회하며 직접 비교하거나 ID로 찾기
-          modelRefs.current.forEach((group, index) => {
-            if (group && (group === currentObj || group.getObjectById(currentObj.id))) {
+          // 방법 2: 모델 refs를 순회하며 직접 비교하거나 자식인지 확인
+          for (const [index, group] of modelRefs.current.entries()) {
+            if (!group) continue;
+            
+            // 직접 비교
+            if (group === currentObj) {
               foundIndex = index;
+              break;
             }
-          });
+            
+            // 자식 중에 있는지 확인 (직접 자식)
+            if (group.children.includes(currentObj)) {
+              foundIndex = index;
+              break;
+            }
+            
+            // 재귀적으로 자식 트리를 탐색 (getObjectById 사용)
+            if (group.getObjectById && group.getObjectById(currentObj.id)) {
+              foundIndex = index;
+              break;
+            }
+          }
           
           if (foundIndex >= 0) break;
           
@@ -150,35 +209,112 @@ export function useClickHandler({
           current = currentObj.parent;
         }
         
+        // 노드를 찾지 못했으면 부모 노드를 찾아서 선택 가능한 노드 찾기
+        if (!clickedNode && clickedObject) {
+          // 부모 노드를 찾아서 선택 가능한 nodeId가 있는지 확인
+          let parent = clickedObject.parent;
+          while (parent && !clickedNode) {
+            if (parent.userData && parent.userData.nodeId && parent.userData.selectable === true) {
+              // Group인 부모를 우선적으로 선택
+              if (parent instanceof THREE.Group) {
+                clickedNode = parent;
+                nodeId = parent.userData.nodeId;
+                break;
+              } else if (!clickedNode) {
+                clickedNode = parent;
+                nodeId = parent.userData.nodeId;
+              }
+            }
+            parent = parent.parent;
+          }
+        }
+        
+        // 선택된 노드가 Group이 아니면 Group인 부모를 찾기
+        if (clickedNode && !(clickedNode instanceof THREE.Group)) {
+          let parent = clickedNode.parent;
+          while (parent) {
+            if (parent instanceof THREE.Group && parent.userData && parent.userData.nodeId === nodeId) {
+              clickedNode = parent;
+              break;
+            }
+            parent = parent.parent;
+          }
+        }
+        
+        // 선택 가능한 노드를 찾지 못했으면 선택 불가능
+        if (!clickedNode || !nodeId) {
+          // 빈 공간 클릭과 동일하게 처리
+          if (!(event.ctrlKey || event.metaKey)) {
+            selectedNodesRef.current = [];
+            onModelSelect([]);
+            if (onNodeSelect) {
+              onNodeSelect(null);
+            }
+          }
+          return;
+        }
+
         // 모델을 찾은 경우 선택 처리
-        if (foundIndex >= 0) {
+        if (foundIndex >= 0 && clickedNode && nodeId) {
           // Ctrl (Windows) 또는 Cmd (Mac) 키가 눌려있는지 확인
           const isMultiSelect = event.ctrlKey || event.metaKey;
           
+          const newSelectedNode: SelectedNode = {
+            modelIndex: foundIndex,
+            nodeId: nodeId,
+            nodeRef: clickedNode,
+          };
+          
           if (isMultiSelect) {
-            // 다중 선택 모드: 이미 선택된 객체면 제거, 아니면 추가
-            const newIndices = selectedIndices.includes(foundIndex)
-              ? selectedIndices.filter(i => i !== foundIndex) // 이미 선택된 경우 목록에서 제거
-              : [...selectedIndices, foundIndex]; // 선택되지 않은 경우 목록에 추가
-            onModelSelect(newIndices);
+            // 다중 선택 모드: 이미 선택된 노드면 제거, 아니면 추가
+            const existingIndex = selectedNodesRef.current.findIndex(
+              n => n.modelIndex === foundIndex && n.nodeId === nodeId
+            );
+            
+            let newNodes: SelectedNode[];
+            if (existingIndex >= 0) {
+              newNodes = selectedNodesRef.current.filter((_, i) => i !== existingIndex);
+            } else {
+              newNodes = [...selectedNodesRef.current, newSelectedNode];
+            }
+            
+            selectedNodesRef.current = newNodes;
+            
+            // 모델 인덱스 배열도 업데이트 (중복 제거)
+            const modelIndices = Array.from(new Set(newNodes.map(n => n.modelIndex)));
+            onModelSelect(modelIndices);
+            
+            // 노드 선택 콜백 호출
+            if (onNodeSelect) {
+              onNodeSelect(newNodes.length > 0 ? newNodes : null);
+            }
           } else {
             // 단일 선택 모드: 기존 선택을 모두 해제하고 새로 선택
-            // 배열의 마지막 요소가 활성 인덱스로 사용됩니다
-            const newIndices = [foundIndex];
-            onModelSelect(newIndices);
+            selectedNodesRef.current = [newSelectedNode];
+            onModelSelect([foundIndex]);
+            
+            // 노드 선택 콜백 호출
+            if (onNodeSelect) {
+              onNodeSelect([newSelectedNode]);
+            }
           }
         }
       } else {
         // 빈 공간을 클릭한 경우: Ctrl/Cmd 키가 눌려있지 않으면 모든 선택 해제
         if (!(event.ctrlKey || event.metaKey)) {
+          selectedNodesRef.current = [];
           onModelSelect([]);
+          if (onNodeSelect) {
+            onNodeSelect(null);
+          }
         }
       }
     };
 
     gl.domElement.addEventListener('click', handleClick);
+    
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, scene, modelRefs, onModelSelect, selectedIndices, transformControlsRef, justEndedDragRef]);
+  }, [camera, gl, scene, modelRefs, onModelSelect, onNodeSelect, selectedIndices, transformControlsRef, justEndedDragRef]);
 }

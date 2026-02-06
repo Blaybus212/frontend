@@ -160,12 +160,19 @@ export function useCameraAdjustment({
 
   /**
    * 모델이 변경되면 카메라 조정을 시도합니다
+   * 단, 사용자가 이미 카메라를 조작한 경우에는 조정하지 않습니다
    */
   useEffect(() => {
-    cameraAdjustedRef.current = false;
+    // 사용자가 이미 카메라를 조작한 경우에는 조정하지 않음
+    if (cameraAdjustedRef.current) {
+      return;
+    }
+    
+    // 기존 애니메이션 중단
     isAnimatingRef.current = false;
     targetCameraPositionRef.current = null;
     targetControlsTargetRef.current = null;
+    
     // 약간의 지연 후 카메라 조정 시도 (모델이 완전히 렌더링될 시간을 줌)
     const timeoutId = setTimeout(() => {
       adjustCameraToModels();
@@ -182,7 +189,14 @@ export function useCameraAdjustment({
    */
   useFrame((state, delta) => {
     // 사용자가 이미 카메라를 조작했거나 애니메이션이 비활성화된 경우 완전히 스킵
-    if (cameraAdjustedRef.current || !isAnimatingRef.current || !targetCameraPositionRef.current || !targetControlsTargetRef.current) {
+    // OrbitControls가 드래그 중일 때도 애니메이션 중단
+    if (
+      cameraAdjustedRef.current || 
+      !isAnimatingRef.current || 
+      !targetCameraPositionRef.current || 
+      !targetControlsTargetRef.current ||
+      (orbitControlsRef.current && orbitControlsRef.current.enabled === false)
+    ) {
       return;
     }
 
@@ -259,18 +273,14 @@ export function useCameraAdjustment({
     targetControlsTargetRef.current = null;
     // 사용자가 조작했으므로 더 이상 자동 조정하지 않음
     cameraAdjustedRef.current = true;
-    // 드래그가 방금 끝났음을 표시 (클릭 이벤트 핸들러에서 확인)
-    justEndedDragRef.current = true;
-    
     // OrbitControls의 타겟을 현재 상태로 확실히 고정
     if (orbitControlsRef.current) {
       orbitControlsRef.current.update();
     }
     
-    // 짧은 시간 후 플래그 리셋 (클릭 이벤트 처리 후)
-    setTimeout(() => {
-      justEndedDragRef.current = false;
-    }, 100);
+    // justEndedDragRef는 더 이상 사용하지 않음
+    // 클릭 이벤트가 정상적으로 작동하도록 플래그를 즉시 리셋
+    justEndedDragRef.current = false;
   }, [orbitControlsRef, justEndedDragRef]);
 
   /**

@@ -18,8 +18,8 @@ import type { ObjectInfo } from '../types';
  * useObjectInfo 훅의 매개변수 인터페이스
  */
 interface UseObjectInfoProps {
-  /** 선택된 객체의 참조 (단일 선택 시 모델 그룹, 다중 선택 시 선택 그룹) */
-  selectedObjectRef: THREE.Group | null;
+  /** 선택된 객체의 참조 (단일 선택 시 모델 그룹 또는 노드, 다중 선택 시 선택 그룹) */
+  selectedObjectRef: THREE.Object3D | null;
   /** 객체 정보가 변경될 때 호출되는 콜백 함수 (선택적) */
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
 }
