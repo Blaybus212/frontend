@@ -88,7 +88,7 @@ export default function LoginPage() {
           <div className="flex flex-col gap-[7.5px]">
             <label className="text-b-md font-regular text-sub2">아이디</label>
             <input
-              type="username"
+              type="text"
               placeholder="아이디를 입력하세요"
               className="w-full rounded-xl bg-bg-default px-4 py-3.25 text-base-white placeholder-sub outline-none transition focus:ring-2 focus:ring-border-focus"
               value={username}
