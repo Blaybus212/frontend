@@ -174,12 +174,14 @@ export default function ViewerPage() {
           }}
         >
           {/* 3D 뷰어 영역의 전체 높이를 따라가도록 하는 래퍼 */}
-          <div className="w-full h-full flex items-end" style={{ pointerEvents: 'auto' }}>
-            <AiPanel
-              isVisible={isAiPanelOpen}
-              onClose={() => setIsAiPanelOpen(false)}
-              maxExpandedHeight="100%"
-            />
+          <div className="w-full h-full flex items-end" style={{ pointerEvents: 'none' }}>
+            <div className="w-full" style={{ pointerEvents: 'auto' }}>
+              <AiPanel
+                isVisible={isAiPanelOpen}
+                onClose={() => setIsAiPanelOpen(false)}
+                maxExpandedHeight="100%"
+              />
+            </div>
           </div>
         </div>
       )}
