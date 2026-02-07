@@ -41,6 +41,11 @@ export default function OnboardingPage() {
 
   const currentConfig = stepConfigs[step as keyof typeof stepConfigs];
 
+  const handleSpecializedSelect = (selected: string, index: number) => {
+      updateListData('specialized', selected);
+      setAiAnswerIndex(index);
+    };
+
   return (
     <main className="h-[calc(100vh-64px)] flex flex-row gap-42.5 px-38 py-20 bg-surface text-title">
       
@@ -147,10 +152,7 @@ export default function OnboardingPage() {
                   return (
                     <button
                       key={selected}
-                      onClick={() => {
-                        updateListData('specialized', selected);
-                        setAiAnswerIndex(index);
-                      }}
+                      onClick={()=>handleSpecializedSelect(selected, index)}
                       className={`
                         border rounded-xl py-3.25 text-b-lg font-medium
                         ${isSelected 
