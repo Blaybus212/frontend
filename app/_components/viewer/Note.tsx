@@ -142,6 +142,7 @@ export function Note({
         bg-bg-default
         rounded-2xl
         p-6
+        min-h-0
         transition-all duration-200
         border border-border-default
         ${className}
@@ -168,7 +169,7 @@ export function Note({
         placeholder={placeholder}
         className={`
           w-full
-          ${className.includes('flex-1') ? 'flex-1' : 'min-h-[200px]'}
+          ${className.includes('flex-1') ? 'flex-1 min-h-0' : 'min-h-[200px]'}
           p-4
           rounded-2xl
           bg-bg-sub
@@ -176,6 +177,7 @@ export function Note({
           text-b-lg
           placeholder:text-placeholder
           resize-none
+          custom-scrollbar
           transition-all duration-200
           focus:outline-none
         `}

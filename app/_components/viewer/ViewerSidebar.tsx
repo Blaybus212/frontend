@@ -13,6 +13,8 @@ import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, Hambu
 interface ViewerSidebarProps {
   /** 현재 선택된 아이콘 ID */
   selectedIcon: string | null;
+  /** 부품 리스트 패널 열림 여부 */
+  isPartsOpen: boolean;
   /** 아이콘 선택 핸들러 */
   onIconSelect: (iconId: string) => void;
   /** AI 패널 열림 여부 */
@@ -50,6 +52,7 @@ interface ViewerSidebarProps {
  */
 export function ViewerSidebar({
   selectedIcon,
+  isPartsOpen,
   onIconSelect,
   isAiPanelOpen,
   onOpenAiPanel,
@@ -96,7 +99,7 @@ export function ViewerSidebar({
 
       <ViewerIcon
         icon={<HamburgerIcon />}
-        selected={selectedIcon === 'parts'}
+        selected={isPartsOpen}
         onClick={() => onIconSelect('parts')}
         aria-label="부품 리스트"
       />
