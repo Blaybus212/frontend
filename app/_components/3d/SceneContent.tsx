@@ -245,7 +245,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const captureObjectSnapshot = useCallback(
     async (
       targetObject: THREE.Object3D,
-      options?: { includeOnlyTarget?: boolean; viewMode?: 'lit' | 'dim' | 'wireframe'; renderMode?: 'normal' | 'wireframe' }
+      options?: { includeOnlyTarget?: boolean; viewMode?: 'lit' | 'dim'; renderMode?: 'normal' | 'wireframe' }
     ) => {
       return captureObjectSnapshotImage(
         targetObject,
@@ -299,7 +299,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       });
       const wireframe = await captureObjectSnapshot(targetNode, {
         includeOnlyTarget: true,
-        viewMode: 'wireframe',
+        viewMode: 'lit',
         renderMode: 'wireframe',
       });
       return [lit, dim, wireframe] as [string | null, string | null, string | null];
@@ -323,7 +323,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       });
       const wireframe = await captureObjectSnapshot(modelRoot, {
         includeOnlyTarget: false,
-        viewMode: 'wireframe',
+        viewMode: 'lit',
         renderMode: 'wireframe',
       });
       return [lit, dim, wireframe] as [string | null, string | null, string | null];
