@@ -1,11 +1,11 @@
-export const CATEGORY_LIST:string[] = [
+export const CATEGORY_LIST = [
   "기계공학",
   "우주공학",
   "생명공학",
   "의공학"
 ]
 
-export const SPECIALIZED_LIST: string[] = [
+export const SPECIALIZED_LIST = [
   "없음",
   "IT 개발", 
   "자동차 부품", 
@@ -61,7 +61,7 @@ export const PERSONA_LIST = [
 ] as const;
 
 // 예시 AI응답
-export const AI_ANSWER_EXAMPLE_LIST: string[] = [
+export const AI_ANSWER_EXAMPLE_LIST = [
   " ",
   "개별 함수가 반환한 결과값들을 모아 하나의 완성된 서비스로 구동시키는 '메인 루프(Crankshaft)'의 역할을 설명해 드릴게요.",
   "에너지를 실제 구동력으로 전환하기 직전의 인버터처럼, 화학 에너지를 물리적인 힘으로 바꾸는 '피스톤(Piston)'의 핵심 원리를 알려드립니다.",
