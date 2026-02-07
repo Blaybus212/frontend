@@ -185,6 +185,29 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     updateTransform(selectedObjectRef, transform, onObjectInfoChange);
   }, [selectedObjectRef, onObjectInfoChange]);
 
+  const zoomCamera = useCallback(
+    (scale: number) => {
+      const controls = orbitControlsRef.current;
+      const target = controls?.target ?? new THREE.Vector3();
+      const offset = camera.position.clone().sub(target);
+      if (offset.lengthSq() === 0) return;
+
+      const nextPosition = target.clone().add(offset.multiplyScalar(scale));
+      camera.position.copy(nextPosition);
+      camera.updateProjectionMatrix();
+      controls?.update();
+    },
+    [camera, orbitControlsRef]
+  );
+
+  const zoomIn = useCallback(() => {
+    zoomCamera(0.9);
+  }, [zoomCamera]);
+
+  const zoomOut = useCallback(() => {
+    zoomCamera(1.1);
+  }, [zoomCamera]);
+
   const handleExportScene = useCallback(() => {
     exportScene(modelRefs.current, models);
   }, [models]);
@@ -313,6 +336,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     resetToAssembly: handleResetToAssembly,
     getSelectableParts,
     setSelectedNodeIds,
+    zoomIn,
+    zoomOut,
   }));
 
   return (

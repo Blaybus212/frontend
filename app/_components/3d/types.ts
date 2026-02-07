@@ -129,6 +129,10 @@ export interface Scene3DRef {
   getSelectableParts: () => SelectablePart[];
   /** nodeId 목록으로 선택 상태를 설정합니다 */
   setSelectedNodeIds: (nodeIds: string[]) => void;
+  /** 카메라를 한 단계 확대합니다 */
+  zoomIn: () => void;
+  /** 카메라를 한 단계 축소합니다 */
+  zoomOut: () => void;
 }
 
 /**

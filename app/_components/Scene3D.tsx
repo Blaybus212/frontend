@@ -47,6 +47,12 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
       setSelectedNodeIds: (nodeIds) => {
         sceneContentRef.current?.setSelectedNodeIds(nodeIds);
       },
+      zoomIn: () => {
+        sceneContentRef.current?.zoomIn();
+      },
+      zoomOut: () => {
+        sceneContentRef.current?.zoomOut();
+      },
     }));
 
     return (

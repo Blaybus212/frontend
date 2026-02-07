@@ -45,6 +45,7 @@ export default function ViewerPage() {
   const [isPartsOpen, setIsPartsOpen] = useState(false);
   const [parts, setParts] = useState<SelectablePart[]>([]);
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
+  const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
 
@@ -73,12 +74,32 @@ export default function ViewerPage() {
   ];
 
   const handleIconSelect = (iconId: string) => {
-    setSelectedIcon(iconId);
+    if (iconId !== 'parts') {
+      setSelectedIcon(iconId);
+    }
+    if (iconId === 'zoomin') {
+      scene3DRef.current?.zoomIn();
+      window.setTimeout(() => {
+        setSelectedIcon((prev) => (prev === 'zoomin' ? null : prev));
+      }, 150);
+      return;
+    }
+    if (iconId === 'zoomout') {
+      scene3DRef.current?.zoomOut();
+      window.setTimeout(() => {
+        setSelectedIcon((prev) => (prev === 'zoomout' ? null : prev));
+      }, 150);
+      return;
+    }
     if (iconId === 'refresh') {
       scene3DRef.current?.resetToAssembly();
+      window.setTimeout(() => {
+        setSelectedIcon((prev) => (prev === 'refresh' ? null : prev));
+      }, 150);
     }
     if (iconId === 'parts') {
       setIsPartsOpen((prev) => !prev);
+      return;
     }
   };
 
@@ -107,7 +128,10 @@ export default function ViewerPage() {
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
       {/* 3D 씬 렌더링 영역: 상단 네비게이션 바와 우측 패널을 제외한 전체 영역 (전체 너비의 70%) */}
-      <div className="absolute top-[0px] right-[30%] left-0 bottom-0">
+      <div
+        className="absolute top-[0px] left-0 bottom-0"
+        style={{ right: `${rightPanelWidthPercent}%` }}
+      >
         <Scene3D
           ref={scene3DRef}
           models={models}
@@ -144,6 +168,7 @@ export default function ViewerPage() {
       {/* 좌측 컨트롤 사이드바 */}
       <ViewerSidebar
         selectedIcon={selectedIcon}
+        isPartsOpen={isPartsOpen}
         onIconSelect={handleIconSelect}
         isAiPanelOpen={isAiPanelOpen}
         onOpenAiPanel={() => setIsAiPanelOpen(true)}
@@ -178,6 +203,8 @@ export default function ViewerPage() {
         objectData={objectData}
         noteValue={noteValue}
         onNoteChange={setNoteValue}
+        widthPercent={rightPanelWidthPercent}
+        onResizeWidth={setRightPanelWidthPercent}
       />
 
     </div>
