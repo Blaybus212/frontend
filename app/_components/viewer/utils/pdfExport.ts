@@ -1,3 +1,5 @@
+import { PDF_A4_WIDTH, PDF_BACKGROUND, PDF_SUBTEXT, PDF_TEXT } from '../constants';
+
 export type PdfPartSnapshot = {
   title: string;
   images: [string | null, string | null, string | null];
@@ -26,11 +28,7 @@ export type PdfNotePayload = {
   noteElement?: HTMLElement | null;
 };
 
-const A4_WIDTH = 794;
-const IMAGE_SCALE = 0.5;
-const PDF_BACKGROUND = '#1B1F27';
-const PDF_TEXT = '#E9EDF3';
-const PDF_SUBTEXT = '#9AA3B2';
+const A4_WIDTH = PDF_A4_WIDTH;
 
 const buildSummaryHtml = (payload: PdfSummaryPayload) => {
   const keywords = payload.includeKeywords ? payload.keywords ?? [] : [];
