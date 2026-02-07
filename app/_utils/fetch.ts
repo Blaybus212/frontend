@@ -1,3 +1,5 @@
+'use server';
+
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
@@ -32,8 +34,11 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     redirect("/login?error=SessionExpired");
   }
 
-  // 5. 요청 실패 시 에러 발생, 성공 시 데이터(JSON) 반환
-  if (!response.ok) throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
 
-  return response.json();
+    throw new Error(`API 요청 실패 (${response.status}): ${errorData?.message}`);
+  }
+
+  return response.json().catch(() => null);
 }

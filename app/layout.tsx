@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { MSWComponent } from "./_components/msw/MSWComponent";
 import localFont from "next/font/local";
+import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body
         className={`${pretendard.variable}`}
       >
-        <MSWComponent>
-          {children}
-        </MSWComponent>
+        <SessionProvider>
+          <MSWComponent>
+            {children}
+          </MSWComponent>
+        </SessionProvider>
       </body>
     </html>
   );
