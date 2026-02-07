@@ -20,7 +20,7 @@ export const useOnboard = (totalSteps: number) => {
   const router = useRouter();
 
   // 특정 키의 값 업데이트
-  const updateData = (key: keyof OnboardData, value: any) => {
+  const updateData = (key: keyof OnboardData, value: OnboardData[keyof OnboardData]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
