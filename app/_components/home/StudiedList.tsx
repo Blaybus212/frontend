@@ -1,16 +1,11 @@
 'use client';
 
-export interface StudiedItem {
-  id: number;
-  rank: number;
-  title: string;
-  subTitle: string;
-  diff?: number;
-}
+import { StudiedListItem } from "@/app/_types/home";
+import Image from "next/image";
 
 export interface StudiedListProps {
-  items: StudiedItem[];
-  onItemClick: (item: StudiedItem) => void;
+  items: StudiedListItem[];
+  onItemClick: (item: StudiedListItem) => void;
 }
 
 const StudiedList = ({ items, onItemClick }: StudiedListProps ) => {
@@ -30,15 +25,24 @@ const StudiedList = ({ items, onItemClick }: StudiedListProps ) => {
 
               <div className="flex flex-col">
                 <span className="text-b-md font-medium text-title">{item.title}</span>
-                <span className="text-b-sm font-medium text-sub">{item.subTitle}</span>
+                <span className="text-b-sm font-medium text-sub">{item.engTitle}</span>
               </div>
             </div>
 
-            {item.diff !== undefined && (
-              <div className={`flex gap-1 items-center text-b-sm font-regular ${item.diff > 0 ? "text-sub-red" : "text-sub"}`}>
-                {/* TODO: 상승표시 svg로 교체 */}
-                <p>{item.diff > 0 ? "▲" : "" }</p>
-                <p>{item.diff > 0 ? `+${item.diff}` : `${item.diff}`}</p>
+            {item.rankDiff !== undefined && (
+              <div className={`flex gap-1 items-center text-b-sm font-regular ${item.rankDiff > 0 ? "text-sub-red" : "text-sub"}`}>
+                {
+                  item.rankDiff > 0
+                  && 
+                  <Image
+                    src="/images/up-icon.svg" 
+                    alt="세모 상승 모양 아이콘"
+                    priority
+                    width={16}
+                    height={16}
+                  />
+                }
+                <p>{item.rankDiff > 0 ? `+${item.rankDiff}` : item.rankDiff != 0 && `${item.rankDiff}`}</p>
               </div>
             )}
           </div>

@@ -13,12 +13,12 @@ const PageButton = ({ page, isSelected = false, onClick }: PageButtonProps) => {
       className={`
         /* 기본 레이아웃: 정사각형 형태 유지 */
         flex items-center justify-center w-10 h-10 rounded-[10px] 
-        transition-all duration-200 border-1 text-b-lg font-regular
+        border text-b-lg font-regular
         
         ${
           isSelected
             ? "bg-bg-hovered-green border-border-focused text-selected " // Selected: 테두리 포인트 컬러
-            : "bg-base-black border-border-default text-sub2 hover:border-border-hovered" // Default & Hover
+            : "bg-base-black border-bg-hovered-green text-sub2 hover:border-border-hovered" // Default & Hover
         }
       `}
     >

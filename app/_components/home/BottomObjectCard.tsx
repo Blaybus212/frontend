@@ -1,29 +1,21 @@
+import { BottomObjectCardItem } from '@/app/_types/home';
 import Image from 'next/image';
 import React from 'react';
 
-interface BottomObjectCardProps {
-  imageSrc: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  category: string;
-  participantCount: number;
-}
-
-const BottomObjectCard: React.FC<BottomObjectCardProps> = ({
-  imageSrc,
+const BottomObjectCard: React.FC<BottomObjectCardItem> = ({
   title,
-  subtitle,
-  description,
+  engTitle,
   category,
-  participantCount,
+  description,
+  imageUrl,
+  participantsCount,
 }) => {
   return (
     <div className="group w-full max-w-108 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered cursor-pointer">
       {/* 상단 이미지 영역 */}
       <div className="relative w-full h-52.5 overflow-hidden bg-bg-sub">
         <Image
-          src={imageSrc}
+          src={imageUrl}
           alt={title}
           fill
           className="object-cover transition-transform duration-250 ease-out group-hover:scale-105"
@@ -35,7 +27,7 @@ const BottomObjectCard: React.FC<BottomObjectCardProps> = ({
         {/* 타이틀 세션 */}
         <div className="flex items-baseline gap-1.5">
           <h3 className="text-b-lg font-medium text-title">{title}</h3>
-          <span className="text-b-md font-regular text-sub">{subtitle}</span>
+          <span className="text-b-md font-regular text-sub">{engTitle}</span>
         </div>
 
         {/* 상세 설명 */}
@@ -50,8 +42,13 @@ const BottomObjectCard: React.FC<BottomObjectCardProps> = ({
           </span>
           
           <div className="flex items-center gap-0.5 text-sub2">
-            {/* TODO: 유저 svg 추가 */}
-            <span className="text-b-md font-medium">{participantCount}</span>
+            <Image
+              src="/images/people-icon.svg"
+              alt="사람들 모양 아이콘"
+              width={24}
+              height={24}
+            />
+            <p>{participantsCount}</p>
           </div>
         </div>
       </div>

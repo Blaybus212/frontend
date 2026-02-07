@@ -26,8 +26,7 @@ const ObjectCard: React.FC<ObjectCardProps> = ({
           src={imageSrc}
           alt={title}
           layout='fill'
-          object-cover
-          className="transition-transform duration-250 ease-out group-hover:scale-105"
+          className="transition-transform duration-250 ease-out group-hover:scale-105 object-cover"
         />
         
         {/* 인기 배지 */}

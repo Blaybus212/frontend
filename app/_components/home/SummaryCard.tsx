@@ -1,42 +1,47 @@
 import React from 'react';
+import Image from 'next/image';
+import { SummaryCardData } from '@/app/_types/home';
+import { getFullMonthlySolvedList } from '@/app/_utils/home/convertCellsToList';
 
-// 잔디 데이터 타입 (0~4 단계의 강도)
-export type GrassLevel = 0 | 1 | 2 | 3 | 4;
-
-interface SummaryCardProps {
-  month: string;
-  colorType: 'green' | 'orange' | 'blue' | 'pink' | 'none';
-  grassData: GrassLevel[][]; // 3행 x 10열 구조의 데이터
-  maxStreak: number;
-  solvedQuizzes: number;
-}
-
-const SummaryCard: React.FC<SummaryCardProps> = ({
-  month,
-  colorType,
-  grassData,
-  maxStreak,
-  solvedQuizzes,
+const SummaryCard: React.FC<SummaryCardData> = ({
+  themeColor,
+  streak,
+  solvedQuizCount,
+  cells
 }) => {
-  // 테마에 정의된 색상 매핑
-  const getColorClass = (level: GrassLevel) => {
-    if (colorType === 'none' || level === 0) return 'bg-grass-green-0';
-    return `bg-grass-${colorType}-${level}`;
+  
+  const getColorClass = (level: number) => {
+    if (themeColor === 'none' || level === 0) return 'bg-grass-green-0';
+    return `bg-grass-${themeColor}-${level}`;
   };
 
+  const grassData = getFullMonthlySolvedList(cells, 2026, 2);
+
   return (
-    <div className="flex items-center max-w-min gap-7.5 px-7.5 py-4.5 rounded-[14px] bg-bg-default">
+    <div className="flex items-center gap-7.5 px-7.5 py-4.5 rounded-[14px] bg-bg-default">
       {/* 왼쪽: 월별 잔디 영역 */}
-      <div className="space-y-3">
-        <h3 className="text-h-sm font-semibold text-title">{month}</h3>
-        <div className="grid grid-rows-3 grid-flow-col gap-[7.23px]">
-          {grassData.map((row, rowIndex) =>
-            row.map((level, colIndex) => (
+      <div>
+        <div className='flex flex-row gap-2 mb-3'>
+          <Image
+            src="/images/grass-left-arrow.svg"
+            alt="잔디 왼쪽 화살표"
+            width={24}
+            height={24}
+          />
+          <h3 className="text-h-sm font-semibold text-title">Feb</h3>
+          <Image
+            src="/images/grass-right-arrow.svg"
+            alt="잔디 왼쪽 화살표"
+            width={24}
+            height={24}
+          />
+        </div>
+        <div className="grid grid-cols-10 grid-flow-row gap-[7.23px]">
+          {grassData.map((grassLevel, index) =>
               <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`w-5.25 h-5.25 rounded-md transition-colors duration-300 ${getColorClass(level)}`}
+                key={index}
+                className={`w-5.25 h-5.25 rounded-md transition-colors duration-300 ${getColorClass(grassLevel)}`}
               />
-            ))
           )}
         </div>
       </div>
@@ -46,22 +51,32 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         {/* 최대 연속 학습일 */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sub">
-            <CalendarIcon />
+            <Image
+              src="images/summarycard-calendar.svg"
+              alt="캘린더 아이콘"
+              width={16}
+              height={16}
+            />
             <span className="text-b-sm font-regular">최대 연속 학습일</span>
           </div>
           <p className="text-h-sm font-semibold text-title">
-            {maxStreak}일
+            {streak}일
           </p>
         </div>
 
         {/* 맞춘 퀴즈 문항 */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sub">
-            <TrophyIcon />
+            <Image
+              src="images/summarycard-reward.svg"
+              alt="캘린더 아이콘"
+              width={16}
+              height={16}
+            />
             <span className="text-b-sm font-regular">맞춘 퀴즈 문항</span>
           </div>
           <p className="text-h-sm font-semibold text-title">
-            {solvedQuizzes}개
+            {solvedQuizCount}개
           </p>
         </div>
       </div>

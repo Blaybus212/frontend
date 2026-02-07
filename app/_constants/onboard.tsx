@@ -5,6 +5,11 @@ export const CATEGORY_LIST = [
   "의공학"
 ]
 
+export const ORDER_LIST = [
+  "인기순",
+  "가나다순"
+]
+
 export const SPECIALIZED_LIST = [
   "없음",
   "IT 개발", 
