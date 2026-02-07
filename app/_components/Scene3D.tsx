@@ -59,6 +59,18 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
       captureModelSnapshot: (modelId) => {
         return sceneContentRef.current?.captureModelSnapshot(modelId) ?? Promise.resolve(null);
       },
+      capturePartSnapshots: (nodeId) => {
+        return (
+          sceneContentRef.current?.capturePartSnapshots(nodeId) ??
+          Promise.resolve([null, null, null] as [null, null, null])
+        );
+      },
+      captureModelSnapshots: (modelId) => {
+        return (
+          sceneContentRef.current?.captureModelSnapshots(modelId) ??
+          Promise.resolve([null, null, null] as [null, null, null])
+        );
+      },
       getModelRootName: () => {
         return sceneContentRef.current?.getModelRootName() ?? null;
       },

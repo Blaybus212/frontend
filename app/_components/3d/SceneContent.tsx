@@ -241,60 +241,115 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   );
 
   const captureObjectSnapshot = useCallback(
-    async (targetObject: THREE.Object3D, options?: { includeOnlyTarget?: boolean }) => {
-      const prevViewMode = viewMode;
-      const prevRenderMode = renderMode;
-      setViewMode('lit');
-      setRenderMode('normal');
+    async (
+      targetObject: THREE.Object3D,
+      options?: { includeOnlyTarget?: boolean; viewMode?: 'lit' | 'dim' | 'wireframe'; renderMode?: 'normal' | 'wireframe' }
+    ) => {
+      const mode = options?.viewMode ?? 'lit';
+      const renderStyle = options?.renderMode ?? 'normal';
 
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-
-      const visibilityMap = new Map<THREE.Object3D, boolean>();
-      const revealSet = new Set<THREE.Object3D>();
-
-      if (options?.includeOnlyTarget !== false) {
-        modelRefs.current.forEach((modelRef) => {
-          if (!modelRef) return;
-          modelRef.traverse((obj) => {
-            visibilityMap.set(obj, obj.visible);
-            obj.visible = false;
-          });
+      targetObject.updateWorldMatrix(true, true);
+      const userDataMap = new Map<THREE.Object3D, any>();
+      targetObject.traverse((obj) => {
+        userDataMap.set(obj, obj.userData);
+        obj.userData = {};
+      });
+      let clone: THREE.Object3D;
+      try {
+        clone = targetObject.clone(true);
+      } finally {
+        userDataMap.forEach((data, obj) => {
+          obj.userData = data;
         });
+      }
+      clone.applyMatrix4(targetObject.matrixWorld);
 
-        let current: THREE.Object3D | null = targetObject;
-        while (current) {
-          revealSet.add(current);
-          current = current.parent as THREE.Object3D | null;
+      clone.traverse((obj) => {
+        if (!(obj as THREE.Mesh).isMesh) return;
+        const mesh = obj as THREE.Mesh;
+        const original = mesh.material;
+        const cloneMaterial = (mat?: THREE.Material): THREE.Material =>
+          mat ? mat.clone() : new THREE.MeshStandardMaterial();
+        if (Array.isArray(original)) {
+          mesh.material = original.map((mat) => cloneMaterial(mat));
+        } else {
+          mesh.material = cloneMaterial(original);
         }
-        targetObject.traverse((obj: THREE.Object3D) => revealSet.add(obj));
-        revealSet.forEach((obj) => {
-          obj.visible = true;
-        });
-      }
 
-      const box = new THREE.Box3().setFromObject(targetObject);
-      if (box.isEmpty()) {
-        visibilityMap.forEach((visible, obj) => {
-          obj.visible = visible;
-        });
-        setViewMode(prevViewMode);
-        setRenderMode(prevRenderMode);
-        return null;
-      }
+        if (renderStyle === 'wireframe') {
+          const makeWire = (mat?: THREE.Material) => {
+            const source = mat as THREE.MeshStandardMaterial | undefined;
+            const color = source?.color ? source.color.clone() : new THREE.Color(0.85, 0.85, 0.85);
+            return new THREE.MeshBasicMaterial({ color, wireframe: true });
+          };
+          if (Array.isArray(mesh.material)) {
+            mesh.material = mesh.material.map((mat) => makeWire(mat));
+          } else {
+            mesh.material = makeWire(mesh.material);
+          }
+          return;
+        }
 
-      const center = box.getCenter(new THREE.Vector3());
+        const boostMaterial = (mat?: THREE.Material) => {
+          if (!mat || !(mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) return;
+          const standard = mat as THREE.MeshStandardMaterial;
+          const baseColor = standard.color?.clone() ?? new THREE.Color(0.9, 0.9, 0.9);
+          standard.emissive = baseColor.clone().multiplyScalar(0.45);
+          standard.emissiveIntensity = mode === 'lit' ? 1.1 : 0.7;
+          if (typeof standard.metalness === 'number') {
+            standard.metalness = Math.min(standard.metalness, 0.25);
+          }
+          if (typeof standard.roughness === 'number') {
+            standard.roughness = Math.max(standard.roughness, 0.35);
+          }
+          standard.needsUpdate = true;
+        };
+
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((mat) => boostMaterial(mat));
+        } else {
+          boostMaterial(mesh.material);
+        }
+      });
+
+      const tempScene = new THREE.Scene();
+      tempScene.background = null;
+
+      const ambient = new THREE.AmbientLight(0xffffff, mode === 'lit' ? 1.45 : 0.95);
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x2c2f36, mode === 'lit' ? 0.9 : 0.6);
+      const key = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 1.9 : 1.2);
+      key.position.set(8, 10, 6);
+      const fill = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 1.15 : 0.7);
+      fill.position.set(-6, 4, -4);
+      const rim = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 0.75 : 0.45);
+      rim.position.set(0, 6, -10);
+      tempScene.add(ambient, hemi, key, fill, rim);
+
+      let box = new THREE.Box3().setFromObject(clone);
+      if (box.isEmpty()) return null;
+
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
+      const NORMALIZED_DIM = 1.2;
+      const MIN_SCALE = 0.3;
+      const MAX_SCALE = 5;
+      const scaleFactor = THREE.MathUtils.clamp(NORMALIZED_DIM / maxDim, MIN_SCALE, MAX_SCALE);
+      clone.scale.multiplyScalar(scaleFactor);
+
+      box = new THREE.Box3().setFromObject(clone);
+      const center = box.getCenter(new THREE.Vector3());
+      clone.position.sub(center);
+      tempScene.add(clone);
+
+      const normalizedSize = box.getSize(new THREE.Vector3());
+      const normalizedMaxDim = Math.max(normalizedSize.x, normalizedSize.y, normalizedSize.z);
       const fov = (camera as THREE.PerspectiveCamera).fov || 50;
-      const distance = (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.6;
+      const distance = (normalizedMaxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.15;
 
-      const controlsTarget = orbitControlsRef.current?.target?.clone() ?? center.clone();
-      const direction = camera.position.clone().sub(controlsTarget).normalize();
-
+      const direction = new THREE.Vector3(0, 0.25, 1).normalize();
       const snapshotCamera = (camera as THREE.PerspectiveCamera).clone();
-      snapshotCamera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
-      snapshotCamera.lookAt(center);
+      snapshotCamera.position.copy(direction.multiplyScalar(distance));
+      snapshotCamera.lookAt(new THREE.Vector3(0, 0, 0));
       snapshotCamera.updateProjectionMatrix();
 
       const width = 640;
@@ -302,9 +357,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       const renderTarget = new THREE.WebGLRenderTarget(width, height);
       const prevTarget = gl.getRenderTarget();
       const prevAutoClear = gl.autoClear;
+      const prevClearColor = gl.getClearColor(new THREE.Color());
+      const prevClearAlpha = gl.getClearAlpha();
       gl.autoClear = true;
+      gl.setClearColor(new THREE.Color(0, 0, 0), 0);
       gl.setRenderTarget(renderTarget);
-      gl.render(scene, snapshotCamera);
+      gl.render(tempScene, snapshotCamera);
 
       const buffer = new Uint8Array(width * height * 4);
       gl.readRenderTargetPixels(renderTarget, 0, 0, width, height, buffer);
@@ -317,11 +375,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         renderTarget.dispose();
         gl.setRenderTarget(prevTarget);
         gl.autoClear = prevAutoClear;
-        visibilityMap.forEach((visible, obj) => {
-          obj.visible = visible;
-        });
-        setViewMode(prevViewMode);
-        setRenderMode(prevRenderMode);
+        gl.setClearColor(prevClearColor, prevClearAlpha);
         return null;
       }
 
@@ -341,22 +395,22 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       renderTarget.dispose();
       gl.setRenderTarget(prevTarget);
       gl.autoClear = prevAutoClear;
-      visibilityMap.forEach((visible, obj) => {
-        obj.visible = visible;
-      });
-      setViewMode(prevViewMode);
-      setRenderMode(prevRenderMode);
+      gl.setClearColor(prevClearColor, prevClearAlpha);
 
       return canvas.toDataURL('image/png');
     },
-    [camera, gl, orbitControlsRef, renderMode, scene, setRenderMode, setViewMode, viewMode]
+    [camera, gl]
   );
 
   const capturePartSnapshot = useCallback(
     async (nodeId: string) => {
       const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
       if (!targetNode) return null;
-      return captureObjectSnapshot(targetNode, { includeOnlyTarget: true });
+      return captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
     },
     [captureObjectSnapshot, findNodeById]
   );
@@ -365,7 +419,59 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     async (modelId: string) => {
       const modelRoot = findModelRootById(modelId);
       if (!modelRoot) return null;
-      return captureObjectSnapshot(modelRoot, { includeOnlyTarget: false });
+      return captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+    },
+    [captureObjectSnapshot, findModelRootById]
+  );
+
+  const capturePartSnapshots = useCallback(
+    async (nodeId: string): Promise<[string | null, string | null, string | null]> => {
+      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
+      if (!targetNode) return [null, null, null] as [null, null, null];
+      const lit = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+      const dim = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'dim',
+        renderMode: 'normal',
+      });
+      const wireframe = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'wireframe',
+        renderMode: 'wireframe',
+      });
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
+    },
+    [captureObjectSnapshot, findNodeById]
+  );
+
+  const captureModelSnapshots = useCallback(
+    async (modelId: string): Promise<[string | null, string | null, string | null]> => {
+      const modelRoot = findModelRootById(modelId);
+      if (!modelRoot) return [null, null, null] as [null, null, null];
+      const lit = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+      const dim = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'dim',
+        renderMode: 'normal',
+      });
+      const wireframe = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'wireframe',
+        renderMode: 'wireframe',
+      });
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
     },
     [captureObjectSnapshot, findModelRootById]
   );
@@ -512,6 +618,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     zoomOut,
     capturePartSnapshot,
     captureModelSnapshot,
+    capturePartSnapshots,
+    captureModelSnapshots,
     getModelRootName,
   }));
 
