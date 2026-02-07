@@ -12,7 +12,7 @@ interface StepConfig {
 }
 
 export default function OnboardingPage() {
-  const { step, formData, updateData, updateListData, nextStep, prevStep } = useOnboard(4);
+  const { step, formData, updateData, updateListData, nextStep, prevStep, isPending } = useOnboard(4);
   const [ aiAnswerIndex, setAiAnswerIndex ] = useState<number>(0); // AI 예시 응답용
 
   // --- 각 스텝별 설정 데이터 ---
@@ -225,16 +225,17 @@ export default function OnboardingPage() {
           {step > 1 && (
             <button 
               onClick={prevStep} 
-              className="py-4 px-8.5 rounded-[14px] text-b-xl text-sub bg-bg-default"
+              disabled={isPending}
+              className="py-4 px-8.5 rounded-[14px] text-b-xl text-sub bg-bg-default disabled:opacity-50"
             >
               이전
             </button>
           )}
           <button
             onClick={nextStep}
-            disabled={currentConfig.isNextDisabled}
+            disabled={currentConfig.isNextDisabled || isPending}
             className={`w-53.5 py-4 rounded-[14px] text-b-xl font-medium
-              ${currentConfig.isNextDisabled 
+              ${currentConfig.isNextDisabled || isPending 
                 ? 'bg-bg-sub text-placeholder cursor-not-allowed' 
                 : 'bg-point-500 text-base-black'
               }`}
