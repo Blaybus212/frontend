@@ -52,6 +52,7 @@ export default function ViewerPage() {
   const [isPrinting, setIsPrinting] = useState(false);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
+  const noteExportRef = useRef<HTMLDivElement | null>(null);
 
   /**
    * 객체 정보 데이터
@@ -204,6 +205,7 @@ export default function ViewerPage() {
       includeSummary,
       summaryText: includeSummary ? 'AI와 대화를 나눈 기록이 없어요' : '',
       noteHtml: noteValue,
+      noteElement: noteExportRef.current,
     });
 
     setIsPrinting(false);
@@ -300,6 +302,7 @@ export default function ViewerPage() {
         objectData={objectData}
         noteValue={noteValue}
         onNoteChange={setNoteValue}
+        noteExportRef={noteExportRef}
         widthPercent={rightPanelWidthPercent}
         onResizeWidth={setRightPanelWidthPercent}
         parts={parts}

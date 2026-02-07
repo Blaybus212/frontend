@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type MutableRefObject } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -37,6 +37,7 @@ interface NoteProps {
   onInsertModelSnapshot?: (modelId: string) => Promise<string | null>;
   modelName?: string;
   modelId?: string;
+  exportContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -89,6 +90,7 @@ export function Note({
   onInsertModelSnapshot,
   modelName = '모델',
   modelId = 'model',
+  exportContainerRef,
 }: NoteProps) {
   const MarkdownHeading = Heading.extend({
     addInputRules() {
@@ -182,6 +184,7 @@ export function Note({
     extensions: [
       StarterKit.configure({
         heading: false,
+        codeBlock: false,
       }),
       MarkdownHeading.configure({
         levels: [1, 2, 3, 4, 5, 6],
@@ -320,6 +323,14 @@ export function Note({
     }
   }, [editor, value, normalizeContent]);
 
+  useEffect(() => {
+    if (!exportContainerRef) return;
+    exportContainerRef.current = editorWrapperRef.current;
+    return () => {
+      exportContainerRef.current = null;
+    };
+  }, [exportContainerRef]);
+
   /**
    * 텍스트 변경 핸들러
    * 비제어형 컴포넌트인 경우 내부 상태를 업데이트하고, onChange 콜백을 호출합니다.
@@ -448,7 +459,6 @@ function SlashMenu({ editor, query, position, range, onClose, onOpenMention }: S
       { id: 'bullet', label: '불릿 리스트', run: () => editor.chain().focus().toggleBulletList().run() },
       { id: 'ordered', label: '번호 리스트', run: () => editor.chain().focus().toggleOrderedList().run() },
       { id: 'quote', label: '인용문', run: () => {} },
-      { id: 'code', label: '코드 블록', run: () => editor.chain().focus().toggleCodeBlock().run() },
       { id: 'hr', label: '구분선', run: () => editor.chain().focus().setHorizontalRule().run() },
       { id: 'mention', label: '부품 언급', run: () => {} },
     ],
