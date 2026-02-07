@@ -19,10 +19,12 @@ import { useSelectionSync } from './hooks/useSelectionSync';
 import { useAssemblyDisassembly } from './hooks/useAssemblyDisassembly';
 import { useRenderModeHotkeys } from './hooks/useRenderModeHotkeys';
 import { useSelectionOutline } from './hooks/useSelectionOutline';
+import { useNodeSelectionGroup } from './hooks/useNodeSelectionGroup';
+import { useNodeGroupTransform } from './hooks/useNodeGroupTransform';
 import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
-import type { TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
+import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
  * 3D 씬 내부 컨텐츠를 구성합니다.
@@ -33,6 +35,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   models, 
   selectedModelIndices,
   onModelSelect,
+  onSelectedNodeIdsChange,
   onObjectInfoChange,
   assemblyValue = 0,
 }, ref) => {
@@ -42,7 +45,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const selectedNodesRef = useRef<SelectedNode[] | null>(null);
   const [selectedNodesVersion, setSelectedNodesVersion] = React.useState(0);
   const [modelRefsVersion, setModelRefsVersion] = React.useState(0);
+  const [nodeGroupVersion, setNodeGroupVersion] = React.useState(0);
   const { renderMode, viewMode } = useRenderModeHotkeys();
+  const wasDraggingRef = useRef(false);
 
   const {
     transformControlsRef,
@@ -82,10 +87,37 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     modelRefs,
   });
 
+  const nodeSelectionGroupRef = useNodeSelectionGroup({
+    selectedNodesRef,
+    selectedNodesVersion,
+    scene,
+    onGroupChanged: () => setNodeGroupVersion((prev) => prev + 1),
+  });
+
+  useNodeGroupTransform({
+    selectionGroupRef: nodeSelectionGroupRef,
+    selectedNodesRef,
+    selectedNodesVersion,
+  });
+
   useNodeTransform({
     selectedNodesRef,
     transformControlsRef,
   });
+
+  const getSelectedNodeIds = useCallback(() => {
+    const nodes = selectedNodesRef.current || [];
+    return nodes.map((node) => node.nodeId);
+  }, []);
+
+  const areSameIds = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    const setA = new Set(a);
+    for (const id of b) {
+      if (!setA.has(id)) return false;
+    }
+    return true;
+  }, []);
 
   useClickHandler({
     selectedIndices,
@@ -94,6 +126,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     onNodeSelect: (nodes) => {
       selectedNodesRef.current = nodes;
       setSelectedNodesVersion((prev) => prev + 1);
+      const nodeIds = (nodes || []).map((node) => node.nodeId);
+      onSelectedNodeIdsChange?.(nodeIds);
     },
     transformControlsRef,
     justEndedDragRef,
@@ -103,7 +137,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   if (selectedNodesRef.current && selectedNodesRef.current.length > 0) {
     selectedObjectRef = selectedNodesRef.current.length === 1
       ? selectedNodesRef.current[0].nodeRef as THREE.Object3D
-      : selectionGroupRef.current;
+      : nodeSelectionGroupRef.current;
   } else if (selectedIndices.length > 1) {
     selectedObjectRef = selectionGroupRef.current;
   } else if (selectedIndices.length === 1) {
@@ -132,6 +166,82 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       assemblyValue
     );
   }, [camera, orbitControlsRef, assemblyValue]);
+
+  const getSelectableParts = useCallback((): SelectablePart[] => {
+    const partsMap = new Map<string, SelectablePart>();
+    modelRefs.current.forEach((modelRef, modelIndex) => {
+      if (!modelRef) return;
+      modelRef.traverse((node) => {
+        const nodeId = node.userData?.nodeId;
+        const selectable = node.userData?.selectable === true;
+        if (!nodeId || !selectable) return;
+        if (!partsMap.has(nodeId)) {
+          partsMap.set(nodeId, {
+            nodeId,
+            nodeName: node.userData?.nodeName || node.name || nodeId,
+            modelIndex,
+          });
+        }
+      });
+    });
+    return Array.from(partsMap.values());
+  }, [modelRefsVersion]);
+
+  const setSelectedNodeIds = useCallback(
+    (nodeIds: string[]) => {
+      const currentIds = getSelectedNodeIds();
+      if (areSameIds(currentIds, nodeIds)) {
+        return;
+      }
+
+      if (!nodeIds.length) {
+        selectedNodesRef.current = null;
+        setSelectedNodesVersion((prev) => prev + 1);
+        onModelSelect([]);
+        onSelectedNodeIdsChange?.([]);
+        return;
+      }
+
+      const targetIds = new Set(nodeIds);
+      const selectedNodesMap = new Map<string, SelectedNode>();
+
+      modelRefs.current.forEach((modelRef, modelIndex) => {
+        if (!modelRef) return;
+        modelRef.traverse((node) => {
+          const nodeId = node.userData?.nodeId;
+          const selectable = node.userData?.selectable === true;
+          if (!nodeId || !selectable || !targetIds.has(nodeId)) return;
+
+          const existing = selectedNodesMap.get(nodeId);
+          const isGroup = node instanceof THREE.Group;
+          if (!existing || (isGroup && !(existing.nodeRef instanceof THREE.Group))) {
+            selectedNodesMap.set(nodeId, {
+              modelIndex,
+              nodeId,
+              nodeRef: node,
+            });
+          }
+        });
+      });
+
+      const selectedNodes = Array.from(selectedNodesMap.values());
+      selectedNodesRef.current = selectedNodes.length ? selectedNodes : null;
+      setSelectedNodesVersion((prev) => prev + 1);
+      const modelIndices = Array.from(new Set(selectedNodes.map((n) => n.modelIndex)));
+      onModelSelect(modelIndices);
+      onSelectedNodeIdsChange?.(selectedNodes.map((node) => node.nodeId));
+    },
+    [areSameIds, getSelectedNodeIds, onModelSelect, onSelectedNodeIdsChange]
+  );
+
+  const handleResetToAssembly = useCallback(() => {
+    // 선택 여부와 상관없이 원상 복귀하도록 선택 상태를 초기화
+    selectedNodesRef.current = null;
+    setSelectedNodesVersion((prev) => prev + 1);
+    onModelSelect([]);
+    onSelectedNodeIdsChange?.([]);
+    resetToAssembly();
+  }, [onModelSelect, onSelectedNodeIdsChange, resetToAssembly]);
   useSelectionOutline({
     selectedNodesRef,
     selectedNodesVersion,
@@ -139,12 +249,38 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     modelRefs,
   });
 
+  React.useEffect(() => {
+    const controls = transformControlsRef.current;
+    if (!controls) return;
+
+    const handleDraggingChanged = (event: { value: boolean }) => {
+      if (event.value) {
+        wasDraggingRef.current = true;
+        return;
+      }
+      if (wasDraggingRef.current) {
+        justEndedDragRef.current = true;
+        setTimeout(() => {
+          justEndedDragRef.current = false;
+        }, 80);
+      }
+      wasDraggingRef.current = false;
+    };
+
+    controls.addEventListener('dragging-changed', handleDraggingChanged);
+    return () => {
+      controls.removeEventListener('dragging-changed', handleDraggingChanged);
+    };
+  }, [transformControlsRef, justEndedDragRef]);
+
   useImperativeHandle(ref, () => ({
     exportScene: handleExportScene,
     updateObjectTransform,
     setTransformMode,
     getSceneState,
-    resetToAssembly,
+    resetToAssembly: handleResetToAssembly,
+    getSelectableParts,
+    setSelectedNodeIds,
   }));
 
   return (

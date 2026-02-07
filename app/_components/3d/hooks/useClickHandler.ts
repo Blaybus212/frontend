@@ -77,6 +77,8 @@ export function useClickHandler({
 }: UseClickHandlerProps) {
   /** 현재 선택된 노드들 */
   const selectedNodesRef = useRef<SelectedNode[]>([]);
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isPointerDraggingRef = useRef(false);
   const { camera, gl, scene } = useThree();
   /** 레이캐스팅을 위한 Raycaster 객체 (클릭한 위치에서 광선을 발사하여 객체와의 교차를 검사) */
   const raycaster = useRef(new THREE.Raycaster());
@@ -95,21 +97,18 @@ export function useClickHandler({
      * 
      * @param event - 마우스 클릭 이벤트 객체
      */
-    const handleClick = (event: MouseEvent) => {
-      // TransformControls로 객체를 드래그 중일 때는 클릭 이벤트 무시
-      // (드래그 종료 시 클릭으로 인식되는 것을 방지)
+    const handleSelection = (event: PointerEvent) => {
       if (transformControlsRef.current?.dragging) {
         return;
       }
-      
-      // OrbitControls의 드래그가 방금 끝났는지 확인
-      // 마우스를 뗄 때 클릭 이벤트가 발생하는 것을 방지
-      // 단, 너무 오래 막지 않도록 짧은 시간만 체크
-      // justEndedDragRef가 true이면 리셋하고 계속 진행 (드래그 종료 직후 클릭만 막음)
+
       if (justEndedDragRef?.current) {
         justEndedDragRef.current = false;
-        // 드래그 종료 직후 클릭은 무시하지 않고 계속 진행
-        // (실제로는 드래그가 끝난 직후 클릭이 발생하는 경우는 드물기 때문)
+        return;
+      }
+
+      if (isPointerDraggingRef.current) {
+        return;
       }
 
       // 캔버스 요소의 위치와 크기 정보 가져오기
@@ -244,7 +243,7 @@ export function useClickHandler({
         // 선택 가능한 노드를 찾지 못했으면 선택 불가능
         if (!clickedNode || !nodeId) {
           // 빈 공간 클릭과 동일하게 처리
-          if (!(event.ctrlKey || event.metaKey)) {
+          if (!(event.ctrlKey || event.metaKey || event.shiftKey)) {
             selectedNodesRef.current = [];
             onModelSelect([]);
             if (onNodeSelect) {
@@ -256,8 +255,8 @@ export function useClickHandler({
 
         // 모델을 찾은 경우 선택 처리
         if (foundIndex >= 0 && clickedNode && nodeId) {
-          // Ctrl (Windows) 또는 Cmd (Mac) 키가 눌려있는지 확인
-          const isMultiSelect = event.ctrlKey || event.metaKey;
+          // Ctrl (Windows) 또는 Cmd (Mac) 또는 Shift 키가 눌려있는지 확인
+          const isMultiSelect = event.ctrlKey || event.metaKey || event.shiftKey;
           
           const newSelectedNode: SelectedNode = {
             modelIndex: foundIndex,
@@ -301,7 +300,7 @@ export function useClickHandler({
         }
       } else {
         // 빈 공간을 클릭한 경우: Ctrl/Cmd 키가 눌려있지 않으면 모든 선택 해제
-        if (!(event.ctrlKey || event.metaKey)) {
+        if (!(event.ctrlKey || event.metaKey || event.shiftKey)) {
           selectedNodesRef.current = [];
           onModelSelect([]);
           if (onNodeSelect) {
@@ -311,10 +310,45 @@ export function useClickHandler({
       }
     };
 
-    gl.domElement.addEventListener('click', handleClick);
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerDownPosRef.current = { x: event.clientX, y: event.clientY };
+      isPointerDraggingRef.current = false;
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!pointerDownPosRef.current) return;
+      const dx = event.clientX - pointerDownPosRef.current.x;
+      const dy = event.clientY - pointerDownPosRef.current.y;
+      if (Math.hypot(dx, dy) > 3) {
+        isPointerDraggingRef.current = true;
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (isPointerDraggingRef.current) {
+        if (justEndedDragRef) {
+          justEndedDragRef.current = true;
+          setTimeout(() => {
+            if (justEndedDragRef) {
+              justEndedDragRef.current = false;
+            }
+          }, 50);
+        }
+      }
+      pointerDownPosRef.current = null;
+      isPointerDraggingRef.current = false;
+    };
+
+    gl.domElement.addEventListener('pointerdown', handlePointerDown);
+    gl.domElement.addEventListener('pointermove', handlePointerMove);
+    gl.domElement.addEventListener('pointerup', handlePointerUp);
+    gl.domElement.addEventListener('pointerup', handleSelection);
     
     return () => {
-      gl.domElement.removeEventListener('click', handleClick);
+      gl.domElement.removeEventListener('pointerdown', handlePointerDown);
+      gl.domElement.removeEventListener('pointermove', handlePointerMove);
+      gl.domElement.removeEventListener('pointerup', handlePointerUp);
+      gl.domElement.removeEventListener('pointerup', handleSelection);
     };
   }, [camera, gl, scene, modelRefs, onModelSelect, onNodeSelect, selectedIndices, transformControlsRef, justEndedDragRef]);
 }

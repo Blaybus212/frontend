@@ -5,7 +5,7 @@
  */
 
 import { ViewerIcon } from './ViewerIcon';
-import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon } from './icons';
+import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon } from './icons';
 
 /**
  * ViewerSidebar 컴포넌트의 Props 인터페이스
@@ -93,6 +93,13 @@ export function ViewerSidebar({
         <span className="text-b-sm font-weight-semibold text-text-title">퀴즈</span>
         <span className="text-b-xs text-point-500">50%</span>
       </button>
+
+      <ViewerIcon
+        icon={<HamburgerIcon />}
+        selected={selectedIcon === 'parts'}
+        onClick={() => onIconSelect('parts')}
+        aria-label="부품 리스트"
+      />
 
       {/* AI 패널 열기 버튼: AI 아이콘이 하단에 고정되어 있으며, 클릭 시 AI 패널을 엽니다 */}
       {!isAiPanelOpen && (

@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel } from '@/app/_components/viewer';
+import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
-import type { Scene3DRef } from '@/app/_components/3d/types';
+import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -42,6 +42,9 @@ export default function ViewerPage() {
   const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]);
   /** AI 패널 표시 여부 */
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [isPartsOpen, setIsPartsOpen] = useState(false);
+  const [parts, setParts] = useState<SelectablePart[]>([]);
+  const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
 
@@ -74,7 +77,32 @@ export default function ViewerPage() {
     if (iconId === 'refresh') {
       scene3DRef.current?.resetToAssembly();
     }
+    if (iconId === 'parts') {
+      setIsPartsOpen((prev) => !prev);
+    }
   };
+
+  useEffect(() => {
+    if (!isPartsOpen) return;
+    const list = scene3DRef.current?.getSelectableParts() || [];
+    setParts(list);
+  }, [isPartsOpen]);
+
+  useEffect(() => {
+    if (!scene3DRef.current) return;
+    scene3DRef.current.setSelectedNodeIds(selectedPartIds);
+  }, [selectedPartIds]);
+
+  const updateSelectedPartIds = (nextIds: string[]) => {
+    setSelectedPartIds((prev) => {
+      if (prev.length === nextIds.length && nextIds.every((id) => prev.includes(id))) {
+        return prev;
+      }
+      return nextIds;
+    });
+  };
+
+  const allPartIds = useMemo(() => parts.map((part) => part.nodeId), [parts]);
 
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
@@ -85,6 +113,7 @@ export default function ViewerPage() {
           models={models}
           selectedModelIndices={selectedModelIndices}
           onModelSelect={setSelectedModelIndices}
+          onSelectedNodeIdsChange={updateSelectedPartIds}
           assemblyValue={assemblyValue}
         />
       </div>
@@ -119,6 +148,24 @@ export default function ViewerPage() {
         isAiPanelOpen={isAiPanelOpen}
         onOpenAiPanel={() => setIsAiPanelOpen(true)}
       />
+
+      {isPartsOpen && (
+        <div className="absolute left-[112px] top-[210px] z-20">
+          <PartsListPanel
+            parts={parts}
+            selectedIds={selectedPartIds}
+            onTogglePart={(nodeId) => {
+              setSelectedPartIds((prev) =>
+                prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
+              );
+            }}
+            onToggleAll={() => {
+              setSelectedPartIds((prev) => (prev.length === allPartIds.length ? [] : allPartIds));
+            }}
+            onClose={() => setIsPartsOpen(false)}
+          />
+        </div>
+      )}
 
       {/* 조립/분해 슬라이더 */}
       <AssemblySlider
