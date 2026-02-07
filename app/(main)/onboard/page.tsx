@@ -37,6 +37,7 @@ export default function OnboardingPage() {
       isNextDisabled: !formData.themeColor || !formData.persona,
     }
   };
+  const stepNumbers = Object.keys(stepConfigs).map(Number);
 
   const currentConfig = stepConfigs[step as keyof typeof stepConfigs];
 
@@ -45,7 +46,7 @@ export default function OnboardingPage() {
       
       {/* 1. [좌측 사이드바] Stepper */}
       <aside className="flex flex-col items-center">
-        {[1, 2, 3, 4].map((num) => (
+        {stepNumbers.map((num) => (
           <div key={num} className="flex flex-col items-center">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-b-md font-medium transition-all duration-500
                 ${step >= num ? 'bg-point-500 text-base-black border border-point-500' : 'bg-surface text-sub3 border border-bg-default'}`}>
