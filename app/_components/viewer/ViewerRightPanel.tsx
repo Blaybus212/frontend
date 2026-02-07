@@ -7,6 +7,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Note } from './Note';
 import { ObjectInfoPanel } from './ObjectInfoPanel';
+import type { SelectablePart } from '@/app/_components/3d/types';
 
 /**
  * 객체 정보 데이터 타입
@@ -38,6 +39,16 @@ interface ViewerRightPanelProps {
   widthPercent: number;
   /** 우측 패널 너비 변경 핸들러 */
   onResizeWidth: (nextWidthPercent: number) => void;
+  /** 노트에서 사용할 부품 목록 */
+  parts: SelectablePart[];
+  /** 부품 스냅샷을 생성하는 함수 */
+  onInsertPartSnapshot: (nodeId: string) => Promise<string | null>;
+  /** 모델 스냅샷을 생성하는 함수 */
+  onInsertModelSnapshot: (modelId: string) => Promise<string | null>;
+  /** 모델 이름(전체 선택용) */
+  modelName: string;
+  /** 모델 id(전체 선택용) */
+  modelId: string;
 }
 
 /**
@@ -67,6 +78,11 @@ export function ViewerRightPanel({
   onNoteChange,
   widthPercent,
   onResizeWidth,
+  parts,
+  onInsertPartSnapshot,
+  onInsertModelSnapshot,
+  modelName,
+  modelId,
 }: ViewerRightPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -232,6 +248,11 @@ export function ViewerRightPanel({
             onChange={onNoteChange}
             placeholder="메모를 입력하세요..."
             className="flex-1 flex flex-col"
+            parts={parts}
+            onInsertPartSnapshot={onInsertPartSnapshot}
+            onInsertModelSnapshot={onInsertModelSnapshot}
+            modelName={modelName}
+            modelId={modelId}
           />
         </div>
       </div>

@@ -46,6 +46,7 @@ export default function ViewerPage() {
   const [parts, setParts] = useState<SelectablePart[]>([]);
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
+  const [modelRootName, setModelRootName] = useState<string>('모델');
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
 
@@ -110,6 +111,24 @@ export default function ViewerPage() {
   }, [isPartsOpen]);
 
   useEffect(() => {
+    const name = scene3DRef.current?.getModelRootName();
+    if (name) {
+      setModelRootName(name);
+    }
+  }, [models]);
+
+  useEffect(() => {
+    if (parts.length > 0) return;
+    const timeoutId = window.setTimeout(() => {
+      const list = scene3DRef.current?.getSelectableParts() || [];
+      if (list.length > 0) {
+        setParts(list);
+      }
+    }, 500);
+    return () => window.clearTimeout(timeoutId);
+  }, [parts.length]);
+
+  useEffect(() => {
     if (!scene3DRef.current) return;
     scene3DRef.current.setSelectedNodeIds(selectedPartIds);
   }, [selectedPartIds]);
@@ -148,7 +167,7 @@ export default function ViewerPage() {
           className="absolute z-20"
           style={{
             left: '7%',
-            width: '62.5%',
+            right: `calc(${rightPanelWidthPercent}% + 12px)`,
             top: 0,
             bottom: 0,
             pointerEvents: 'none',
@@ -205,6 +224,15 @@ export default function ViewerPage() {
         onNoteChange={setNoteValue}
         widthPercent={rightPanelWidthPercent}
         onResizeWidth={setRightPanelWidthPercent}
+        parts={parts}
+        onInsertPartSnapshot={async (nodeId) => {
+          return scene3DRef.current?.capturePartSnapshot(nodeId) ?? null;
+        }}
+        onInsertModelSnapshot={async (modelId) => {
+          return scene3DRef.current?.captureModelSnapshot(modelId) ?? null;
+        }}
+        modelName={modelRootName}
+        modelId={models[0]?.id ?? 'model'}
       />
 
     </div>

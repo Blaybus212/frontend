@@ -39,14 +39,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   onObjectInfoChange,
   assemblyValue = 0,
 }, ref) => {
-  const { scene, camera } = useThree();
+  const { scene, camera, gl } = useThree();
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
   const justEndedDragRef = useRef(false);
   const selectedNodesRef = useRef<SelectedNode[] | null>(null);
   const [selectedNodesVersion, setSelectedNodesVersion] = React.useState(0);
   const [modelRefsVersion, setModelRefsVersion] = React.useState(0);
   const [nodeGroupVersion, setNodeGroupVersion] = React.useState(0);
-  const { renderMode, viewMode } = useRenderModeHotkeys();
+  const { renderMode, viewMode, setRenderMode, setViewMode } = useRenderModeHotkeys();
   const wasDraggingRef = useRef(false);
 
   const {
@@ -208,6 +208,168 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     zoomCamera(1.1);
   }, [zoomCamera]);
 
+  const findNodeById = useCallback(
+    (nodeId: string) => {
+      let found: THREE.Object3D | null = null;
+      modelRefs.current.forEach((modelRef) => {
+        if (!modelRef || found) return;
+        modelRef.traverse((node) => {
+          if (found) return;
+          if (node.userData?.nodeId === nodeId) {
+            found = node as THREE.Object3D;
+          }
+        });
+      });
+      return found;
+    },
+    [modelRefsVersion]
+  );
+
+  const findModelRootById = useCallback(
+    (modelId: string) => {
+      let found: THREE.Group | null = null;
+      models.forEach((model, index) => {
+        if (found || model.id !== modelId) return;
+        const modelRef = modelRefs.current.get(index);
+        if (modelRef) {
+          found = modelRef;
+        }
+      });
+      return found;
+    },
+    [models, modelRefsVersion]
+  );
+
+  const captureObjectSnapshot = useCallback(
+    async (targetObject: THREE.Object3D, options?: { includeOnlyTarget?: boolean }) => {
+      const prevViewMode = viewMode;
+      const prevRenderMode = renderMode;
+      setViewMode('lit');
+      setRenderMode('normal');
+
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+      const visibilityMap = new Map<THREE.Object3D, boolean>();
+      const revealSet = new Set<THREE.Object3D>();
+
+      if (options?.includeOnlyTarget !== false) {
+        modelRefs.current.forEach((modelRef) => {
+          if (!modelRef) return;
+          modelRef.traverse((obj) => {
+            visibilityMap.set(obj, obj.visible);
+            obj.visible = false;
+          });
+        });
+
+        let current: THREE.Object3D | null = targetObject;
+        while (current) {
+          revealSet.add(current);
+          current = current.parent as THREE.Object3D | null;
+        }
+        targetObject.traverse((obj: THREE.Object3D) => revealSet.add(obj));
+        revealSet.forEach((obj) => {
+          obj.visible = true;
+        });
+      }
+
+      const box = new THREE.Box3().setFromObject(targetObject);
+      if (box.isEmpty()) {
+        visibilityMap.forEach((visible, obj) => {
+          obj.visible = visible;
+        });
+        setViewMode(prevViewMode);
+        setRenderMode(prevRenderMode);
+        return null;
+      }
+
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = (camera as THREE.PerspectiveCamera).fov || 50;
+      const distance = (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.6;
+
+      const controlsTarget = orbitControlsRef.current?.target?.clone() ?? center.clone();
+      const direction = camera.position.clone().sub(controlsTarget).normalize();
+
+      const snapshotCamera = (camera as THREE.PerspectiveCamera).clone();
+      snapshotCamera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
+      snapshotCamera.lookAt(center);
+      snapshotCamera.updateProjectionMatrix();
+
+      const width = 640;
+      const height = 640;
+      const renderTarget = new THREE.WebGLRenderTarget(width, height);
+      const prevTarget = gl.getRenderTarget();
+      const prevAutoClear = gl.autoClear;
+      gl.autoClear = true;
+      gl.setRenderTarget(renderTarget);
+      gl.render(scene, snapshotCamera);
+
+      const buffer = new Uint8Array(width * height * 4);
+      gl.readRenderTargetPixels(renderTarget, 0, 0, width, height, buffer);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        renderTarget.dispose();
+        gl.setRenderTarget(prevTarget);
+        gl.autoClear = prevAutoClear;
+        visibilityMap.forEach((visible, obj) => {
+          obj.visible = visible;
+        });
+        setViewMode(prevViewMode);
+        setRenderMode(prevRenderMode);
+        return null;
+      }
+
+      const imageData = ctx.createImageData(width, height);
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const srcIndex = ((height - 1 - y) * width + x) * 4;
+          const dstIndex = (y * width + x) * 4;
+          imageData.data[dstIndex] = buffer[srcIndex];
+          imageData.data[dstIndex + 1] = buffer[srcIndex + 1];
+          imageData.data[dstIndex + 2] = buffer[srcIndex + 2];
+          imageData.data[dstIndex + 3] = buffer[srcIndex + 3];
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      renderTarget.dispose();
+      gl.setRenderTarget(prevTarget);
+      gl.autoClear = prevAutoClear;
+      visibilityMap.forEach((visible, obj) => {
+        obj.visible = visible;
+      });
+      setViewMode(prevViewMode);
+      setRenderMode(prevRenderMode);
+
+      return canvas.toDataURL('image/png');
+    },
+    [camera, gl, orbitControlsRef, renderMode, scene, setRenderMode, setViewMode, viewMode]
+  );
+
+  const capturePartSnapshot = useCallback(
+    async (nodeId: string) => {
+      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
+      if (!targetNode) return null;
+      return captureObjectSnapshot(targetNode, { includeOnlyTarget: true });
+    },
+    [captureObjectSnapshot, findNodeById]
+  );
+
+  const captureModelSnapshot = useCallback(
+    async (modelId: string) => {
+      const modelRoot = findModelRootById(modelId);
+      if (!modelRoot) return null;
+      return captureObjectSnapshot(modelRoot, { includeOnlyTarget: false });
+    },
+    [captureObjectSnapshot, findModelRootById]
+  );
+
   const handleExportScene = useCallback(() => {
     exportScene(modelRefs.current, models);
   }, [models]);
@@ -241,6 +403,16 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     });
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
+
+  const getModelRootName = useCallback(() => {
+    const firstModel = models[0];
+    if (!firstModel) return null;
+    const modelRef = modelRefs.current.get(0);
+    if (!modelRef) return null;
+    const name = modelRef.name || modelRef.userData?.name;
+    if (typeof name === 'string' && name.trim().length > 0) return name;
+    return firstModel.id;
+  }, [models]);
 
   const setSelectedNodeIds = useCallback(
     (nodeIds: string[]) => {
@@ -338,6 +510,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     setSelectedNodeIds,
     zoomIn,
     zoomOut,
+    capturePartSnapshot,
+    captureModelSnapshot,
+    getModelRootName,
   }));
 
   return (
