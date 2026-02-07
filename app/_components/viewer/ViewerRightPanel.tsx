@@ -216,10 +216,12 @@ export function ViewerRightPanel({
       style={{ width: `${widthPercent}%` }}
     >
       <div
-        className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize"
+        className="absolute left-0 top-0 bottom-0 w-3 cursor-col-resize"
         onPointerDown={handleWidthResizeStart}
         aria-label="우측 패널 너비 조절"
-      />
+      >
+        <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-[4px] h-16 bg-border-default opacity-80 rounded-full" />
+      </div>
 
       <div
         ref={contentRef}
