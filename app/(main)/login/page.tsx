@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { data: session } = useSession();
 
   const handleLogin = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -28,7 +29,11 @@ export default function LoginPage() {
       console.error(result?.error);
       setIsLoading(false);
     } else {
-      router.push('/home');
+      if (session?.loginUser?.isFinishOnboard) {
+        router.push('/home');
+      } else {
+        router.push('/onboard');
+      }
       router.refresh();
     }
   };
@@ -78,11 +83,11 @@ export default function LoginPage() {
           <div className="flex flex-col gap-[7.5px]">
             <label className="text-b-md font-regular text-sub2">아이디</label>
             <input
-              type="email"
+              type="username"
               placeholder="아이디를 입력하세요"
               className="w-full rounded-xl bg-bg-default px-4 py-3.25 text-base-white placeholder-sub outline-none transition focus:ring-2 focus:ring-border-focus"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>
