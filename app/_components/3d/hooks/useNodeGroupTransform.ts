@@ -6,6 +6,7 @@ interface UseNodeGroupTransformProps {
   selectionGroupRef: React.MutableRefObject<THREE.Group | null>;
   selectedNodesRef: React.MutableRefObject<SelectedNode[] | null>;
   selectedNodesVersion: number;
+  transformControlsRef: React.MutableRefObject<any>;
 }
 
 /**
@@ -15,8 +16,13 @@ export function useNodeGroupTransform({
   selectionGroupRef,
   selectedNodesRef,
   selectedNodesVersion,
+  transformControlsRef,
 }: UseNodeGroupTransformProps) {
   useFrame(() => {
+    if (!transformControlsRef.current?.dragging) {
+      return;
+    }
+
     const group = selectionGroupRef.current;
     const nodes = selectedNodesRef.current || [];
     if (!group || nodes.length <= 1) return;
@@ -55,6 +61,20 @@ export function useNodeGroupTransform({
         initialScale.y * groupScale.y,
         initialScale.z * groupScale.z
       );
+
+      if (!obj.userData.userModifiedPosition) {
+        obj.userData.userModifiedPosition = new THREE.Vector3();
+      }
+      if (!obj.userData.userModifiedRotation) {
+        obj.userData.userModifiedRotation = new THREE.Euler();
+      }
+      if (!obj.userData.userModifiedScale) {
+        obj.userData.userModifiedScale = new THREE.Vector3();
+      }
+      obj.userData.userModifiedPosition.copy(obj.position);
+      obj.userData.userModifiedRotation.copy(obj.rotation);
+      obj.userData.userModifiedScale.copy(obj.scale);
+      obj.userData.isUserModified = true;
     });
   });
 }

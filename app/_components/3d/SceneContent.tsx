@@ -61,6 +61,36 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     selectedModelIndices,
   });
 
+  React.useEffect(() => {
+    const handleTransformHotkeys = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName?.toLowerCase();
+        const isEditable =
+          tagName === 'input' ||
+          tagName === 'textarea' ||
+          (target as HTMLElement).isContentEditable;
+        if (isEditable) return;
+      }
+
+      if (event.key === '4') {
+        event.preventDefault();
+        setTransformMode('translate');
+      } else if (event.key === '5') {
+        event.preventDefault();
+        setTransformMode('rotate');
+      } else if (event.key === '6') {
+        event.preventDefault();
+        setTransformMode('scale');
+      }
+    };
+
+    window.addEventListener('keydown', handleTransformHotkeys);
+    return () => {
+      window.removeEventListener('keydown', handleTransformHotkeys);
+    };
+  }, [setTransformMode]);
+
   const { onOrbitStart, onOrbitEnd, onModelLoaded } = useCameraAdjustment({
     models,
     modelRefs,
@@ -92,12 +122,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     selectedNodesVersion,
     scene,
     onGroupChanged: () => setNodeGroupVersion((prev) => prev + 1),
+    transformControlsRef,
   });
 
   useNodeGroupTransform({
     selectionGroupRef: nodeSelectionGroupRef,
     selectedNodesRef,
     selectedNodesVersion,
+    transformControlsRef,
   });
 
   useNodeTransform({

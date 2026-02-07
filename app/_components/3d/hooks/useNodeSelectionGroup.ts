@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SelectedNode } from './useClickHandler';
 
@@ -7,6 +8,7 @@ interface UseNodeSelectionGroupProps {
   selectedNodesVersion: number;
   scene: THREE.Scene;
   onGroupChanged?: () => void;
+  transformControlsRef?: React.MutableRefObject<any>;
 }
 
 /**
@@ -17,6 +19,7 @@ export function useNodeSelectionGroup({
   selectedNodesVersion,
   scene,
   onGroupChanged,
+  transformControlsRef,
 }: UseNodeSelectionGroupProps) {
   const selectionGroupRef = useRef<THREE.Group | null>(null);
 
@@ -65,6 +68,21 @@ export function useNodeSelectionGroup({
       node.nodeRef.userData.nodeSelectionVersion = selectedNodesVersion;
     });
   }, [selectedNodesRef, selectedNodesVersion, scene]);
+
+  useFrame(() => {
+    const nodes = selectedNodesRef.current || [];
+    const group = selectionGroupRef.current;
+    if (!group || nodes.length <= 1) return;
+    if (transformControlsRef?.current?.dragging) return;
+
+    const center = new THREE.Vector3();
+    nodes.forEach((node) => {
+      node.nodeRef.updateMatrixWorld(true);
+      center.add(new THREE.Vector3().setFromMatrixPosition(node.nodeRef.matrixWorld));
+    });
+    center.divideScalar(nodes.length);
+    group.position.copy(center);
+  });
 
   return selectionGroupRef;
 }
