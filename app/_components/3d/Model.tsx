@@ -74,6 +74,16 @@ export function Model({
     let nodeIdCounter = 0;
     
     clonedScene.traverse((child) => {
+      // 최상위/루트 그룹 노드는 전체 객체이므로 선택 대상에서 제외
+      if (child === clonedScene || child.parent === null) {
+        child.userData.selectable = false;
+        return;
+      }
+      if (child.parent === clonedScene && child.children.length > 0) {
+        child.userData.selectable = false;
+        return;
+      }
+
       if (isSelectablePart(child)) {
         // 각 노드에 고유 ID 부여
         const nodeId = `node_${nodeIdCounter++}`;

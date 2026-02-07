@@ -317,6 +317,45 @@ export function RefreshIcon({ size = 24, color = 'currentColor' }: IconProps) {
 }
 
 /**
+ * 햄버거/목록 아이콘 컴포넌트
+ *
+ * 부품 리스트를 여는 메뉴 아이콘입니다.
+ */
+export function HamburgerIcon({ size = 24, color = 'currentColor' }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4 6H20"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 12H20"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 18H20"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
  * 별/스파클 아이콘 컴포넌트
  * 
  * 즐겨찾기나 중요 표시 기능을 나타내는 별 모양 아이콘입니다.

@@ -13,5 +13,6 @@ export type { MentionItem } from './MentionDropdown';
 export { AiPanel } from './AiPanel';
 export { ViewerSidebar } from './ViewerSidebar';
 export { AssemblySlider } from './AssemblySlider';
+export { PartsListPanel } from './PartsListPanel';
 export { ObjectInfoPanel } from './ObjectInfoPanel';
 export { ViewerRightPanel } from './ViewerRightPanel';
