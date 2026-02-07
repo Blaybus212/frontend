@@ -8,6 +8,14 @@ import Heading from '@tiptap/extension-heading';
 import { textblockTypeInputRule, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
 import type { SelectablePart } from '@/app/_components/3d/types';
+import {
+  NOTE_EDITOR_CONTENT_MIN_HEIGHT_PX,
+  NOTE_EDITOR_MIN_HEIGHT_PX,
+  NOTE_HEADING_LEVELS,
+  NOTE_MENU_OFFSET_PX,
+  NOTE_PLACEHOLDER,
+  NOTE_TEXT_LOOKBACK,
+} from './constants';
 
 /**
  * Note 컴포넌트의 Props 인터페이스
@@ -84,7 +92,7 @@ export function Note({
   onBlur,
   onClick,
   className = '',
-  placeholder = '메모를 입력하세요...',
+  placeholder = NOTE_PLACEHOLDER,
   parts = [],
   onInsertPartSnapshot,
   onInsertModelSnapshot,
@@ -187,7 +195,7 @@ export function Note({
         codeBlock: false,
       }),
       MarkdownHeading.configure({
-        levels: [1, 2, 3, 4, 5, 6],
+        levels: NOTE_HEADING_LEVELS,
       }),
       Placeholder.configure({
         placeholder,
@@ -201,8 +209,8 @@ export function Note({
     content: normalizeContent(value ?? ''),
     editorProps: {
       attributes: {
-        class:
-          'note-editor w-full min-h-[120px] outline-none text-text-title text-b-lg leading-relaxed',
+        class: 'note-editor w-full outline-none text-text-title text-b-lg leading-relaxed',
+        style: `min-height: ${NOTE_EDITOR_CONTENT_MIN_HEIGHT_PX}px;`,
       },
       handleKeyDown: (_view, event): boolean => {
         const current = editorInstanceRef.current;
@@ -237,7 +245,7 @@ export function Note({
       const { state, view } = editor;
       const { from } = state.selection;
       const textBefore = state.doc.textBetween(
-        Math.max(0, from - 200),
+        Math.max(0, from - NOTE_TEXT_LOOKBACK),
         from,
         '\n',
         '\n'
@@ -259,7 +267,7 @@ export function Note({
           query,
           from: mentionFrom,
           to: mentionTo,
-          top: top + 6,
+          top: top + NOTE_MENU_OFFSET_PX,
           left,
         });
         if (slashState.open) {
@@ -280,7 +288,7 @@ export function Note({
           query,
           from: slashFrom,
           to: slashTo,
-          top: top + 6,
+          top: top + NOTE_MENU_OFFSET_PX,
           left,
         });
         if (mentionState.open) {
@@ -371,7 +379,7 @@ export function Note({
       <div
         className={`
           w-full
-          ${className.includes('flex-1') ? 'flex-1 min-h-0' : 'min-h-[200px]'}
+          ${className.includes('flex-1') ? 'flex-1 min-h-0' : ''}
           p-4
           rounded-2xl
           bg-bg-sub
@@ -388,6 +396,7 @@ export function Note({
         style={{
           position: 'relative',
           border: `1px solid ${getBorderColor()}`,
+          minHeight: className.includes('flex-1') ? undefined : NOTE_EDITOR_MIN_HEIGHT_PX,
         }}
       >
         {editor ? (
@@ -412,7 +421,7 @@ export function Note({
                     query: '',
                     from: editor.state.selection.from,
                     to: editor.state.selection.from,
-                    top: top + 6,
+                    top: top + NOTE_MENU_OFFSET_PX,
                     left,
                   });
                 }}

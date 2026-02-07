@@ -24,6 +24,8 @@ import { useNodeGroupTransform } from './hooks/useNodeGroupTransform';
 import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
+import { SELECTION_SYNC_DELAY_MS, TRANSFORM_HOTKEYS, ZOOM_SCALE } from './constants';
+import { captureObjectSnapshotImage } from './utils/snapshotUtils';
 import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
@@ -73,13 +75,13 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         if (isEditable) return;
       }
 
-      if (event.key === '4') {
+      if (event.key === TRANSFORM_HOTKEYS.TRANSLATE) {
         event.preventDefault();
         setTransformMode('translate');
-      } else if (event.key === '5') {
+      } else if (event.key === TRANSFORM_HOTKEYS.ROTATE) {
         event.preventDefault();
         setTransformMode('rotate');
-      } else if (event.key === '6') {
+      } else if (event.key === TRANSFORM_HOTKEYS.SCALE) {
         event.preventDefault();
         setTransformMode('scale');
       }
@@ -201,11 +203,11 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   );
 
   const zoomIn = useCallback(() => {
-    zoomCamera(0.9);
+    zoomCamera(ZOOM_SCALE.IN);
   }, [zoomCamera]);
 
   const zoomOut = useCallback(() => {
-    zoomCamera(1.1);
+    zoomCamera(ZOOM_SCALE.OUT);
   }, [zoomCamera]);
 
   const findNodeById = useCallback(
@@ -245,159 +247,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       targetObject: THREE.Object3D,
       options?: { includeOnlyTarget?: boolean; viewMode?: 'lit' | 'dim' | 'wireframe'; renderMode?: 'normal' | 'wireframe' }
     ) => {
-      const mode = options?.viewMode ?? 'lit';
-      const renderStyle = options?.renderMode ?? 'normal';
-
-      targetObject.updateWorldMatrix(true, true);
-      const userDataMap = new Map<THREE.Object3D, any>();
-      targetObject.traverse((obj) => {
-        userDataMap.set(obj, obj.userData);
-        obj.userData = {};
-      });
-      let clone: THREE.Object3D;
-      try {
-        clone = targetObject.clone(true);
-      } finally {
-        userDataMap.forEach((data, obj) => {
-          obj.userData = data;
-        });
-      }
-      clone.applyMatrix4(targetObject.matrixWorld);
-
-      clone.traverse((obj) => {
-        if (!(obj as THREE.Mesh).isMesh) return;
-        const mesh = obj as THREE.Mesh;
-        const original = mesh.material;
-        const cloneMaterial = (mat?: THREE.Material): THREE.Material =>
-          mat ? mat.clone() : new THREE.MeshStandardMaterial();
-        if (Array.isArray(original)) {
-          mesh.material = original.map((mat) => cloneMaterial(mat));
-        } else {
-          mesh.material = cloneMaterial(original);
-        }
-
-        if (renderStyle === 'wireframe') {
-          const makeWire = (mat?: THREE.Material) => {
-            const source = mat as THREE.MeshStandardMaterial | undefined;
-            const color = source?.color ? source.color.clone() : new THREE.Color(0.85, 0.85, 0.85);
-            return new THREE.MeshBasicMaterial({ color, wireframe: true });
-          };
-          if (Array.isArray(mesh.material)) {
-            mesh.material = mesh.material.map((mat) => makeWire(mat));
-          } else {
-            mesh.material = makeWire(mesh.material);
-          }
-          return;
-        }
-
-        const boostMaterial = (mat?: THREE.Material) => {
-          if (!mat || !(mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) return;
-          const standard = mat as THREE.MeshStandardMaterial;
-          const baseColor = standard.color?.clone() ?? new THREE.Color(0.9, 0.9, 0.9);
-          standard.emissive = baseColor.clone().multiplyScalar(0.45);
-          standard.emissiveIntensity = mode === 'lit' ? 1.1 : 0.7;
-          if (typeof standard.metalness === 'number') {
-            standard.metalness = Math.min(standard.metalness, 0.25);
-          }
-          if (typeof standard.roughness === 'number') {
-            standard.roughness = Math.max(standard.roughness, 0.35);
-          }
-          standard.needsUpdate = true;
-        };
-
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((mat) => boostMaterial(mat));
-        } else {
-          boostMaterial(mesh.material);
-        }
-      });
-
-      const tempScene = new THREE.Scene();
-      tempScene.background = null;
-
-      const ambient = new THREE.AmbientLight(0xffffff, mode === 'lit' ? 1.45 : 0.95);
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x2c2f36, mode === 'lit' ? 0.9 : 0.6);
-      const key = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 1.9 : 1.2);
-      key.position.set(8, 10, 6);
-      const fill = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 1.15 : 0.7);
-      fill.position.set(-6, 4, -4);
-      const rim = new THREE.DirectionalLight(0xffffff, mode === 'lit' ? 0.75 : 0.45);
-      rim.position.set(0, 6, -10);
-      tempScene.add(ambient, hemi, key, fill, rim);
-
-      let box = new THREE.Box3().setFromObject(clone);
-      if (box.isEmpty()) return null;
-
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const NORMALIZED_DIM = 1.2;
-      const MIN_SCALE = 0.3;
-      const MAX_SCALE = 5;
-      const scaleFactor = THREE.MathUtils.clamp(NORMALIZED_DIM / maxDim, MIN_SCALE, MAX_SCALE);
-      clone.scale.multiplyScalar(scaleFactor);
-
-      box = new THREE.Box3().setFromObject(clone);
-      const center = box.getCenter(new THREE.Vector3());
-      clone.position.sub(center);
-      tempScene.add(clone);
-
-      const normalizedSize = box.getSize(new THREE.Vector3());
-      const normalizedMaxDim = Math.max(normalizedSize.x, normalizedSize.y, normalizedSize.z);
-      const fov = (camera as THREE.PerspectiveCamera).fov || 50;
-      const distance = (normalizedMaxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.15;
-
-      const direction = new THREE.Vector3(0, 0.25, 1).normalize();
-      const snapshotCamera = (camera as THREE.PerspectiveCamera).clone();
-      snapshotCamera.position.copy(direction.multiplyScalar(distance));
-      snapshotCamera.lookAt(new THREE.Vector3(0, 0, 0));
-      snapshotCamera.updateProjectionMatrix();
-
-      const width = 640;
-      const height = 640;
-      const renderTarget = new THREE.WebGLRenderTarget(width, height);
-      const prevTarget = gl.getRenderTarget();
-      const prevAutoClear = gl.autoClear;
-      const prevClearColor = gl.getClearColor(new THREE.Color());
-      const prevClearAlpha = gl.getClearAlpha();
-      gl.autoClear = true;
-      gl.setClearColor(new THREE.Color(0, 0, 0), 0);
-      gl.setRenderTarget(renderTarget);
-      gl.render(tempScene, snapshotCamera);
-
-      const buffer = new Uint8Array(width * height * 4);
-      gl.readRenderTargetPixels(renderTarget, 0, 0, width, height, buffer);
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        renderTarget.dispose();
-        gl.setRenderTarget(prevTarget);
-        gl.autoClear = prevAutoClear;
-        gl.setClearColor(prevClearColor, prevClearAlpha);
-        return null;
-      }
-
-      const imageData = ctx.createImageData(width, height);
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          const srcIndex = ((height - 1 - y) * width + x) * 4;
-          const dstIndex = (y * width + x) * 4;
-          imageData.data[dstIndex] = buffer[srcIndex];
-          imageData.data[dstIndex + 1] = buffer[srcIndex + 1];
-          imageData.data[dstIndex + 2] = buffer[srcIndex + 2];
-          imageData.data[dstIndex + 3] = buffer[srcIndex + 3];
-        }
-      }
-      ctx.putImageData(imageData, 0, 0);
-
-      renderTarget.dispose();
-      gl.setRenderTarget(prevTarget);
-      gl.autoClear = prevAutoClear;
-      gl.setClearColor(prevClearColor, prevClearAlpha);
-
-      return canvas.toDataURL('image/png');
+      return captureObjectSnapshotImage(
+        targetObject,
+        camera as THREE.PerspectiveCamera,
+        gl,
+        options
+      );
     },
     [camera, gl]
   );
@@ -595,7 +450,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
         justEndedDragRef.current = true;
         setTimeout(() => {
           justEndedDragRef.current = false;
-        }, 80);
+        }, SELECTION_SYNC_DELAY_MS);
       }
       wasDraggingRef.current = false;
     };

@@ -8,6 +8,12 @@ import { useCallback, useLayoutEffect, useRef, useState, type MutableRefObject }
 import { Note } from './Note';
 import { ObjectInfoPanel } from './ObjectInfoPanel';
 import type { SelectablePart } from '@/app/_components/3d/types';
+import {
+  NOTE_PLACEHOLDER,
+  RIGHT_PANEL_MIN_SECTION_HEIGHT,
+  RIGHT_PANEL_WIDTH_MAX_PERCENT,
+  RIGHT_PANEL_WIDTH_MIN_PERCENT,
+} from './constants';
 
 /**
  * 객체 정보 데이터 타입
@@ -101,7 +107,7 @@ export function ViewerRightPanel({
     minHeight: number;
     maxHeight: number;
   } | null>(null);
-  const minSectionHeight = 180;
+  const minSectionHeight = RIGHT_PANEL_MIN_SECTION_HEIGHT;
 
   const updateCursor = (cursor: string | null) => {
     document.body.style.cursor = cursor ?? '';
@@ -116,7 +122,10 @@ export function ViewerRightPanel({
     const handleMove = (moveEvent: PointerEvent) => {
       if (!resizingWidthRef.current) return;
       const nextPercent = ((window.innerWidth - moveEvent.clientX) / window.innerWidth) * 100;
-      const clamped = Math.min(45, Math.max(22, nextPercent));
+      const clamped = Math.min(
+        RIGHT_PANEL_WIDTH_MAX_PERCENT,
+        Math.max(RIGHT_PANEL_WIDTH_MIN_PERCENT, nextPercent)
+      );
       onResizeWidth(clamped);
     };
 
@@ -251,7 +260,7 @@ export function ViewerRightPanel({
           <Note
             value={noteValue}
             onChange={onNoteChange}
-            placeholder="메모를 입력하세요..."
+            placeholder={NOTE_PLACEHOLDER}
             className="flex-1 flex flex-col"
             parts={parts}
             onInsertPartSnapshot={onInsertPartSnapshot}
