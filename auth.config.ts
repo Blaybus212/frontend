@@ -32,7 +32,10 @@ export const authConfig = {
      * 2. 역할: DB나 백엔드에서 받은 정보를 '암호화된 쿠키(JWT)'에 저장함
      */
     async jwt({ token, user }) {
-      if (user) token.accessToken = (user as any).accessToken;
+      if (user) {
+        token.accessToken = user.accessToken;
+        token.loginUser = user.loginUser;
+      }
       return token;
     },
     /**
@@ -42,6 +45,7 @@ export const authConfig = {
      */
     async session({ session, token }) {
       session.accessToken = token.accessToken as string;
+      session.loginUser = token.loginUser as LoginUser;
       return session;
     },
   },
