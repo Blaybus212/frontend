@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel } from '@/app/_components/viewer';
+import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
+import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -43,10 +44,12 @@ export default function ViewerPage() {
   /** AI 패널 표시 여부 */
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [isPartsOpen, setIsPartsOpen] = useState(false);
+  const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [parts, setParts] = useState<SelectablePart[]>([]);
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
   const [modelRootName, setModelRootName] = useState<string>('모델');
+  const [isPrinting, setIsPrinting] = useState(false);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
 
@@ -98,6 +101,11 @@ export default function ViewerPage() {
         setSelectedIcon((prev) => (prev === 'refresh' ? null : prev));
       }, 150);
     }
+    if (iconId === 'pdf') {
+      setIsPdfOpen((prev) => !prev);
+      setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
+      return;
+    }
     if (iconId === 'parts') {
       setIsPartsOpen((prev) => !prev);
       return;
@@ -143,6 +151,64 @@ export default function ViewerPage() {
   };
 
   const allPartIds = useMemo(() => parts.map((part) => part.nodeId), [parts]);
+
+  const handlePdfPrint = async (config: {
+    screenshotMode: 'full' | 'current';
+    partMode: 'all' | 'viewed';
+    summary: string;
+    keywords: string;
+  }) => {
+    if (!scene3DRef.current || isPrinting) return;
+    setIsPrinting(true);
+
+    const includeSummary = Boolean(config.summary);
+    const includeKeywords = Boolean(config.keywords);
+    const dateLabel = new Date().toLocaleDateString('ko-KR', {
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const modelName = modelRootName;
+    const modelEnglish = objectData.english;
+    const modelSnapshots = await scene3DRef.current.captureModelSnapshots(models[0]?.id ?? 'model');
+
+    const availableParts = scene3DRef.current?.getSelectableParts() || parts;
+    const targetParts =
+      config.partMode === 'viewed' && selectedPartIds.length > 0
+        ? availableParts.filter((part) => selectedPartIds.includes(part.nodeId))
+        : availableParts;
+
+    const partSnapshots: { title: string; images: [string | null, string | null, string | null] }[] = [];
+    for (const part of targetParts) {
+      const images = await scene3DRef.current.capturePartSnapshots(part.nodeId);
+      partSnapshots.push({ title: part.nodeName, images });
+    }
+
+    await exportSummaryPdf({
+      documentTitle: `${modelName} 총정리`,
+      modelName,
+      modelEnglish,
+      dateLabel,
+      includeSummary,
+      summaryText: includeSummary ? 'AI와 대화를 나눈 기록이 없어요' : '',
+      includeKeywords,
+      keywords: [],
+      modelSnapshots,
+      parts: partSnapshots,
+    });
+
+    await exportNotePdf({
+      documentTitle: `${modelName} 노트 기록`,
+      modelName,
+      dateLabel,
+      includeSummary,
+      summaryText: includeSummary ? 'AI와 대화를 나눈 기록이 없어요' : '',
+      noteHtml: noteValue,
+    });
+
+    setIsPrinting(false);
+    setIsPdfOpen(false);
+  };
 
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
@@ -209,6 +275,16 @@ export default function ViewerPage() {
               setSelectedPartIds((prev) => (prev.length === allPartIds.length ? [] : allPartIds));
             }}
             onClose={() => setIsPartsOpen(false)}
+          />
+        </div>
+      )}
+
+      {isPdfOpen && (
+        <div className="absolute left-[112px] top-[420px] z-20">
+          <PdfModal
+            onClose={() => setIsPdfOpen(false)}
+            onPrintClick={handlePdfPrint}
+            isPrinting={isPrinting}
           />
         </div>
       )}

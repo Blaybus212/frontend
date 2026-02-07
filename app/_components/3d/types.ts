@@ -137,6 +137,10 @@ export interface Scene3DRef {
   capturePartSnapshot: (nodeId: string) => Promise<string | null>;
   /** 모델 전체 스냅샷 이미지를 생성합니다 */
   captureModelSnapshot: (modelId: string) => Promise<string | null>;
+  /** 부품 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  capturePartSnapshots: (nodeId: string) => Promise<[string | null, string | null, string | null]>;
+  /** 모델 전체 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  captureModelSnapshots: (modelId: string) => Promise<[string | null, string | null, string | null]>;
   /** 모델 루트 이름을 반환합니다 */
   getModelRootName: () => string | null;
 }
