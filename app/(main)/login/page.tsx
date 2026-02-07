@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,7 +11,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+      if (status === 'authenticated' && session) {
+        if (session.loginUser?.isFinishOnboard) {
+          router.push('/home');
+        } else {
+          router.push('/onboard');
+        }
+      }
+    }, [session, status, router]);
 
   const handleLogin = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -29,11 +39,6 @@ export default function LoginPage() {
       console.error(result?.error);
       setIsLoading(false);
     } else {
-      if (session?.loginUser?.isFinishOnboard) {
-        router.push('/home');
-      } else {
-        router.push('/onboard');
-      }
       router.refresh();
     }
   };
