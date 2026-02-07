@@ -4,7 +4,7 @@
  * 객체 정보와 메모를 표시하는 우측 사이드바입니다.
  */
 
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Note } from './Note';
 import { ObjectInfoPanel } from './ObjectInfoPanel';
 import type { SelectablePart } from '@/app/_components/3d/types';
@@ -35,6 +35,8 @@ interface ViewerRightPanelProps {
   noteValue: string;
   /** 메모 값 변경 핸들러 */
   onNoteChange: (value: string) => void;
+  /** PDF 출력용 노트 컨테이너 ref */
+  noteExportRef?: MutableRefObject<HTMLDivElement | null>;
   /** 우측 패널 너비(%) */
   widthPercent: number;
   /** 우측 패널 너비 변경 핸들러 */
@@ -76,6 +78,7 @@ export function ViewerRightPanel({
   objectData,
   noteValue,
   onNoteChange,
+  noteExportRef,
   widthPercent,
   onResizeWidth,
   parts,
@@ -255,6 +258,7 @@ export function ViewerRightPanel({
             onInsertModelSnapshot={onInsertModelSnapshot}
             modelName={modelName}
             modelId={modelId}
+            exportContainerRef={noteExportRef}
           />
         </div>
       </div>
