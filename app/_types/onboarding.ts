@@ -6,3 +6,7 @@ interface OnboardData {
 	themeColor?: "blue" | "orange" | "green" | "pink",
 	persona?: "senior" | "professor" | "friend" | "assistant",
 }
+
+interface OnboardRequestData extends Omit<OnboardData, 'specialized'> {
+  specialized: string;
+}

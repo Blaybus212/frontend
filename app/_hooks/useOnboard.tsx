@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { $fetch } from '../_utils/fetch';
+import { useRouter } from 'next/navigation';
 
 const initialData: OnboardData = {
   name: '',
@@ -14,6 +16,8 @@ const initialData: OnboardData = {
 export const useOnboard = (totalSteps: number) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<OnboardData>(initialData);
+  const [isPending, setIsPending] = useState(false);
+  const router = useRouter();
 
   // 특정 키의 값 업데이트
   const updateData = (key: keyof OnboardData, value: any) => {
@@ -43,12 +47,30 @@ export const useOnboard = (totalSteps: number) => {
   };
 
   // 2. 다음 단계 (마지막이면 제출 로직)
-  const nextStep = () => {
+  const nextStep = async () => {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      console.log('최종 데이터 제출:', formData);
-      // 여기에 API 호출 로직 추가 가능
+      setIsPending(true); // 로딩 시작
+      
+      try {
+        const reqData: OnboardRequestData = {
+          ...formData,
+          specialized: formData.specialized.join(',')
+        };
+
+        await $fetch('/onboard', { 
+          method: 'PATCH', 
+          body: JSON.stringify(reqData) 
+        });
+
+        router.push('/onboard-finished');
+      } catch (error) {
+        console.error("온보딩 실패:", error);
+        alert("저장에 실패했습니다. 다시 시도해주세요.");
+      } finally {
+        setIsPending(false); // 로딩 종료
+      }
     }
   };
 
@@ -64,6 +86,7 @@ export const useOnboard = (totalSteps: number) => {
     updateListData,
     nextStep,
     prevStep,
+    isPending,
     isFirst: step === 1,
     isLast: step === totalSteps,
   };
