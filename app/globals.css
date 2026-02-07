@@ -148,6 +148,102 @@
     scrollbar-color: var(--color-border-default) transparent;
   }
 
+  .note-editor h1 {
+    font-size: var(--text-h-xl);
+    line-height: var(--text-h-xl--line-height);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+  }
+  .note-editor h2 {
+    font-size: var(--text-h-lg);
+    line-height: var(--text-h-lg--line-height);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+  }
+  .note-editor h3 {
+    font-size: var(--text-h-md);
+    line-height: var(--text-h-md--line-height);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+  }
+  .note-editor h4 {
+    font-size: var(--text-h-sm);
+    line-height: var(--text-h-sm--line-height);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+  }
+  .note-editor h5,
+  .note-editor h6 {
+    font-size: var(--text-b-lg);
+    line-height: var(--text-b-lg--line-height);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-title);
+  }
+  .note-editor .is-empty.is-editor-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--color-placeholder);
+    pointer-events: none;
+    height: 0;
+  }
+  .note-editor:not(.is-editor-empty) .is-empty::before {
+    content: '';
+  }
+  .note-editor-focused .note-editor .is-empty.is-editor-empty::before {
+    content: "'/'를 입력해 명령어 사용";
+  }
+  .note-editor ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  .note-editor ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+  }
+  .note-editor li {
+    margin: 0.25rem 0;
+  }
+  .note-editor blockquote {
+    border-left: 3px solid var(--color-border-default);
+    padding-left: 12px;
+    color: var(--color-sub2);
+    display: block;
+    width: 100%;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .note-editor blockquote p {
+    margin: 0;
+  }
+  .note-editor hr {
+    border: none;
+    border-top: 1px solid var(--color-border-default);
+    margin: 12px 0;
+  }
+  .note-editor code {
+    background: var(--color-bg-default);
+    color: var(--color-sub2);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: var(--text-b-sm);
+  }
+  .note-editor pre {
+    background: var(--color-bg-default);
+    border: 1px solid var(--color-border-default);
+    border-radius: 12px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: var(--text-b-md);
+    line-height: var(--text-b-md--line-height);
+    color: var(--color-sub2);
+  }
+  .note-editor pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+
   /* 커스텀 슬라이더 스타일 */
   .slider-custom::-webkit-slider-thumb {
     appearance: none;
