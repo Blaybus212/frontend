@@ -1,7 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 // import SaveStatus from '@/components/SaveStatus';
 
 interface MainLayoutProps {
@@ -11,13 +12,22 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const isViewer = pathname.startsWith('/viewer');
+  const isHome = pathname.startsWith('/home');
   const isLoggedIn = !pathname.startsWith('/login');
+  const router = useRouter();
 
   return (
-    <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-[#0f1014]`}>
+    <div className=
+      {`
+        ${isViewer ? 'h-screen' : 'min-h-screen'} 
+        ${isHome && 'fixed w-full z-100'}
+        flex flex-col bg-surface
+      `}>
       <nav className="h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0">
         {/* 좌측: 로고 (고정) */}
-        <div className="flex items-center gap-2">
+        <div 
+          onClick={()=>router.push('/home')}
+          className="flex items-center gap-2 cursor-pointer">
           <Image 
             src="/images/logo.svg" 
             unoptimized
@@ -40,6 +50,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
             alt="프로필" 
             width={34}
             height={34}
+            className='cursor-pointer'
+            onClick={async ()=>{
+              await signOut();
+            }}
           />
         }
       </nav>

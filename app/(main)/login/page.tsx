@@ -44,7 +44,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex gap-24 h-[calc(100vh-64px)] items-center justify-center bg-surface px-43.25 py-10">
+    <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-surface px-43.25 py-20">
       {/* 왼쪽: 그라데이션 아트 카드 */}
       <div className="relative hidden lg:flex shrink-0 aspect-[550/735.94] h-full overflow-hidden"> 
         <Image
@@ -67,7 +67,7 @@ export default function LoginPage() {
       </div>
 
       {/* 오른쪽: 로그인 폼 섹션 */}
-      <div className="w-full">
+      <div className="w-full pl-24">
         <div className="mb-12">
           <Image
             src="/images/logo.svg" 
