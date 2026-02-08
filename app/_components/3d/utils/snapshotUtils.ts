@@ -4,12 +4,16 @@ import { LIGHTING_CONFIG, MATERIAL_CONFIG, SNAPSHOT_CONFIG } from '../constants'
 export type SnapshotViewMode = 'lit' | 'dim';
 export type SnapshotRenderMode = 'normal' | 'wireframe';
 
+/** 스냅샷 렌더 옵션 */
 export type SnapshotOptions = {
   includeOnlyTarget?: boolean;
   viewMode?: SnapshotViewMode;
   renderMode?: SnapshotRenderMode;
 };
 
+/**
+ * 스냅샷용으로 객체를 복제하고 머티리얼을 렌더 모드에 맞게 보정합니다.
+ */
 const cloneObjectForSnapshot = (
   targetObject: THREE.Object3D,
   mode: SnapshotViewMode,
@@ -89,6 +93,9 @@ const cloneObjectForSnapshot = (
   return clone;
 };
 
+/**
+ * 조명과 중심 정렬이 적용된 스냅샷 전용 씬을 구성합니다.
+ */
 const buildSnapshotScene = (clone: THREE.Object3D, mode: SnapshotViewMode) => {
   const tempScene = new THREE.Scene();
   tempScene.background = null;
@@ -139,6 +146,9 @@ const buildSnapshotScene = (clone: THREE.Object3D, mode: SnapshotViewMode) => {
   return { scene: tempScene, box };
 };
 
+/**
+ * 대상 박스 크기에 맞는 스냅샷 카메라를 생성합니다.
+ */
 const createSnapshotCamera = (camera: THREE.PerspectiveCamera, box: THREE.Box3) => {
   const normalizedSize = box.getSize(new THREE.Vector3());
   const normalizedMaxDim = Math.max(normalizedSize.x, normalizedSize.y, normalizedSize.z);
@@ -155,6 +165,9 @@ const createSnapshotCamera = (camera: THREE.PerspectiveCamera, box: THREE.Box3) 
   return snapshotCamera;
 };
 
+/**
+ * 렌더 타겟을 사용해 캔버스 이미지로 스냅샷을 생성합니다.
+ */
 const renderSnapshot = (
   gl: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -211,6 +224,9 @@ const renderSnapshot = (
   return canvas.toDataURL('image/png');
 };
 
+/**
+ * 3D 객체 스냅샷을 데이터 URL로 반환합니다.
+ */
 export const captureObjectSnapshotImage = (
   targetObject: THREE.Object3D,
   camera: THREE.PerspectiveCamera,

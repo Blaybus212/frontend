@@ -12,6 +12,7 @@ interface Scene3DProps {
   onModelSelect: (indices: number[]) => void; // 선택 변경 콜백 (항상 배열로 전달)
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void;
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  /** 선택 가능한 부품 목록이 갱신될 때 호출되는 콜백 */
   onSelectablePartsChange?: (parts: SelectablePart[]) => void;
   /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
   assemblyValue?: number;

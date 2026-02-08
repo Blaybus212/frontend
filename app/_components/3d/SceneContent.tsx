@@ -367,6 +367,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
 
+  /**
+   * 모델 로드 이후 선택 가능한 부품 목록을 상위로 전달합니다.
+   */
   React.useEffect(() => {
     if (!onSelectablePartsChange) return;
     const list = getSelectableParts();
