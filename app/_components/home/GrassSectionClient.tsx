@@ -1,17 +1,23 @@
+'use client';
+
 import React from 'react';
 import Image from 'next/image';
-import { SummaryCardData } from '@/app/_types/home';
+import { GrassSectionData } from '@/app/_types/home';
 import { getFullMonthlySolvedList } from '@/app/_utils/home/convertCellsToList';
+import { useSession } from 'next-auth/react';
 
-const SummaryCard: React.FC<SummaryCardData> = ({
-  themeColor,
+const GrassSectionClient: React.FC<GrassSectionData> = ({
   streak,
   solvedQuizCount,
   cells
 }) => {
+
+  // 테마 컬러
+  const { data: userData } = useSession();
+  const themeColor: string = userData?.loginUser?.themeColor ?? 'green';
   
   const getColorClass = (level: number) => {
-    if (themeColor === 'none' || level === 0) return 'bg-grass-green-0';
+    if (level === 0) return 'bg-grass-green-0';
     return `bg-grass-${themeColor}-${level}`;
   };
 
@@ -84,14 +90,4 @@ const SummaryCard: React.FC<SummaryCardData> = ({
   );
 };
 
-// TODO: 병합 후 아이콘 분리
-// --- 아이콘 컴포넌트 ---
-const CalendarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-);
-
-const TrophyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"></path></svg>
-);
-
-export default SummaryCard;
+export default GrassSectionClient;

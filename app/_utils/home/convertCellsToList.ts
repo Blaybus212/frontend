@@ -3,6 +3,7 @@
  * @param year 예: 2026, month 예: 2 (1~12)
  * @returns [10, 0, 0, 10, ...] - 1일부터 말일까지의 solved 값 배열
  */
+// TODO: API에 맞게 변경
 export const getFullMonthlySolvedList = (
   cells: Record<string, { solved: number }>,
   year: number,

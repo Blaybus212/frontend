@@ -17,13 +17,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
 
   return (
-    <div className=
-      {`
-        ${isViewer ? 'h-screen' : 'min-h-screen'} 
-        ${isHome && 'fixed w-full z-100'}
-        flex flex-col bg-surface
-      `}>
-      <nav className="h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0">
+    <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-surface`}>
+      <nav className={`${isHome && 'fixed w-full z-100'} h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0`}>
         {/* 좌측: 로고 (고정) */}
         <div 
           onClick={()=>router.push('/home')}
@@ -58,7 +53,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         }
       </nav>
 
-      <main className={`flex-1 ${isViewer ? 'overflow-hidden' : 'overflow-auto'}`}>
+      <main className={`flex-1 ${isViewer ? 'overflow-hidden' : 'overflow-auto'} ${isHome && 'pt-16'}`}>
         {children}
       </main>
     </div>
