@@ -33,7 +33,7 @@ const ListSection = ({
       curPage: 1,
       size: 9,
       totalCount: 45,
-      totalPages: 3,
+      totalPages: 20,
       hasNext: true,
       hasPrevious: false,
     }

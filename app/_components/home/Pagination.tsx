@@ -3,6 +3,7 @@
 import { generatePagination } from "@/app/_utils/home/generatePagination";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useState } from "react";
 
 interface PaginationProps {
   totalPages: number;
@@ -15,10 +16,12 @@ const Pagination: React.FC<PaginationProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   
-  const currentPage = Number(searchParams.get("curr")) || 1;
+  const [currentPage, setcurrentPage] = useState<number>(Number(searchParams.get("curr")) || 1);
   const allPages = generatePagination(currentPage, totalPages);
 
   const handleSearch = (newPageNumber: number | string) => {
+    setcurrentPage(Number(newPageNumber));
+    
     const newParams = new URLSearchParams(searchParams);
 
     newParams.set("curr", newPageNumber.toString());
@@ -54,6 +57,9 @@ const Pagination: React.FC<PaginationProps> = ({
                 currentPage === page
                   ? "bg-bg-hovered-green border-border-focused text-selected"
                   : "bg-surface border-border-default text-sub2 hover:border-border-hovered"
+              }
+              ${
+                page === "..." && "pointer-events-none"
               }
             `}
           >{page}</button>
