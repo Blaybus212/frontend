@@ -14,6 +14,7 @@ export default async function HomePage(props: {
     order?: string;
     category?: string;
     curr?: string;
+    rank?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
@@ -21,6 +22,7 @@ export default async function HomePage(props: {
   const order = searchParams?.order || '';
   const category = searchParams?.category || '';
   const curr = searchParams?.curr || '';
+  const rank = searchParams?.rank || '';
 
   return (
     <div className="flex flex-col max-w-min min-w-max py-13.75 gap-17.5 mx-auto">
@@ -41,7 +43,7 @@ export default async function HomePage(props: {
         </Suspense>
         {/* 오늘 사람들이 많이 학습한 오브젝트 */}
         <Suspense fallback={<></>}>
-          <RankingSection />
+          <RankingSection rank={rank} />
         </Suspense>
       </div>
 

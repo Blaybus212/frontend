@@ -1,9 +1,14 @@
 import { RankingSectionData } from "@/app/_types/home";
 import RankingSectionClient from "./RankingSectionClient";
 
-const RankingSection = () => {
+interface RankingSectionProps {
+  rank: string;
+}
+
+const RankingSection = ({
+  rank
+}: RankingSectionProps) => {
   // "오늘 사람들이 많이 학습한 오브젝트" 정보 (GET /scenes/ranks/?category=)
-  // 인기 학습 오브젝트 랭킹 (예시: GET /ranking/scenes)
   const data: RankingSectionData = {
     today: "2024-05-22 14:30",
     scenes: [

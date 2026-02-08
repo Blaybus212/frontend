@@ -1,15 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
-import { RankingSectionCategory, RankingSectionData } from '@/app/_types/home';
+import { RankingSectionData } from '@/app/_types/home';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const RankingSectionClient: React.FC<RankingSectionData> = ({
   today,
   scenes
 }) => {
-  const [activeTab, setActiveTab] = useState<RankingSectionCategory>("all");
-  
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const rank = searchParams.get("rank")?.toString() || 'all';
+
+  const handleClick = (rank: string) => {
+    const newParams = new URLSearchParams(searchParams);
+
+    newParams.set("rank", rank);
+
+    router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+  };
+
   return (
     <div className="flex flex-col gap-5 items-start">
       <div className="w-full flex items-center">
@@ -26,18 +39,18 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
         <div className="flex flex-col justify-end w-109.25 px-6 py-[12.5px] rounded-[14px] bg-bg-default">
           <div className="flex p-1 bg-bg-sub rounded-lg ml-auto">
             <button
-              onClick={() => setActiveTab("all")}
+              onClick={() => handleClick("all")}
               className={`rounded-lg px-3.75 py-1.5 text-b-sm font-medium ${
-                activeTab === "all" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
+                rank === "all" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
               }`}
             >
               전체 분야
             </button>
 
             <button
-              onClick={() => setActiveTab("my")}
+              onClick={() => handleClick("my")}
               className={`rounded-lg px-3.75 py-1.5 text-b-sm font-medium ${
-                activeTab !== "all" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
+                rank === "my" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
               }`}
             >
               내 분야
