@@ -125,6 +125,33 @@ export interface Scene3DRef {
   getSceneState: () => SceneState | null;
   /** 현재 조립/분해 값 기준으로 위치를 초기 상태로 되돌리는 함수 */
   resetToAssembly: () => void;
+  /** 선택 가능한 부품 목록을 반환합니다 */
+  getSelectableParts: () => SelectablePart[];
+  /** nodeId 목록으로 선택 상태를 설정합니다 */
+  setSelectedNodeIds: (nodeIds: string[]) => void;
+  /** 카메라를 한 단계 확대합니다 */
+  zoomIn: () => void;
+  /** 카메라를 한 단계 축소합니다 */
+  zoomOut: () => void;
+  /** 부품 스냅샷 이미지를 생성합니다 */
+  capturePartSnapshot: (nodeId: string) => Promise<string | null>;
+  /** 모델 전체 스냅샷 이미지를 생성합니다 */
+  captureModelSnapshot: (modelId: string) => Promise<string | null>;
+  /** 부품 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  capturePartSnapshots: (nodeId: string) => Promise<[string | null, string | null, string | null]>;
+  /** 모델 전체 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  captureModelSnapshots: (modelId: string) => Promise<[string | null, string | null, string | null]>;
+  /** 모델 루트 이름을 반환합니다 */
+  getModelRootName: () => string | null;
+}
+
+/**
+ * 선택 가능한 부품 정보
+ */
+export interface SelectablePart {
+  nodeId: string;
+  nodeName: string;
+  modelIndex: number;
 }
 
 /**
@@ -139,8 +166,12 @@ export interface SceneContentProps {
   selectedModelIndices: number[];
   /** 모델 선택이 변경될 때 호출되는 콜백 함수 (항상 배열로 전달) */
   onModelSelect: (indices: number[]) => void;
+  /** 선택된 노드 id가 변경될 때 호출되는 콜백 함수 */
+  onSelectedNodeIdsChange?: (nodeIds: string[]) => void;
   /** 선택된 객체의 정보가 변경될 때 호출되는 콜백 함수 (선택적) */
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  /** 선택 가능한 부품 목록이 갱신될 때 호출되는 콜백 함수 */
+  onSelectablePartsChange?: (parts: SelectablePart[]) => void;
   /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
   assemblyValue?: number;
 }

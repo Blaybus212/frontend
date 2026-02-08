@@ -1,6 +1,23 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type MutableRefObject } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import Heading from '@tiptap/extension-heading';
+import { textblockTypeInputRule, mergeAttributes } from '@tiptap/core';
+import Image from '@tiptap/extension-image';
+import type { SelectablePart } from '@/app/_components/3d/types';
+import { SlashMenu } from './SlashMenu';
+import { MentionMenu } from './MentionMenu';
+import {
+  NOTE_EDITOR_CONTENT_MIN_HEIGHT_PX,
+  NOTE_EDITOR_MIN_HEIGHT_PX,
+  NOTE_HEADING_LEVELS,
+  NOTE_MENU_OFFSET_PX,
+  NOTE_PLACEHOLDER,
+  NOTE_TEXT_LOOKBACK,
+} from './constants';
 
 /**
  * Note 컴포넌트의 Props 인터페이스
@@ -25,6 +42,12 @@ interface NoteProps {
   onClick?: () => void;
   className?: string;
   placeholder?: string;
+  parts?: SelectablePart[];
+  onInsertPartSnapshot?: (nodeId: string) => Promise<string | null>;
+  onInsertModelSnapshot?: (modelId: string) => Promise<string | null>;
+  modelName?: string;
+  modelId?: string;
+  exportContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -71,60 +94,257 @@ export function Note({
   onBlur,
   onClick,
   className = '',
-  placeholder = '메모를 입력하세요...',
+  placeholder = NOTE_PLACEHOLDER,
+  parts = [],
+  onInsertPartSnapshot,
+  onInsertModelSnapshot,
+  modelName = '모델',
+  modelId = 'model',
+  exportContainerRef,
 }: NoteProps) {
+  const MarkdownHeading = Heading.extend({
+    addInputRules() {
+      return [
+        textblockTypeInputRule({
+          find: /^(#{1,6})\s$/,
+          type: this.type,
+          getAttributes: (match: string[]) => ({
+            level: match[1].length,
+          }),
+        }),
+      ];
+    },
+    renderHTML({ node, HTMLAttributes }) {
+      const level = node.attrs.level as number;
+      const className =
+        level === 1
+          ? 'text-h-xl font-weight-semibold text-text-title'
+          : level === 2
+            ? 'text-h-lg font-weight-semibold text-text-title'
+            : level === 3
+              ? 'text-h-md font-weight-semibold text-text-title'
+              : level === 4
+                ? 'text-h-sm font-weight-semibold text-text-title'
+                : 'text-b-lg font-weight-semibold text-text-title';
+      return [`h${level}`, mergeAttributes(HTMLAttributes, { class: className }), 0];
+    },
+  });
   /** 비제어형 컴포넌트용 내부 텍스트 상태 */
   const [internalValue, setInternalValue] = useState(defaultValue);
   /** 텍스트 영역의 포커스 상태 */
   const [isFocused, setIsFocused] = useState(false);
-  /** 텍스트 영역 DOM 참조 */
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  /** 에디터 래퍼 DOM 참조 */
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  const editorInstanceRef = useRef<Editor | null>(null);
+  const [slashState, setSlashState] = useState<{
+    open: boolean;
+    query: string;
+    from: number;
+    to: number;
+    top: number;
+    left: number;
+  }>({
+    open: false,
+    query: '',
+    from: 0,
+    to: 0,
+    top: 0,
+    left: 0,
+  });
+  const [mentionState, setMentionState] = useState<{
+    open: boolean;
+    query: string;
+    from: number;
+    to: number;
+    top: number;
+    left: number;
+  }>({
+    open: false,
+    query: '',
+    from: 0,
+    to: 0,
+    top: 0,
+    left: 0,
+  });
 
   /** 제어형 컴포넌트인지 여부 */
   const isControlled = controlledValue !== undefined;
   /** 현재 사용할 텍스트 값 (제어형이면 props, 아니면 내부 상태) */
   const value = isControlled ? controlledValue : internalValue;
 
+  const isHtmlLike = useCallback((input: string) => /<\/?[a-z][\s\S]*>/i.test(input), []);
+
+  const normalizeContent = useCallback(
+    (input: string) => {
+      if (!input) return '';
+      if (isHtmlLike(input)) return input;
+      const escaped = input
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\r?\n/g, '<br />');
+      return `<p>${escaped}</p>`;
+    },
+    [isHtmlLike]
+  );
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        codeBlock: false,
+      }),
+      MarkdownHeading.configure({
+        levels: NOTE_HEADING_LEVELS,
+      }),
+      Placeholder.configure({
+        placeholder,
+        showOnlyCurrent: true,
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+      }),
+    ],
+    content: normalizeContent(value ?? ''),
+    editorProps: {
+      attributes: {
+        class: 'note-editor w-full outline-none text-text-title text-b-lg leading-relaxed',
+        style: `min-height: ${NOTE_EDITOR_CONTENT_MIN_HEIGHT_PX}px;`,
+      },
+      handleKeyDown: (_view, event): boolean => {
+        const current = editorInstanceRef.current;
+        if (!current) return false;
+        if (event.key === 'Tab') {
+          event.preventDefault();
+          if (current.isActive('listItem')) {
+            if (event.shiftKey) {
+              return current.commands.liftListItem('listItem');
+            }
+            return current.commands.sinkListItem('listItem');
+          }
+          return current.commands.insertContent('  ');
+        }
+        if (event.key === 'Escape' && slashState.open) {
+          setSlashState((prev) => ({ ...prev, open: false, query: '' }));
+          return true;
+        }
+        return false;
+      },
+    },
+    onCreate: ({ editor }) => {
+      editorInstanceRef.current = editor;
+    },
+    onUpdate: ({ editor }: { editor: Editor }) => {
+      const html = editor.getHTML();
+      if (!isControlled) {
+        setInternalValue(html);
+      }
+      onChange?.(html);
+
+      const { state, view } = editor;
+      const { from } = state.selection;
+      const textBefore = state.doc.textBetween(
+        Math.max(0, from - NOTE_TEXT_LOOKBACK),
+        from,
+        '\n',
+        '\n'
+      );
+      const slashMatch = textBefore.match(/(?:^|\s)\/([^\s]*)$/);
+      const mentionMatch = textBefore.match(/(?:^|\s)@([^\s]*)$/);
+      if (mentionMatch) {
+        const query = mentionMatch[1] ?? '';
+        const mentionFrom = from - query.length - 1;
+        const mentionTo = from;
+        const coords = view.coordsAtPos(from);
+        const wrapperRect = editorWrapperRef.current?.getBoundingClientRect();
+        const top = wrapperRect
+          ? coords.bottom - wrapperRect.top + editorWrapperRef.current!.scrollTop
+          : coords.bottom;
+        const left = wrapperRect ? coords.left - wrapperRect.left : coords.left;
+        setMentionState({
+          open: true,
+          query,
+          from: mentionFrom,
+          to: mentionTo,
+          top: top + NOTE_MENU_OFFSET_PX,
+          left,
+        });
+        if (slashState.open) {
+          setSlashState((prev) => ({ ...prev, open: false, query: '' }));
+        }
+      } else if (slashMatch) {
+        const query = slashMatch[1] ?? '';
+        const slashFrom = from - query.length - 1;
+        const slashTo = from;
+        const coords = view.coordsAtPos(from);
+        const wrapperRect = editorWrapperRef.current?.getBoundingClientRect();
+        const top = wrapperRect
+          ? coords.bottom - wrapperRect.top + editorWrapperRef.current!.scrollTop
+          : coords.bottom;
+        const left = wrapperRect ? coords.left - wrapperRect.left : coords.left;
+        setSlashState({
+          open: true,
+          query,
+          from: slashFrom,
+          to: slashTo,
+          top: top + NOTE_MENU_OFFSET_PX,
+          left,
+        });
+        if (mentionState.open) {
+          setMentionState((prev) => ({ ...prev, open: false, query: '' }));
+        }
+      } else {
+        if (slashState.open) {
+          setSlashState((prev) => ({ ...prev, open: false, query: '' }));
+        }
+        if (mentionState.open) {
+          setMentionState((prev) => ({ ...prev, open: false, query: '' }));
+        }
+      }
+    },
+    onFocus: () => {
+      setIsFocused(true);
+      onFocus?.();
+    },
+    onBlur: () => {
+      setIsFocused(false);
+      onBlur?.();
+    },
+  });
+
   /**
    * selected prop이 변경되면 텍스트 영역에 자동 포커스
    * 외부에서 노트를 선택했을 때 자동으로 입력 가능한 상태로 만듭니다.
    */
   useEffect(() => {
-    if (selected && textareaRef.current) {
-      textareaRef.current.focus();
+    if (selected && editor) {
+      editor.commands.focus('end');
     }
-  }, [selected]);
+  }, [selected, editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const nextContent = normalizeContent(value ?? '');
+    if (editor.getHTML() !== nextContent) {
+      editor.commands.setContent(nextContent, false);
+    }
+  }, [editor, value, normalizeContent]);
+
+  useEffect(() => {
+    if (!exportContainerRef) return;
+    exportContainerRef.current = editorWrapperRef.current;
+    return () => {
+      exportContainerRef.current = null;
+    };
+  }, [exportContainerRef]);
 
   /**
    * 텍스트 변경 핸들러
    * 비제어형 컴포넌트인 경우 내부 상태를 업데이트하고, onChange 콜백을 호출합니다.
    */
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    if (!isControlled) {
-      setInternalValue(newValue);
-    }
-    onChange?.(newValue);
-  };
-
-  /**
-   * 포커스 핸들러
-   * 포커스 상태를 업데이트하고, onFocus 콜백을 호출합니다.
-   */
-  const handleFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    setIsFocused(true);
-    onFocus?.();
-  };
-
-  /**
-   * 블러 핸들러
-   * 포커스 상태를 해제하고, onBlur 콜백을 호출합니다.
-   */
-  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    setIsFocused(false);
-    onBlur?.();
-  };
-
   /**
    * 현재 상태(선택, 포커스, 기본)에 따른 테두리 색상 결정
    * @returns {string} CSS 변수로 표현된 테두리 색상
@@ -142,12 +362,12 @@ export function Note({
         bg-bg-default
         rounded-2xl
         p-6
+        min-h-0
         transition-all duration-200
         border border-border-default
         ${className}
       `}
     >
-      {/* 컴포넌트 제목 */}
       <h3 className="text-h-md font-weight-semibold text-b-md--line-height mb-3">
         Note
       </h3>
@@ -158,31 +378,76 @@ export function Note({
       </p>
 
       {/* 텍스트 입력 영역: 사용자가 메모를 작성하는 textarea */}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onClick={onClick}
-        placeholder={placeholder}
+      <div
         className={`
           w-full
-          ${className.includes('flex-1') ? 'flex-1' : 'min-h-[200px]'}
+          ${className.includes('flex-1') ? 'flex-1 min-h-0' : ''}
           p-4
           rounded-2xl
           bg-bg-sub
           text-text-title
           text-b-lg
-          placeholder:text-placeholder
-          resize-none
+          custom-scrollbar
+          overflow-y-auto
           transition-all duration-200
           focus:outline-none
+          ${isFocused ? 'note-editor-focused' : ''}
         `}
+        onClick={onClick}
+        ref={editorWrapperRef}
         style={{
+          position: 'relative',
           border: `1px solid ${getBorderColor()}`,
+          minHeight: className.includes('flex-1') ? undefined : NOTE_EDITOR_MIN_HEIGHT_PX,
         }}
-      />
+      >
+        {editor ? (
+          <>
+            <EditorContent editor={editor} />
+            {slashState.open && (
+              <SlashMenu
+                editor={editor}
+                query={slashState.query}
+                position={{ top: slashState.top, left: slashState.left }}
+                range={{ from: slashState.from, to: slashState.to }}
+                onClose={() => setSlashState((prev) => ({ ...prev, open: false, query: '' }))}
+                onOpenMention={() => {
+                  const coords = editor.view.coordsAtPos(editor.state.selection.from);
+                  const wrapperRect = editorWrapperRef.current?.getBoundingClientRect();
+                  const top = wrapperRect
+                    ? coords.bottom - wrapperRect.top + editorWrapperRef.current!.scrollTop
+                    : coords.bottom;
+                  const left = wrapperRect ? coords.left - wrapperRect.left : coords.left;
+                  setMentionState({
+                    open: true,
+                    query: '',
+                    from: editor.state.selection.from,
+                    to: editor.state.selection.from,
+                    top: top + NOTE_MENU_OFFSET_PX,
+                    left,
+                  });
+                }}
+              />
+            )}
+            {mentionState.open && (
+              <MentionMenu
+                editor={editor}
+                parts={parts}
+                query={mentionState.query}
+                position={{ top: mentionState.top, left: mentionState.left }}
+                range={{ from: mentionState.from, to: mentionState.to }}
+                onClose={() => setMentionState((prev) => ({ ...prev, open: false, query: '' }))}
+                onInsertPartSnapshot={onInsertPartSnapshot}
+                onInsertModelSnapshot={onInsertModelSnapshot}
+                modelName={modelName}
+                modelId={modelId}
+              />
+            )}
+          </>
+        ) : (
+          !value && <p className="text-placeholder select-none">{placeholder}</p>
+        )}
+      </div>
     </div>
   );
 }

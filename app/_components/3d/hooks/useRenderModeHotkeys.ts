@@ -44,5 +44,5 @@ export function useRenderModeHotkeys() {
     };
   }, []);
 
-  return { renderMode, viewMode };
+  return { renderMode, viewMode, setRenderMode, setViewMode };
 }

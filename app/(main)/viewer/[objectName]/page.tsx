@@ -1,10 +1,16 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel } from '@/app/_components/viewer';
+import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
-import type { Scene3DRef } from '@/app/_components/3d/types';
+import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
+import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
+import {
+  ASSEMBLY_VALUE_ASSEMBLED,
+  ICON_FLASH_DELAY_MS,
+  PDF_EMPTY_SUMMARY_TEXT,
+} from '@/app/_components/viewer/constants';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -42,8 +48,16 @@ export default function ViewerPage() {
   const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]);
   /** AI 패널 표시 여부 */
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [isPartsOpen, setIsPartsOpen] = useState(false);
+  const [isPdfOpen, setIsPdfOpen] = useState(false);
+  const [parts, setParts] = useState<SelectablePart[]>([]);
+  const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
+  const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
+  const [modelRootName, setModelRootName] = useState<string>('모델');
+  const [isPrinting, setIsPrinting] = useState(false);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
+  const noteExportRef = useRef<HTMLDivElement | null>(null);
 
   /**
    * 객체 정보 데이터
@@ -70,21 +84,164 @@ export default function ViewerPage() {
   ];
 
   const handleIconSelect = (iconId: string) => {
-    setSelectedIcon(iconId);
-    if (iconId === 'refresh') {
-      scene3DRef.current?.resetToAssembly();
+    const flashIcon = () => {
+      setSelectedIcon(iconId);
+      window.setTimeout(() => {
+        setSelectedIcon((prev) => (prev === iconId ? null : prev));
+      }, ICON_FLASH_DELAY_MS);
+    };
+
+    switch (iconId) {
+      case 'zoomin':
+        scene3DRef.current?.zoomIn();
+        flashIcon();
+        return;
+      case 'zoomout':
+        scene3DRef.current?.zoomOut();
+        flashIcon();
+        return;
+      case 'refresh':
+        scene3DRef.current?.resetToAssembly();
+        flashIcon();
+        return;
+      case 'pdf':
+        setIsPdfOpen((prev) => !prev);
+        setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
+        return;
+      case 'parts':
+        setIsPartsOpen((prev) => !prev);
+        return;
+      default:
+        setSelectedIcon(iconId);
+        return;
     }
+  };
+
+  useEffect(() => {
+    if (!isPartsOpen) return;
+    const list = scene3DRef.current?.getSelectableParts() || [];
+    setParts(list);
+  }, [isPartsOpen]);
+
+  useEffect(() => {
+    const name = scene3DRef.current?.getModelRootName();
+    if (name) {
+      setModelRootName(name);
+    }
+  }, [models]);
+
+
+  useEffect(() => {
+    if (!scene3DRef.current) return;
+    scene3DRef.current.setSelectedNodeIds(selectedPartIds);
+  }, [selectedPartIds]);
+
+  const updateSelectedPartIds = (nextIds: string[]) => {
+    setSelectedPartIds((prev) => {
+      if (prev.length === nextIds.length && nextIds.every((id) => prev.includes(id))) {
+        return prev;
+      }
+      return nextIds;
+    });
+  };
+
+  const allPartIds = useMemo(() => parts.map((part) => part.nodeId), [parts]);
+
+  const waitForNextPaint = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+
+  const captureAssembledModelSnapshots = async (modelId: string) => {
+    if (!scene3DRef.current) return [null, null, null] as [null, null, null];
+    const prevAssemblyValue = assemblyValue;
+    if (prevAssemblyValue !== ASSEMBLY_VALUE_ASSEMBLED) {
+      setAssemblyValue(ASSEMBLY_VALUE_ASSEMBLED);
+      await waitForNextPaint();
+    }
+    const snapshots = await scene3DRef.current.captureModelSnapshots(modelId);
+    if (prevAssemblyValue !== ASSEMBLY_VALUE_ASSEMBLED) {
+      setAssemblyValue(prevAssemblyValue);
+      await waitForNextPaint();
+    }
+    return snapshots;
+  };
+
+  const handlePdfPrint = async (config: {
+    screenshotMode: 'full' | 'current';
+    partMode: 'all' | 'viewed';
+    summary: string;
+    keywords: string;
+  }) => {
+    if (!scene3DRef.current || isPrinting) return;
+    setIsPrinting(true);
+
+    const includeSummary = Boolean(config.summary);
+    const includeKeywords = Boolean(config.keywords);
+    const dateLabel = new Date().toLocaleDateString('ko-KR', {
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const modelName = modelRootName;
+    const modelEnglish = objectData.english;
+    const modelSnapshots = await captureAssembledModelSnapshots(models[0]?.id ?? 'model');
+
+    const availableParts = scene3DRef.current?.getSelectableParts() || parts;
+    const targetParts =
+      config.partMode === 'viewed' && selectedPartIds.length > 0
+        ? availableParts.filter((part) => selectedPartIds.includes(part.nodeId))
+        : availableParts;
+
+    const partSnapshots: { title: string; images: [string | null, string | null, string | null] }[] = [];
+    for (const part of targetParts) {
+      const images = await scene3DRef.current.capturePartSnapshots(part.nodeId);
+      partSnapshots.push({ title: part.nodeName, images });
+    }
+
+    await exportSummaryPdf({
+      documentTitle: `${modelName} 총정리`,
+      modelName,
+      modelEnglish,
+      dateLabel,
+      includeSummary,
+      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
+      includeKeywords,
+      keywords: [],
+      modelSnapshots,
+      parts: partSnapshots,
+    });
+
+    await exportNotePdf({
+      documentTitle: `${modelName} 노트 기록`,
+      modelName,
+      dateLabel,
+      includeSummary,
+      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
+      noteHtml: noteValue,
+      noteElement: noteExportRef.current,
+    });
+
+    setIsPrinting(false);
+    setIsPdfOpen(false);
   };
 
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
       {/* 3D 씬 렌더링 영역: 상단 네비게이션 바와 우측 패널을 제외한 전체 영역 (전체 너비의 70%) */}
-      <div className="absolute top-[0px] right-[30%] left-0 bottom-0">
+      <div
+        className="absolute top-[0px] left-0 bottom-0"
+        style={{ right: `${rightPanelWidthPercent}%` }}
+      >
         <Scene3D
           ref={scene3DRef}
           models={models}
           selectedModelIndices={selectedModelIndices}
           onModelSelect={setSelectedModelIndices}
+          onSelectedNodeIdsChange={updateSelectedPartIds}
+        onSelectablePartsChange={setParts}
           assemblyValue={assemblyValue}
         />
       </div>
@@ -95,19 +252,21 @@ export default function ViewerPage() {
           className="absolute z-20"
           style={{
             left: '7%',
-            width: '62.5%',
+            right: `calc(${rightPanelWidthPercent}% + 12px)`,
             top: 0,
             bottom: 0,
             pointerEvents: 'none',
           }}
         >
           {/* 3D 뷰어 영역의 전체 높이를 따라가도록 하는 래퍼 */}
-          <div className="w-full h-full flex items-end" style={{ pointerEvents: 'auto' }}>
-            <AiPanel
-              isVisible={isAiPanelOpen}
-              onClose={() => setIsAiPanelOpen(false)}
-              maxExpandedHeight="100%"
-            />
+          <div className="w-full h-full flex items-end" style={{ pointerEvents: 'none' }}>
+            <div className="w-full" style={{ pointerEvents: 'auto' }}>
+              <AiPanel
+                isVisible={isAiPanelOpen}
+                onClose={() => setIsAiPanelOpen(false)}
+                maxExpandedHeight="100%"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -115,10 +274,39 @@ export default function ViewerPage() {
       {/* 좌측 컨트롤 사이드바 */}
       <ViewerSidebar
         selectedIcon={selectedIcon}
+        isPartsOpen={isPartsOpen}
         onIconSelect={handleIconSelect}
         isAiPanelOpen={isAiPanelOpen}
         onOpenAiPanel={() => setIsAiPanelOpen(true)}
       />
+
+      {isPartsOpen && (
+        <div className="absolute left-[112px] top-[210px] z-20">
+          <PartsListPanel
+            parts={parts}
+            selectedIds={selectedPartIds}
+            onTogglePart={(nodeId) => {
+              setSelectedPartIds((prev) =>
+                prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
+              );
+            }}
+            onToggleAll={() => {
+              setSelectedPartIds((prev) => (prev.length === allPartIds.length ? [] : allPartIds));
+            }}
+            onClose={() => setIsPartsOpen(false)}
+          />
+        </div>
+      )}
+
+      {isPdfOpen && (
+        <div className="absolute left-[112px] top-[420px] z-20">
+          <PdfModal
+            onClose={() => setIsPdfOpen(false)}
+            onPrintClick={handlePdfPrint}
+            isPrinting={isPrinting}
+          />
+        </div>
+      )}
 
       {/* 조립/분해 슬라이더 */}
       <AssemblySlider
@@ -131,6 +319,18 @@ export default function ViewerPage() {
         objectData={objectData}
         noteValue={noteValue}
         onNoteChange={setNoteValue}
+        noteExportRef={noteExportRef}
+        widthPercent={rightPanelWidthPercent}
+        onResizeWidth={setRightPanelWidthPercent}
+        parts={parts}
+        onInsertPartSnapshot={async (nodeId) => {
+          return scene3DRef.current?.capturePartSnapshot(nodeId) ?? null;
+        }}
+        onInsertModelSnapshot={async (modelId) => {
+          return scene3DRef.current?.captureModelSnapshot(modelId) ?? null;
+        }}
+        modelName={modelRootName}
+        modelId={models[0]?.id ?? 'model'}
       />
 
     </div>

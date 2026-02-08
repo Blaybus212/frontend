@@ -42,6 +42,7 @@ type PdfPrintConfig = {
 interface PdfModalProps {
   isPrinting?: boolean;
   onPrintClick?: (config: PdfPrintConfig) => void;
+  onClose?: () => void;
 }
 
 /**
@@ -70,15 +71,15 @@ interface PdfModalProps {
  * @param {PdfModalProps} props - 컴포넌트 props
  * @returns {JSX.Element} PdfModal 컴포넌트
  */
-export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
+export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModalProps) {
   /** 현재 선택된 스크린샷 저장 모드 */
   const [screenshotMode, setScreenshotMode] = useState<ScreenshotMode>('full');
   /** 현재 선택된 부품 설명 모드 */
   const [partMode, setPartMode] = useState<PartMode>('all');
-  /** AI 대화 요약 입력값 */
-  const [summary, setSummary] = useState('');
-  /** 핵심 키워드 입력값 */
-  const [keywords, setKeywords] = useState('');
+  /** AI 대화 요약 포함 여부 */
+  const [includeSummary, setIncludeSummary] = useState(false);
+  /** 핵심 키워드 포함 여부 */
+  const [includeKeywords, setIncludeKeywords] = useState(false);
 
   /**
    * 스크린샷 저장 모드 변경 핸들러
@@ -99,6 +100,8 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
   /** 토글 버튼의 기본 스타일 클래스 */
   const baseToggleButton =
     'h-[32px] flex-1 px-4 py-2 text-b-sm font-weight-medium rounded-lg border border-border-default transition-colors duration-150';
+  const singleToggleButton =
+    'h-[32px] w-full px-4 py-2 text-b-sm font-weight-medium rounded-lg border border-border-default transition-colors duration-150';
 
   /**
    * 선택 상태에 따른 토글 버튼 스타일 클래스 반환
@@ -119,6 +122,7 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
           type="button"
           className="w-[22px] h-[22px] flex items-center justify-center border border-border-default rounded-full bg-bg-sub text-text-sub3 text-b-md hover:bg-bg-hovered transition-colors"
           aria-label="닫기"
+          onClick={onClose}
         >
           ×
         </button>
@@ -166,31 +170,24 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
         </div>
       </section>
 
-      {/* 추가 정보 입력 섹션 (선택 사항) */}
+      {/* 추가 정보 선택 섹션 */}
       <section className="space-y-3">
         <p className="text-b-sm font-weight-regular text-sub2">추가(선택)</p>
         <div className="space-y-2">
-        {/* AI 대화 요약 입력 필드 */}
-        <div className="space-y-1">
-          <input
-            type="text"
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder="AI 대화 요약"
-            className="w-full rounded-lg bg-bg-sub border border-border-default px-3 py-2 text-b-sm font-weight-regular text-text-title placeholder:text-placeholder outline-none focus:border-border-focus transition-colors"
-          />
-        </div>
-
-        {/* 핵심 키워드 입력 필드 */}
-        <div className="space-y-1">
-          <input
-            type="text"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            placeholder="핵심 키워드"
-            className="w-full rounded-lg bg-bg-sub border border-border-default px-3 py-2 text-b-sm font-weight-regular text-text-title placeholder:text-placeholder outline-none focus:border-border-focus transition-colors"
-          />
-        </div>
+          <button
+            type="button"
+            className={`${singleToggleButton} ${getToggleClass(includeSummary)}`}
+            onClick={() => setIncludeSummary((prev) => !prev)}
+          >
+            AI 대화 요약
+          </button>
+          <button
+            type="button"
+            className={`${singleToggleButton} ${getToggleClass(includeKeywords)}`}
+            onClick={() => setIncludeKeywords((prev) => !prev)}
+          >
+            핵심 키워드
+          </button>
         </div>
       </section>
 
@@ -202,8 +199,8 @@ export function PdfModal({ isPrinting = false, onPrintClick }: PdfModalProps) {
           onPrintClick?.({
             screenshotMode,
             partMode,
-            summary,
-            keywords,
+            summary: includeSummary ? 'AI 대화 요약' : '',
+            keywords: includeKeywords ? '핵심 키워드' : '',
           })
         }
         className={`

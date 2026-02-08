@@ -6,12 +6,17 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { isSelectablePart } from '../utils/nodeSelection';
 
 interface NodeDisassemblyData {
   /** 노드 참조 */
   node: THREE.Object3D;
   /** 초기 위치 (조립 상태) */
   initialPosition: THREE.Vector3;
+  /** 초기 회전 (조립 상태) */
+  initialRotation: THREE.Euler;
+  /** 초기 스케일 (조립 상태) */
+  initialScale: THREE.Vector3;
   /** 분해 방향 벡터 (정규화됨) */
   direction: THREE.Vector3;
   /** 분해 거리 (노드 크기에 비례) */
@@ -67,11 +72,7 @@ export function useAssemblyDisassembly({
     modelRef.updateMatrixWorld(true);
     
     modelRef.traverse((child) => {
-      const hasName = child.name && child.name.trim() !== '';
-      const hasMesh = child instanceof THREE.Mesh || 
-        (child.children.length > 0 && child.children.some(c => c instanceof THREE.Mesh));
-      
-      if (hasName || hasMesh) {
+      if (isSelectablePart(child)) {
         const worldPosition = new THREE.Vector3();
         child.getWorldPosition(worldPosition);
         
@@ -88,11 +89,15 @@ export function useAssemblyDisassembly({
           const distance = maxSize * 2;
 
           const initialLocalPosition = child.position.clone();
+          const initialLocalRotation = child.rotation.clone();
+          const initialLocalScale = child.scale.clone();
 
           nodes.push({
             node: child,
             initialPosition: initialLocalPosition, // 로컬 좌표로 저장
-            direction: direction.length() > 0.01 ? direction : new THREE.Vector3(1, 0, 0),
+            initialRotation: initialLocalRotation,
+            initialScale: initialLocalScale,
+            direction: direction.length() > 0.0001 ? direction : new THREE.Vector3(1, 0, 0),
             distance,
           });
         }
@@ -125,11 +130,17 @@ export function useAssemblyDisassembly({
 
     const factor = value / 100;
 
-    nodes.forEach(({ node, initialPosition, direction, distance }) => {
+    nodes.forEach(({ node, initialPosition, initialRotation, initialScale, direction, distance }) => {
       const isUserModified = node.userData.isUserModified && node.userData.userModifiedPosition;
       const basePosition = isUserModified
         ? node.userData.userModifiedPosition.clone()
         : initialPosition.clone();
+      const baseRotation = node.userData.isUserModified && node.userData.userModifiedRotation
+        ? node.userData.userModifiedRotation.clone()
+        : initialRotation.clone();
+      const baseScale = node.userData.isUserModified && node.userData.userModifiedScale
+        ? node.userData.userModifiedScale.clone()
+        : initialScale.clone();
       
       if (node.parent) {
         const parentWorldMatrix = node.parent.matrixWorld.clone();
@@ -147,6 +158,9 @@ export function useAssemblyDisassembly({
         const newPosition = basePosition.clone().add(offset);
         node.position.copy(newPosition);
       }
+
+      node.rotation.copy(baseRotation);
+      node.scale.copy(baseScale);
       
     });
   };

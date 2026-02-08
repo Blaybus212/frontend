@@ -19,10 +19,14 @@ import { useSelectionSync } from './hooks/useSelectionSync';
 import { useAssemblyDisassembly } from './hooks/useAssemblyDisassembly';
 import { useRenderModeHotkeys } from './hooks/useRenderModeHotkeys';
 import { useSelectionOutline } from './hooks/useSelectionOutline';
+import { useNodeSelectionGroup } from './hooks/useNodeSelectionGroup';
+import { useNodeGroupTransform } from './hooks/useNodeGroupTransform';
 import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
-import type { TransformMode, Transform, Scene3DRef, SceneContentProps } from './types';
+import { SELECTION_SYNC_DELAY_MS, TRANSFORM_HOTKEYS, ZOOM_SCALE } from './constants';
+import { captureObjectSnapshotImage } from './utils/snapshotUtils';
+import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
  * 3D 씬 내부 컨텐츠를 구성합니다.
@@ -33,16 +37,21 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   models, 
   selectedModelIndices,
   onModelSelect,
+  onSelectedNodeIdsChange,
   onObjectInfoChange,
+  onSelectablePartsChange,
   assemblyValue = 0,
 }, ref) => {
-  const { scene, camera } = useThree();
+  const { scene, camera, gl } = useThree();
   const modelRefs = useRef<Map<number, THREE.Group>>(new Map());
   const justEndedDragRef = useRef(false);
   const selectedNodesRef = useRef<SelectedNode[] | null>(null);
   const [selectedNodesVersion, setSelectedNodesVersion] = React.useState(0);
   const [modelRefsVersion, setModelRefsVersion] = React.useState(0);
-  const { renderMode, viewMode } = useRenderModeHotkeys();
+  const [nodeGroupVersion, setNodeGroupVersion] = React.useState(0);
+  const { renderMode, viewMode, setRenderMode, setViewMode } = useRenderModeHotkeys();
+  const wasDraggingRef = useRef(false);
+  const lastSelectablePartsKeyRef = useRef<string>('');
 
   const {
     transformControlsRef,
@@ -55,6 +64,36 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const { selectedIndices } = useSelectionSync({
     selectedModelIndices,
   });
+
+  React.useEffect(() => {
+    const handleTransformHotkeys = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName?.toLowerCase();
+        const isEditable =
+          tagName === 'input' ||
+          tagName === 'textarea' ||
+          (target as HTMLElement).isContentEditable;
+        if (isEditable) return;
+      }
+
+      if (event.key === TRANSFORM_HOTKEYS.TRANSLATE) {
+        event.preventDefault();
+        setTransformMode('translate');
+      } else if (event.key === TRANSFORM_HOTKEYS.ROTATE) {
+        event.preventDefault();
+        setTransformMode('rotate');
+      } else if (event.key === TRANSFORM_HOTKEYS.SCALE) {
+        event.preventDefault();
+        setTransformMode('scale');
+      }
+    };
+
+    window.addEventListener('keydown', handleTransformHotkeys);
+    return () => {
+      window.removeEventListener('keydown', handleTransformHotkeys);
+    };
+  }, [setTransformMode]);
 
   const { onOrbitStart, onOrbitEnd, onModelLoaded } = useCameraAdjustment({
     models,
@@ -82,10 +121,39 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     modelRefs,
   });
 
+  const nodeSelectionGroupRef = useNodeSelectionGroup({
+    selectedNodesRef,
+    selectedNodesVersion,
+    scene,
+    onGroupChanged: () => setNodeGroupVersion((prev) => prev + 1),
+    transformControlsRef,
+  });
+
+  useNodeGroupTransform({
+    selectionGroupRef: nodeSelectionGroupRef,
+    selectedNodesRef,
+    selectedNodesVersion,
+    transformControlsRef,
+  });
+
   useNodeTransform({
     selectedNodesRef,
     transformControlsRef,
   });
+
+  const getSelectedNodeIds = useCallback(() => {
+    const nodes = selectedNodesRef.current || [];
+    return nodes.map((node) => node.nodeId);
+  }, []);
+
+  const areSameIds = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    const setA = new Set(a);
+    for (const id of b) {
+      if (!setA.has(id)) return false;
+    }
+    return true;
+  }, []);
 
   useClickHandler({
     selectedIndices,
@@ -94,6 +162,8 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     onNodeSelect: (nodes) => {
       selectedNodesRef.current = nodes;
       setSelectedNodesVersion((prev) => prev + 1);
+      const nodeIds = (nodes || []).map((node) => node.nodeId);
+      onSelectedNodeIdsChange?.(nodeIds);
     },
     transformControlsRef,
     justEndedDragRef,
@@ -103,7 +173,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   if (selectedNodesRef.current && selectedNodesRef.current.length > 0) {
     selectedObjectRef = selectedNodesRef.current.length === 1
       ? selectedNodesRef.current[0].nodeRef as THREE.Object3D
-      : selectionGroupRef.current;
+      : nodeSelectionGroupRef.current;
   } else if (selectedIndices.length > 1) {
     selectedObjectRef = selectionGroupRef.current;
   } else if (selectedIndices.length === 1) {
@@ -119,6 +189,150 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     updateTransform(selectedObjectRef, transform, onObjectInfoChange);
   }, [selectedObjectRef, onObjectInfoChange]);
 
+  const zoomCamera = useCallback(
+    (scale: number) => {
+      const controls = orbitControlsRef.current;
+      const target = controls?.target ?? new THREE.Vector3();
+      const offset = camera.position.clone().sub(target);
+      if (offset.lengthSq() === 0) return;
+
+      const nextPosition = target.clone().add(offset.multiplyScalar(scale));
+      camera.position.copy(nextPosition);
+      camera.updateProjectionMatrix();
+      controls?.update();
+    },
+    [camera, orbitControlsRef]
+  );
+
+  const zoomIn = useCallback(() => {
+    zoomCamera(ZOOM_SCALE.IN);
+  }, [zoomCamera]);
+
+  const zoomOut = useCallback(() => {
+    zoomCamera(ZOOM_SCALE.OUT);
+  }, [zoomCamera]);
+
+  const findNodeById = useCallback(
+    (nodeId: string) => {
+      let found: THREE.Object3D | null = null;
+      modelRefs.current.forEach((modelRef) => {
+        if (!modelRef || found) return;
+        modelRef.traverse((node) => {
+          if (found) return;
+          if (node.userData?.nodeId === nodeId) {
+            found = node as THREE.Object3D;
+          }
+        });
+      });
+      return found;
+    },
+    [modelRefsVersion]
+  );
+
+  const findModelRootById = useCallback(
+    (modelId: string) => {
+      let found: THREE.Group | null = null;
+      models.forEach((model, index) => {
+        if (found || model.id !== modelId) return;
+        const modelRef = modelRefs.current.get(index);
+        if (modelRef) {
+          found = modelRef;
+        }
+      });
+      return found;
+    },
+    [models, modelRefsVersion]
+  );
+
+  const captureObjectSnapshot = useCallback(
+    async (
+      targetObject: THREE.Object3D,
+      options?: { includeOnlyTarget?: boolean; viewMode?: 'lit' | 'dim'; renderMode?: 'normal' | 'wireframe' }
+    ) => {
+      return captureObjectSnapshotImage(
+        targetObject,
+        camera as THREE.PerspectiveCamera,
+        gl,
+        options
+      );
+    },
+    [camera, gl]
+  );
+
+  const capturePartSnapshot = useCallback(
+    async (nodeId: string) => {
+      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
+      if (!targetNode) return null;
+      return captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+    },
+    [captureObjectSnapshot, findNodeById]
+  );
+
+  const captureModelSnapshot = useCallback(
+    async (modelId: string) => {
+      const modelRoot = findModelRootById(modelId);
+      if (!modelRoot) return null;
+      return captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+    },
+    [captureObjectSnapshot, findModelRootById]
+  );
+
+  const capturePartSnapshots = useCallback(
+    async (nodeId: string): Promise<[string | null, string | null, string | null]> => {
+      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
+      if (!targetNode) return [null, null, null] as [null, null, null];
+      const lit = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+      const dim = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'dim',
+        renderMode: 'normal',
+      });
+      const wireframe = await captureObjectSnapshot(targetNode, {
+        includeOnlyTarget: true,
+        viewMode: 'lit',
+        renderMode: 'wireframe',
+      });
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
+    },
+    [captureObjectSnapshot, findNodeById]
+  );
+
+  const captureModelSnapshots = useCallback(
+    async (modelId: string): Promise<[string | null, string | null, string | null]> => {
+      const modelRoot = findModelRootById(modelId);
+      if (!modelRoot) return [null, null, null] as [null, null, null];
+      const lit = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'lit',
+        renderMode: 'normal',
+      });
+      const dim = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'dim',
+        renderMode: 'normal',
+      });
+      const wireframe = await captureObjectSnapshot(modelRoot, {
+        includeOnlyTarget: false,
+        viewMode: 'lit',
+        renderMode: 'wireframe',
+      });
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
+    },
+    [captureObjectSnapshot, findModelRootById]
+  );
+
   const handleExportScene = useCallback(() => {
     exportScene(modelRefs.current, models);
   }, [models]);
@@ -132,6 +346,105 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       assemblyValue
     );
   }, [camera, orbitControlsRef, assemblyValue]);
+
+  const getSelectableParts = useCallback((): SelectablePart[] => {
+    const partsMap = new Map<string, SelectablePart>();
+    modelRefs.current.forEach((modelRef, modelIndex) => {
+      if (!modelRef) return;
+      modelRef.traverse((node) => {
+        const nodeId = node.userData?.nodeId;
+        const selectable = node.userData?.selectable === true;
+        if (!nodeId || !selectable) return;
+        if (!partsMap.has(nodeId)) {
+          partsMap.set(nodeId, {
+            nodeId,
+            nodeName: node.userData?.nodeName || node.name || nodeId,
+            modelIndex,
+          });
+        }
+      });
+    });
+    return Array.from(partsMap.values());
+  }, [modelRefsVersion]);
+
+  /**
+   * 모델 로드 이후 선택 가능한 부품 목록을 상위로 전달합니다.
+   */
+  React.useEffect(() => {
+    if (!onSelectablePartsChange) return;
+    const list = getSelectableParts();
+    if (list.length === 0) return;
+    const nextKey = list.map((part) => part.nodeId).sort().join('|');
+    if (nextKey === lastSelectablePartsKeyRef.current) return;
+    lastSelectablePartsKeyRef.current = nextKey;
+    onSelectablePartsChange(list);
+  }, [getSelectableParts, onSelectablePartsChange, modelRefsVersion]);
+
+  const getModelRootName = useCallback(() => {
+    const firstModel = models[0];
+    if (!firstModel) return null;
+    const modelRef = modelRefs.current.get(0);
+    if (!modelRef) return null;
+    const name = modelRef.name || modelRef.userData?.name;
+    if (typeof name === 'string' && name.trim().length > 0) return name;
+    return firstModel.id;
+  }, [models]);
+
+  const setSelectedNodeIds = useCallback(
+    (nodeIds: string[]) => {
+      const currentIds = getSelectedNodeIds();
+      if (areSameIds(currentIds, nodeIds)) {
+        return;
+      }
+
+      if (!nodeIds.length) {
+        selectedNodesRef.current = null;
+        setSelectedNodesVersion((prev) => prev + 1);
+        onModelSelect([]);
+        onSelectedNodeIdsChange?.([]);
+        return;
+      }
+
+      const targetIds = new Set(nodeIds);
+      const selectedNodesMap = new Map<string, SelectedNode>();
+
+      modelRefs.current.forEach((modelRef, modelIndex) => {
+        if (!modelRef) return;
+        modelRef.traverse((node) => {
+          const nodeId = node.userData?.nodeId;
+          const selectable = node.userData?.selectable === true;
+          if (!nodeId || !selectable || !targetIds.has(nodeId)) return;
+
+          const existing = selectedNodesMap.get(nodeId);
+          const isGroup = node instanceof THREE.Group;
+          if (!existing || (isGroup && !(existing.nodeRef instanceof THREE.Group))) {
+            selectedNodesMap.set(nodeId, {
+              modelIndex,
+              nodeId,
+              nodeRef: node,
+            });
+          }
+        });
+      });
+
+      const selectedNodes = Array.from(selectedNodesMap.values());
+      selectedNodesRef.current = selectedNodes.length ? selectedNodes : null;
+      setSelectedNodesVersion((prev) => prev + 1);
+      const modelIndices = Array.from(new Set(selectedNodes.map((n) => n.modelIndex)));
+      onModelSelect(modelIndices);
+      onSelectedNodeIdsChange?.(selectedNodes.map((node) => node.nodeId));
+    },
+    [areSameIds, getSelectedNodeIds, onModelSelect, onSelectedNodeIdsChange]
+  );
+
+  const handleResetToAssembly = useCallback(() => {
+    // 선택 여부와 상관없이 원상 복귀하도록 선택 상태를 초기화
+    selectedNodesRef.current = null;
+    setSelectedNodesVersion((prev) => prev + 1);
+    onModelSelect([]);
+    onSelectedNodeIdsChange?.([]);
+    resetToAssembly();
+  }, [onModelSelect, onSelectedNodeIdsChange, resetToAssembly]);
   useSelectionOutline({
     selectedNodesRef,
     selectedNodesVersion,
@@ -139,12 +452,45 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     modelRefs,
   });
 
+  React.useEffect(() => {
+    const controls = transformControlsRef.current;
+    if (!controls) return;
+
+    const handleDraggingChanged = (event: { value: boolean }) => {
+      if (event.value) {
+        wasDraggingRef.current = true;
+        return;
+      }
+      if (wasDraggingRef.current) {
+        justEndedDragRef.current = true;
+        setTimeout(() => {
+          justEndedDragRef.current = false;
+        }, SELECTION_SYNC_DELAY_MS);
+      }
+      wasDraggingRef.current = false;
+    };
+
+    controls.addEventListener('dragging-changed', handleDraggingChanged);
+    return () => {
+      controls.removeEventListener('dragging-changed', handleDraggingChanged);
+    };
+  }, [transformControlsRef, justEndedDragRef]);
+
   useImperativeHandle(ref, () => ({
     exportScene: handleExportScene,
     updateObjectTransform,
     setTransformMode,
     getSceneState,
-    resetToAssembly,
+    resetToAssembly: handleResetToAssembly,
+    getSelectableParts,
+    setSelectedNodeIds,
+    zoomIn,
+    zoomOut,
+    capturePartSnapshot,
+    captureModelSnapshot,
+    capturePartSnapshots,
+    captureModelSnapshots,
+    getModelRootName,
   }));
 
   return (
