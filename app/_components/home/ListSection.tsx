@@ -1,8 +1,5 @@
 
-import { ListSectionData, ListSectionItem } from "@/app/_types/home";
-import Search from "./Search";
-import OrderDropdown from "./OrderDropdown";
-import Categories from "./Categories";
+import { ListSectionData } from "@/app/_types/home";
 import ModelGrid from "./ModelGrid";
 import Pagination from "./Pagination";
 

@@ -12,47 +12,44 @@ const ModelGrid: React.FC<ModelGridProps> = ({ models }) => {
     <div className="grid grid-cols-3 gap-x-5 gap-y-10">
       {models.map((scene) => (
         <div key={scene.id} className="group w-full max-w-108 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered cursor-pointer">
-        {/* 상단 이미지 영역 */}
-        <div className="relative w-full h-52.5 overflow-hidden bg-bg-sub">
-          <Image
-            src={scene.imageUrl}
-            alt={scene.title}
-            fill
-            className="object-cover transition-transform duration-250 ease-out group-hover:scale-105"
-          />
-        </div>
-
-        {/* 하단 정보 영역 */}
-        <div className="px-4 py-[16.56px] space-y-3.5">
-          {/* 타이틀 세션 */}
-          <div className="flex items-baseline gap-1.5">
-            <h3 className="text-b-lg font-medium text-title">{scene.title}</h3>
-            <span className="text-b-md font-regular text-sub">{scene.engTitle}</span>
+          
+          <div className="relative w-full h-52.5 overflow-hidden bg-bg-sub">
+            <Image
+              src={scene.imageUrl}
+              alt={scene.title}
+              fill
+              className="object-cover transition-transform duration-250 ease-out group-hover:scale-105"
+            />
           </div>
 
-          {/* 상세 설명 */}
-          <p className="text-b-md font-regular text-description leading-relaxed line-clamp-2">
-            {scene.description}
-          </p>
+          <div className="px-4 py-[16.56px] space-y-3.5">
 
-          {/* 푸터 세션: 카테고리 & 인원 */}
-          <div className="flex items-center justify-between pt-px">
-            <span className="px-3 py-1 rounded-full bg-bg-sub text-sub2 text-b-sm font-regular">
-              {scene.category}
-            </span>
-            
-            <div className="flex items-center gap-0.5 text-sub2">
-              <Image
-                src="/images/people-icon.svg"
-                alt="사람들 모양 아이콘"
-                width={24}
-                height={24}
-              />
-              <p>{scene.participantsCount}</p>
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-b-lg font-medium text-title">{scene.title}</h3>
+              <span className="text-b-md font-regular text-sub">{scene.engTitle}</span>
             </div>
+
+            <p className="text-b-md font-regular text-description leading-relaxed line-clamp-2">
+              {scene.description}
+            </p>
+
+            <div className="flex items-center justify-between pt-px">
+              <span className="px-3 py-1 rounded-full bg-bg-sub text-sub2 text-b-sm font-regular">
+                {scene.category}
+              </span>
+              <div className="flex items-center gap-0.5 text-sub2">
+                <Image
+                  src="/images/people-icon.svg"
+                  alt="사람들 모양 아이콘"
+                  width={24}
+                  height={24}
+                />
+                <p>{scene.participantsCount}</p>
+              </div>
+            </div>
+            
           </div>
         </div>
-      </div>
       ))}
     </div>
   );

@@ -1,7 +1,6 @@
 'use client';
 
 import { generatePagination } from "@/app/_utils/home/generatePagination";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 

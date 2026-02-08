@@ -36,7 +36,6 @@ const OrderDropdown = () => {
 
   return (
     <div className="relative w-39.75" ref={OrderDropdownRef}>
-      {/* 드롭다운 버튼 (Trigger) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
@@ -50,7 +49,6 @@ const OrderDropdown = () => {
         `}
       >
         <span>{searchParams.get("order")?.toString() || "정렬"}</span>
-        {/* 화살표 아이콘: Open 상태에 따라 회전 */}
         <svg
           width="20"
           height="20"
@@ -66,7 +64,6 @@ const OrderDropdown = () => {
         </svg>
       </button>
 
-      {/* 드롭다운 메뉴 (Menu) */}
       {isOpen && (
         <div className="absolute top-[calc(100%+8px)] w-full p-1.5 bg-bg-hovered rounded-[10px] z-50 animate-in fade-in zoom-in">
           <ul className="flex flex-col gap-1">
