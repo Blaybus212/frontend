@@ -25,6 +25,8 @@ const OrderDropdown = () => {
   }, []);
 
   const handleClick = (order: string) => {
+    setOrder(order);
+
     const newParams = new URLSearchParams(searchParams);
 
     newParams.set("order", order);
