@@ -4,7 +4,7 @@ import React, { Suspense, useRef, useImperativeHandle, forwardRef } from 'react'
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { SceneContent } from './3d/SceneContent';
-import type { ObjectInfo, Model, Scene3DRef } from './3d/types';
+import type { ObjectInfo, Model, Scene3DRef, SelectablePart } from './3d/types';
 
 interface Scene3DProps {
   models: Model[];
@@ -12,6 +12,7 @@ interface Scene3DProps {
   onModelSelect: (indices: number[]) => void; // 선택 변경 콜백 (항상 배열로 전달)
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void;
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  onSelectablePartsChange?: (parts: SelectablePart[]) => void;
   /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
   assemblyValue?: number;
 }
@@ -21,7 +22,7 @@ interface Scene3DProps {
  * Canvas를 래핑하고 SceneContent를 렌더링합니다.
  */
 const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
-  ({ models, selectedModelIndices, onModelSelect, onSelectedNodeIdsChange, onObjectInfoChange, assemblyValue = 0 }, ref) => {
+  ({ models, selectedModelIndices, onModelSelect, onSelectedNodeIdsChange, onObjectInfoChange, onSelectablePartsChange, assemblyValue = 0 }, ref) => {
     const sceneContentRef = useRef<Scene3DRef>(null);
 
     // 외부 ref를 sceneContentRef에 연결
@@ -96,6 +97,7 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
             onModelSelect={onModelSelect}
             onSelectedNodeIdsChange={onSelectedNodeIdsChange}
             onObjectInfoChange={onObjectInfoChange}
+            onSelectablePartsChange={onSelectablePartsChange}
             assemblyValue={assemblyValue}
           />
         </Suspense>

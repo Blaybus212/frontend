@@ -170,6 +170,8 @@ export interface SceneContentProps {
   onSelectedNodeIdsChange?: (nodeIds: string[]) => void;
   /** 선택된 객체의 정보가 변경될 때 호출되는 콜백 함수 (선택적) */
   onObjectInfoChange?: (info: ObjectInfo | null) => void;
+  /** 선택 가능한 부품 목록이 갱신될 때 호출되는 콜백 함수 */
+  onSelectablePartsChange?: (parts: SelectablePart[]) => void;
   /** 조립/분해 슬라이더 값 (0-100, 0=조립 상태, 100=분해 상태) */
   assemblyValue?: number;
 }

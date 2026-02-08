@@ -39,6 +39,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   onModelSelect,
   onSelectedNodeIdsChange,
   onObjectInfoChange,
+  onSelectablePartsChange,
   assemblyValue = 0,
 }, ref) => {
   const { scene, camera, gl } = useThree();
@@ -50,6 +51,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   const [nodeGroupVersion, setNodeGroupVersion] = React.useState(0);
   const { renderMode, viewMode, setRenderMode, setViewMode } = useRenderModeHotkeys();
   const wasDraggingRef = useRef(false);
+  const lastSelectablePartsKeyRef = useRef<string>('');
 
   const {
     transformControlsRef,
@@ -364,6 +366,16 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     });
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
+
+  React.useEffect(() => {
+    if (!onSelectablePartsChange) return;
+    const list = getSelectableParts();
+    if (list.length === 0) return;
+    const nextKey = list.map((part) => part.nodeId).sort().join('|');
+    if (nextKey === lastSelectablePartsKeyRef.current) return;
+    lastSelectablePartsKeyRef.current = nextKey;
+    onSelectablePartsChange(list);
+  }, [getSelectableParts, onSelectablePartsChange, modelRefsVersion]);
 
   const getModelRootName = useCallback(() => {
     const firstModel = models[0];
