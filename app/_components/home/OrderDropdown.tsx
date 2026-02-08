@@ -9,6 +9,7 @@ const OrderDropdown = () => {
   const pathname = usePathname();
   const router = useRouter();
 
+  const [order, setOrder] = useState(searchParams.get("order")?.toString() || "인기순");
   const [isOpen, setIsOpen] = useState(false);
   const OrderDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +49,7 @@ const OrderDropdown = () => {
             : " text-sub"}
         `}
       >
-        <span>{searchParams.get("order")?.toString() || "정렬"}</span>
+        <span>{order}</span>
         <svg
           width="20"
           height="20"
