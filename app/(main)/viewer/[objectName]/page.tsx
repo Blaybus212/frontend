@@ -6,6 +6,11 @@ import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPane
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
+import {
+  ASSEMBLY_VALUE_ASSEMBLED,
+  ICON_FLASH_DELAY_MS,
+  PDF_EMPTY_SUMMARY_TEXT,
+} from '@/app/_components/viewer/constants';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -79,37 +84,36 @@ export default function ViewerPage() {
   ];
 
   const handleIconSelect = (iconId: string) => {
-    if (iconId !== 'parts') {
+    const flashIcon = () => {
       setSelectedIcon(iconId);
-    }
-    if (iconId === 'zoomin') {
-      scene3DRef.current?.zoomIn();
       window.setTimeout(() => {
-        setSelectedIcon((prev) => (prev === 'zoomin' ? null : prev));
-      }, 150);
-      return;
-    }
-    if (iconId === 'zoomout') {
-      scene3DRef.current?.zoomOut();
-      window.setTimeout(() => {
-        setSelectedIcon((prev) => (prev === 'zoomout' ? null : prev));
-      }, 150);
-      return;
-    }
-    if (iconId === 'refresh') {
-      scene3DRef.current?.resetToAssembly();
-      window.setTimeout(() => {
-        setSelectedIcon((prev) => (prev === 'refresh' ? null : prev));
-      }, 150);
-    }
-    if (iconId === 'pdf') {
-      setIsPdfOpen((prev) => !prev);
-      setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
-      return;
-    }
-    if (iconId === 'parts') {
-      setIsPartsOpen((prev) => !prev);
-      return;
+        setSelectedIcon((prev) => (prev === iconId ? null : prev));
+      }, ICON_FLASH_DELAY_MS);
+    };
+
+    switch (iconId) {
+      case 'zoomin':
+        scene3DRef.current?.zoomIn();
+        flashIcon();
+        return;
+      case 'zoomout':
+        scene3DRef.current?.zoomOut();
+        flashIcon();
+        return;
+      case 'refresh':
+        scene3DRef.current?.resetToAssembly();
+        flashIcon();
+        return;
+      case 'pdf':
+        setIsPdfOpen((prev) => !prev);
+        setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
+        return;
+      case 'parts':
+        setIsPartsOpen((prev) => !prev);
+        return;
+      default:
+        setSelectedIcon(iconId);
+        return;
     }
   };
 
@@ -143,6 +147,28 @@ export default function ViewerPage() {
 
   const allPartIds = useMemo(() => parts.map((part) => part.nodeId), [parts]);
 
+  const waitForNextPaint = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+
+  const captureAssembledModelSnapshots = async (modelId: string) => {
+    if (!scene3DRef.current) return [null, null, null] as [null, null, null];
+    const prevAssemblyValue = assemblyValue;
+    if (prevAssemblyValue !== ASSEMBLY_VALUE_ASSEMBLED) {
+      setAssemblyValue(ASSEMBLY_VALUE_ASSEMBLED);
+      await waitForNextPaint();
+    }
+    const snapshots = await scene3DRef.current.captureModelSnapshots(modelId);
+    if (prevAssemblyValue !== ASSEMBLY_VALUE_ASSEMBLED) {
+      setAssemblyValue(prevAssemblyValue);
+      await waitForNextPaint();
+    }
+    return snapshots;
+  };
+
   const handlePdfPrint = async (config: {
     screenshotMode: 'full' | 'current';
     partMode: 'all' | 'viewed';
@@ -161,7 +187,7 @@ export default function ViewerPage() {
 
     const modelName = modelRootName;
     const modelEnglish = objectData.english;
-    const modelSnapshots = await scene3DRef.current.captureModelSnapshots(models[0]?.id ?? 'model');
+    const modelSnapshots = await captureAssembledModelSnapshots(models[0]?.id ?? 'model');
 
     const availableParts = scene3DRef.current?.getSelectableParts() || parts;
     const targetParts =
@@ -181,7 +207,7 @@ export default function ViewerPage() {
       modelEnglish,
       dateLabel,
       includeSummary,
-      summaryText: includeSummary ? 'AI와 대화를 나눈 기록이 없어요' : '',
+      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
       includeKeywords,
       keywords: [],
       modelSnapshots,
@@ -193,7 +219,7 @@ export default function ViewerPage() {
       modelName,
       dateLabel,
       includeSummary,
-      summaryText: includeSummary ? 'AI와 대화를 나눈 기록이 없어요' : '',
+      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
       noteHtml: noteValue,
       noteElement: noteExportRef.current,
     });

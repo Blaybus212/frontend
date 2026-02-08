@@ -1,4 +1,4 @@
-import { PDF_BACKGROUND, PDF_SUBTEXT, PDF_TEXT } from '../../constants';
+import { PDF_BACKGROUND, PDF_EMPTY_SUMMARY_TEXT, PDF_SUBTEXT, PDF_TEXT } from '../../constants';
 import { PDF_LAYOUT, PDF_FONT } from './constants';
 import type { PdfNotePayload, PdfSummaryPayload } from '../pdfExport';
 
@@ -16,7 +16,7 @@ const { A4_WIDTH } = PDF_LAYOUT;
 export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
   const keywords = payload.includeKeywords ? payload.keywords ?? [] : [];
   const summaryText = payload.includeSummary
-    ? payload.summaryText || 'AI와 대화를 나눈 기록이 없어요'
+    ? payload.summaryText || PDF_EMPTY_SUMMARY_TEXT
     : '';
 
   const partsHtml = payload.parts
@@ -92,7 +92,7 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
  */
 export const buildNoteHtml = (payload: PdfNotePayload) => {
   const summaryText = payload.includeSummary
-    ? payload.summaryText || 'AI와 대화를 나눈 기록이 없어요'
+    ? payload.summaryText || PDF_EMPTY_SUMMARY_TEXT
     : '';
 
   return `

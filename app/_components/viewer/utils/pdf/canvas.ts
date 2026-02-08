@@ -1,4 +1,4 @@
-import { PDF_BACKGROUND, PDF_TEXT } from '../../constants';
+import { PDF_BACKGROUND, PDF_EMPTY_SUMMARY_TEXT, PDF_TEXT } from '../../constants';
 import { CAPTURE, NOTE_LAYOUT, PDF_FONT, PDF_LAYOUT, SUMMARY_BOX, TITLE_LAYOUT } from './constants';
 import type { PdfNotePayload, PdfSummaryPayload } from '../pdfExport';
 
@@ -50,7 +50,7 @@ const buildSummaryLines = (
  * 노트 PDF 상단(제목 + 요약 박스)을 캔버스로 렌더합니다.
  */
 export const buildNoteHeaderCanvas = (payload: PdfNotePayload) => {
-  const summaryText = payload.summaryText || 'AI와 대화를 나눈 기록이 없어요';
+  const summaryText = payload.summaryText || PDF_EMPTY_SUMMARY_TEXT;
   const { A4_WIDTH } = PDF_LAYOUT;
 
   const measureCanvas = document.createElement('canvas');
@@ -146,7 +146,7 @@ export const buildNoteHeaderCanvas = (payload: PdfNotePayload) => {
  * 총정리 PDF 요약 박스를 캔버스로 렌더합니다.
  */
 export const buildSummaryBlockCanvas = (payload: PdfSummaryPayload) => {
-  const summaryText = payload.summaryText || 'AI와 대화를 나눈 기록이 없어요';
+  const summaryText = payload.summaryText || PDF_EMPTY_SUMMARY_TEXT;
   const { A4_WIDTH } = PDF_LAYOUT;
 
   const measureCanvas = document.createElement('canvas');
