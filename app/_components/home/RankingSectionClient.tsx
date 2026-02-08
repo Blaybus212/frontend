@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { RankingSectionData } from '@/app/_types/home';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -13,9 +13,11 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
   const pathname = usePathname();
   const router = useRouter();
 
-  const rank = searchParams.get("rank")?.toString() || 'all';
+  const [rank, setRank] = useState<string>(searchParams.get("rank")?.toString() || 'all');
 
   const handleClick = (rank: string) => {
+    setRank(rank);
+
     const newParams = new URLSearchParams(searchParams);
 
     newParams.set("rank", rank);
