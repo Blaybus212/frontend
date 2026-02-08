@@ -126,16 +126,6 @@ export default function ViewerPage() {
     }
   }, [models]);
 
-  useEffect(() => {
-    if (parts.length > 0) return;
-    const timeoutId = window.setTimeout(() => {
-      const list = scene3DRef.current?.getSelectableParts() || [];
-      if (list.length > 0) {
-        setParts(list);
-      }
-    }, 500);
-    return () => window.clearTimeout(timeoutId);
-  }, [parts.length]);
 
   useEffect(() => {
     if (!scene3DRef.current) return;
@@ -225,6 +215,7 @@ export default function ViewerPage() {
           selectedModelIndices={selectedModelIndices}
           onModelSelect={setSelectedModelIndices}
           onSelectedNodeIdsChange={updateSelectedPartIds}
+        onSelectablePartsChange={setParts}
           assemblyValue={assemblyValue}
         />
       </div>
