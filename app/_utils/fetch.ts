@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 /**
  * [$fetch 유틸리티]
@@ -20,7 +20,7 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     headers.set("Authorization", `Bearer ${token}`);
   } else {
     // 토큰이 아예 없으면 로그인 페이지로 강제 이동
-    redirect("/login?error=SessionExpired");
+    await signOut();
   }
 
   // 3. 실제 API 서버로 요청 보내기
@@ -29,9 +29,11 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     headers,
   });
 
+
   // 4. 인증 만료(401) 시 즉시 로그인 페이지로 리다이렉트
   if (response.status === 401) {
-    redirect("/login?error=SessionExpired");
+    console.log(response.status)
+    await signOut();
   }
 
   if (!response.ok) {
