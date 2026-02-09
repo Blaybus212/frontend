@@ -4,6 +4,7 @@
  * 좌측에 표시되는 뷰어 컨트롤 아이콘들을 포함하는 사이드바입니다.
  */
 
+import Image from 'next/image';
 import { ViewerIcon } from './ViewerIcon';
 import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon, DownloadIcon } from './icons';
 
@@ -21,6 +22,12 @@ interface ViewerSidebarProps {
   isAiPanelOpen: boolean;
   /** AI 패널 열기 핸들러 */
   onOpenAiPanel: () => void;
+  /** 퀴즈 버튼 클릭 핸들러 */
+  onQuizClick: () => void;
+  /** 퀴즈 진행률(%) */
+  quizProgressPercent?: number;
+  /** 퀴즈 모드 여부 */
+  isQuizMode?: boolean;
 }
 
 /**
@@ -56,6 +63,9 @@ export function ViewerSidebar({
   onIconSelect,
   isAiPanelOpen,
   onOpenAiPanel,
+  onQuizClick,
+  quizProgressPercent = 0,
+  isQuizMode = false,
 }: ViewerSidebarProps) {
   return (
     <aside className="absolute left-12 top-[96px] bottom-4 flex flex-col items-center gap-[22px] py-4 z-10">
@@ -66,6 +76,37 @@ export function ViewerSidebar({
         onClick={() => onIconSelect('home')}
         aria-label="홈"
       />
+      {isQuizMode ? (
+        <>
+          <ViewerIcon
+            icon={
+              <Image
+                src="/Assets/ViewerIcons/Icon-bulb.svg"
+                alt=""
+                width={24}
+                height={24}
+              />
+            }
+            selected={false}
+            onClick={() => {}}
+            aria-label="퀴즈 아이콘"
+          />
+          <ViewerIcon
+            icon={
+              <Image
+                src="/Assets/ViewerIcons/Icon-save.svg"
+                alt=""
+                width={24}
+                height={24}
+              />
+            }
+            selected={false}
+            onClick={() => {}}
+            aria-label="퀴즈 저장"
+          />
+        </>
+      ) : (
+        <>
       <ViewerIcon
         icon={<ZoomInIcon />}
         selected={selectedIcon === 'zoomin'}
@@ -98,9 +139,22 @@ export function ViewerSidebar({
       />
       
       {/* 퀴즈 진행도 표시 버튼: 현재 퀴즈 완료율을 표시 */}
-      <button className="w-[54px] h-[54px] rounded-full bg-bg-sub border border-border-default flex flex-col items-center justify-center hover:bg-bg-hovered transition-colors">
+      <button
+        type="button"
+        onClick={onQuizClick}
+        className={`
+          w-[54px] h-[54px] rounded-full
+          border border-border-default
+          flex flex-col items-center justify-center
+          transition-colors
+          ${isQuizMode ? 'bg-point-500 text-base-black' : 'bg-bg-sub hover:bg-bg-hovered'}
+        `}
+        aria-label="퀴즈"
+      >
         <span className="text-b-sm font-weight-semibold text-text-title">퀴즈</span>
-        <span className="text-b-xs text-point-500">50%</span>
+        <span className={`text-b-xs ${isQuizMode ? 'text-base-black' : 'text-point-500'}`}>
+          {Math.max(0, Math.min(100, Math.round(quizProgressPercent)))}%
+        </span>
       </button>
 
       <ViewerIcon
@@ -111,7 +165,7 @@ export function ViewerSidebar({
       />
 
       {/* AI 패널 열기 버튼: AI 아이콘이 하단에 고정되어 있으며, 클릭 시 AI 패널을 엽니다 */}
-      {!isAiPanelOpen && (
+      {!isAiPanelOpen && !isQuizMode && (
         <div className="mt-auto mb-[40px] ai-icon-ripple">
           <ViewerIcon
             icon={<AiIcon />}
@@ -122,6 +176,8 @@ export function ViewerSidebar({
             iconColor="var(--color-base-black)"
           />
         </div>
+      )}
+        </>
       )}
     </aside>
   );
