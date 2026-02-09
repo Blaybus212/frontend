@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { $fetch } from '../_utils/fetch';
 import { useRouter } from 'next/navigation';
 import { SceneCategory } from '../_types/home';
+import { useSession } from 'next-auth/react';
+import { User } from 'next-auth';
 
 const initialData: OnboardData = {
   name: '',
@@ -19,6 +21,7 @@ export const useOnboard = (totalSteps: number) => {
   const [formData, setFormData] = useState<OnboardData>(initialData);
   const [isPending, setIsPending] = useState(false);
   const router = useRouter();
+  const { data: session, update } = useSession();
 
   // 특정 키의 값 업데이트
   const updateData = (key: keyof OnboardData, value: OnboardData[keyof OnboardData]) => {
@@ -64,6 +67,15 @@ export const useOnboard = (totalSteps: number) => {
         await $fetch('/onboard', { 
           method: 'PATCH', 
           body: JSON.stringify(reqData) 
+        });
+
+        await update({
+          ...session,
+          loginUser: {
+            ...session?.loginUser,
+            name: formData.name,
+            preferCategory: formData.preferCategory,
+          },
         });
 
         router.push('/onboard-finished');
