@@ -1,8 +1,9 @@
 'use client';
 
 import TextInput from '@/app/_components/onboard/TextInput';
-import { AI_ANSWER_EXAMPLE_LIST, CATEGORY_LIST, LEVEL_LIST, PERSONA_LIST, SPECIALIZED_LIST, THEME_LIST } from '@/app/_constants/onboard';
+import { AI_ANSWER_EXAMPLE_LIST, LEVEL_LIST, PERSONA_LIST, SPECIALIZED_LIST, THEME_LIST } from '@/app/_constants/onboard';
 import { useOnboard } from '@/app/_hooks/useOnboard';
+import { SceneCategory } from '@/app/_types/home';
 import { JSX, useState } from 'react';
 
 interface StepConfig {
@@ -97,7 +98,7 @@ export default function OnboardingPage() {
               <div className='flex flex-col gap-3.5'>
                 <h3 className="text-b-md font-regular text-sub2">학습 분야</h3>
                 <div className="flex flex-row gap-3.5">
-                  {CATEGORY_LIST.map((selected) => (
+                  {Object.keys(SceneCategory).map((selected) => (
                     <button
                       key={selected}
                       onClick={() => updateData('preferCategory', selected)}

@@ -18,11 +18,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
           method: "POST",
-          body: JSON.stringify(credentials),
+          body: JSON.stringify({
+            username: credentials.username,
+            password: credentials.password
+          }),
           headers: { "Content-Type": "application/json" },
         });
 
         const user: User = await res.json();
+
+        console.log(user)
         if (res.ok && user) return user;
         return null;
       },

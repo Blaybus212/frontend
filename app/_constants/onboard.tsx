@@ -1,8 +1,7 @@
-export const CATEGORY_LIST = [
-  "기계공학",
-  "우주공학",
-  "생명공학",
-  "의공학"
+
+export const ORDER_LIST = [
+  "인기순",
+  "가나다순"
 ]
 
 export const SPECIALIZED_LIST = [

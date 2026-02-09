@@ -1,22 +1,22 @@
 "use client";
 
+import { ORDER_LIST } from "@/app/_constants/onboard";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
-interface DropdownProps {
-  options: string[];
-  defaultLabel?: string;
-  onSelect?: (option: string) => void;
-}
+const OrderDropdown = () => {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
 
-const Dropdown = ({ options, defaultLabel = "정렬", onSelect }: DropdownProps) => {
+  const [order, setOrder] = useState(searchParams.get("order")?.toString() || "인기순");
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState(defaultLabel);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const OrderDropdownRef = useRef<HTMLDivElement>(null);
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (OrderDropdownRef.current && !OrderDropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -24,15 +24,21 @@ const Dropdown = ({ options, defaultLabel = "정렬", onSelect }: DropdownProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (option: string) => {
-    setSelected(option);
+  const handleClick = (order: string) => {
+    setOrder(order);
+
+    const newParams = new URLSearchParams(searchParams);
+
+    newParams.set("order", order);
+    newParams.set("curr", "1");
+
+    router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
     setIsOpen(false);
-    if (onSelect) onSelect(option);
+
   };
 
   return (
-    <div className="relative w-39.75" ref={dropdownRef}>
-      {/* 드롭다운 버튼 (Trigger) */}
+    <div className="relative w-39.75" ref={OrderDropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
@@ -45,8 +51,7 @@ const Dropdown = ({ options, defaultLabel = "정렬", onSelect }: DropdownProps)
             : " text-sub"}
         `}
       >
-        <span>{selected}</span>
-        {/* 화살표 아이콘: Open 상태에 따라 회전 */}
+        <span>{order}</span>
         <svg
           width="20"
           height="20"
@@ -62,14 +67,13 @@ const Dropdown = ({ options, defaultLabel = "정렬", onSelect }: DropdownProps)
         </svg>
       </button>
 
-      {/* 드롭다운 메뉴 (Menu) */}
       {isOpen && (
         <div className="absolute top-[calc(100%+8px)] w-full p-1.5 bg-bg-hovered rounded-[10px] z-50 animate-in fade-in zoom-in">
           <ul className="flex flex-col gap-1">
-            {options.map((option) => (
+            {ORDER_LIST.map((option) => (
               <li key={option}>
                 <button
-                  onClick={() => handleSelect(option)}
+                  onClick={() => handleClick(option)}
                   className="w-full text-left px-2.5 py-1.5 rounded-md text-b-lg font-medium text-sub2 hover:bg-bg-sub transition-colors"
                 >
                   {option}
@@ -83,4 +87,4 @@ const Dropdown = ({ options, defaultLabel = "정렬", onSelect }: DropdownProps)
   );
 };
 
-export default Dropdown;
+export default OrderDropdown;

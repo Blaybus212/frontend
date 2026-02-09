@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { $fetch } from '../_utils/fetch';
 import { useRouter } from 'next/navigation';
+import { SceneCategory } from '../_types/home';
 
 const initialData: OnboardData = {
   name: '',
@@ -56,6 +57,7 @@ export const useOnboard = (totalSteps: number) => {
       try {
         const reqData: OnboardRequestData = {
           ...formData,
+          preferCategory: SceneCategory[formData.preferCategory as keyof typeof SceneCategory],
           specialized: formData.specialized.join(',')
         };
 

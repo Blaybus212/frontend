@@ -13,6 +13,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.5.0",
     "@tiptap/core": "^2.27.2",
@@ -29,7 +30,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.169.0",
-    "three-stdlib": "^2.36.1"
+    "three-stdlib": "^2.36.1",
+    "use-debounce": "^10.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.1.0",

@@ -1,7 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 // import SaveStatus from '@/components/SaveStatus';
 
 interface MainLayoutProps {
@@ -11,19 +12,24 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const isViewer = pathname.startsWith('/viewer');
+  const isHome = pathname.startsWith('/home');
   const isLoggedIn = !pathname.startsWith('/login');
+
+  const router = useRouter();
   const now = new Date();
   const timeLabel = now.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   });
-
+  
   return (
-    <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-[#0f1014]`}>
-      <nav className="h-16 relative flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0">
+    <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-surface`}>
+      <nav className={`${isHome && 'fixed w-full z-100'} h-16 flex items-center justify-between px-12 bg-surface border-b border-[#1E2939] shrink-0`}>
         {/* 좌측: 로고 (고정) */}
-        <div className="flex items-center gap-2">
+        <div 
+          onClick={()=>router.push('/home')}
+          className="flex items-center gap-2 cursor-pointer">
           <Image 
             src="/images/logo.svg" 
             unoptimized
@@ -31,7 +37,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             width={24}
             height={24}
           />
-          <span className="text-b-xl font-semibold text-white">SIMVEX</span>
+          <span className="font-rem text-b-xl font-semibold text-white">SIMVEX</span>
         </div>
 
         {/* 중앙: 뷰어 경로일 때만 상태 구독 컴포넌트 마운트 */}
@@ -60,11 +66,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
             alt="프로필" 
             width={34}
             height={34}
+            className='cursor-pointer'
+            onClick={async ()=>{
+              await signOut();
+            }}
           />
         }
       </nav>
 
-      <main className={`flex-1 ${isViewer ? 'overflow-hidden' : 'overflow-auto'}`}>
+      <main className={`flex-1 ${isViewer ? 'overflow-hidden' : 'overflow-auto'} ${isHome && 'pt-16'}`}>
         {children}
       </main>
     </div>
