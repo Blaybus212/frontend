@@ -49,14 +49,8 @@ interface ViewerRightPanelProps {
   onResizeWidth: (nextWidthPercent: number) => void;
   /** 노트에서 사용할 부품 목록 */
   parts: SelectablePart[];
-  /** 부품 스냅샷을 생성하는 함수 */
-  onInsertPartSnapshot: (nodeId: string) => Promise<string | null>;
-  /** 모델 스냅샷을 생성하는 함수 */
-  onInsertModelSnapshot: (modelId: string) => Promise<string | null>;
   /** 모델 이름(전체 선택용) */
   modelName: string;
-  /** 모델 id(전체 선택용) */
-  modelId: string;
 }
 
 /**
@@ -88,10 +82,7 @@ export function ViewerRightPanel({
   widthPercent,
   onResizeWidth,
   parts,
-  onInsertPartSnapshot,
-  onInsertModelSnapshot,
   modelName,
-  modelId,
 }: ViewerRightPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -263,10 +254,7 @@ export function ViewerRightPanel({
             placeholder={NOTE_PLACEHOLDER}
             className="flex-1 flex flex-col"
             parts={parts}
-            onInsertPartSnapshot={onInsertPartSnapshot}
-            onInsertModelSnapshot={onInsertModelSnapshot}
             modelName={modelName}
-            modelId={modelId}
             exportContainerRef={noteExportRef}
           />
         </div>

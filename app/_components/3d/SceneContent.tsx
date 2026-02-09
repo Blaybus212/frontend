@@ -259,32 +259,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     [camera, gl]
   );
 
-  const capturePartSnapshot = useCallback(
-    async (nodeId: string) => {
-      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
-      if (!targetNode) return null;
-      return captureObjectSnapshot(targetNode, {
-        includeOnlyTarget: true,
-        viewMode: 'lit',
-        renderMode: 'normal',
-      });
-    },
-    [captureObjectSnapshot, findNodeById]
-  );
-
-  const captureModelSnapshot = useCallback(
-    async (modelId: string) => {
-      const modelRoot = findModelRootById(modelId);
-      if (!modelRoot) return null;
-      return captureObjectSnapshot(modelRoot, {
-        includeOnlyTarget: false,
-        viewMode: 'lit',
-        renderMode: 'normal',
-      });
-    },
-    [captureObjectSnapshot, findModelRootById]
-  );
-
   const capturePartSnapshots = useCallback(
     async (nodeId: string): Promise<[string | null, string | null, string | null]> => {
       const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
@@ -486,8 +460,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     setSelectedNodeIds,
     zoomIn,
     zoomOut,
-    capturePartSnapshot,
-    captureModelSnapshot,
     capturePartSnapshots,
     captureModelSnapshots,
     getModelRootName,

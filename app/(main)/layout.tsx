@@ -14,6 +14,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isViewer = pathname.startsWith('/viewer');
   const isHome = pathname.startsWith('/home');
   const isLoggedIn = !pathname.startsWith('/login');
+
+  const now = new Date();
+  const timeLabel = now.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
   const router = useRouter();
 
   return (
@@ -34,7 +42,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
 
         {/* 중앙: 뷰어 경로일 때만 상태 구독 컴포넌트 마운트 */}
-        {/* isViewer ? <SaveStatus /> : <div /> */}
+        {isViewer && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
+            <div className="flex items-center gap-2 text-b-sm text-text-title">
+              <span className="w-3 h-3 rounded-full bg-point-500" aria-hidden />
+              <span className="font-weight-semibold">Auto Save</span>
+              <span className="text-sub2">{timeLabel}</span>
+            </div>
+            <button
+              type="button"
+              className="h-8 px-3 rounded-md bg-point-500 text-base-black text-b-sm font-weight-semibold hover:bg-selected transition-colors"
+            >
+              저장하기
+            </button>
+          </div>
+        )}
 
         {/* 우측: 프로필 (고정) */}
         {
