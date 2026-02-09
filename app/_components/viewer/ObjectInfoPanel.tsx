@@ -14,10 +14,12 @@ interface ObjectData {
   english: string;
   /** 설명 */
   description: string;
-  /** 재질 배열 */
-  materials: string[];
-  /** 활용 분야 배열 */
-  applications: string[];
+  /** 재질 배열 (부품 선택 시에만 표시) */
+  materials?: string[];
+  /** 활용 분야 배열 (부품 선택 시에만 표시) */
+  applications?: string[];
+  /** 씬 정보인지 여부 */
+  isSceneInformation?: boolean;
 }
 
 /**
@@ -77,35 +79,39 @@ export function ObjectInfoPanel({ objectData }: ObjectInfoPanelProps) {
           </p>
         </section>
 
-        {/* 재질 정보 섹션: 객체를 구성하는 재질들을 태그 형태로 표시 */}
-        <section>
-          <h2 className="text-b-md font-weight-semibold text-text-title mb-3">재질</h2>
-          <div className="flex flex-wrap gap-2">
-            {objectData.materials.map((material, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
-              >
-                {material}
-              </span>
-            ))}
-          </div>
-        </section>
+        {/* 재질 정보 섹션: 부품 선택 시에만 표시 */}
+        {objectData.materials && objectData.materials.length > 0 && (
+          <section>
+            <h2 className="text-b-md font-weight-semibold text-text-title mb-3">재질</h2>
+            <div className="flex flex-wrap gap-2">
+              {objectData.materials.map((material, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
+                >
+                  {material}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
 
-        {/* 활용 분야 섹션: 객체의 활용 분야를 태그 형태로 표시 */}
-        <section>
-          <h2 className="text-b-md font-weight-semibold text-text-title mb-3">활용</h2>
-          <div className="flex flex-wrap gap-2">
-            {objectData.applications.map((app, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
-              >
-                {app}
-              </span>
-            ))}
-          </div>
-        </section>
+        {/* 활용 분야 섹션: 부품 선택 시에만 표시 */}
+        {objectData.applications && objectData.applications.length > 0 && (
+          <section>
+            <h2 className="text-b-md font-weight-semibold text-text-title mb-3">활용</h2>
+            <div className="flex flex-wrap gap-2">
+              {objectData.applications.map((app, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-bg-sub text-b-sm text-sub2 rounded-lg"
+                >
+                  {app}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
