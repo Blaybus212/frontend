@@ -123,16 +123,12 @@ export function AiPanel({
     const cursorPos = e.target.selectionStart ?? 0;
     const textBeforeCursor = value.slice(0, cursorPos);
     
-    console.log('🔍 멘션 감지:', { value, cursorPos, textBeforeCursor, partsCount: parts.length });
-    
     // @ 기호의 마지막 위치 찾기
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     
     if (lastAtIndex !== -1) {
       // @ 이후의 텍스트 추출
       const afterAt = textBeforeCursor.slice(lastAtIndex + 1);
-      
-      console.log('✅ @ 발견:', { lastAtIndex, afterAt });
       
       // @ 이후에 공백이 없으면 멘션 활성화
       if (!afterAt.includes(' ')) {
@@ -148,13 +144,10 @@ export function AiPanel({
           left: rect.left,
         };
         
-        console.log('📍 멘션 드롭다운 표시:', { position, query: afterAt });
         setMentionPosition(position);
         return;
       }
     }
-    
-    console.log('❌ 멘션 닫기');
     // @ 가 없거나 공백이 있으면 닫기
     setIsMentionOpen(false);
   };
@@ -179,7 +172,6 @@ export function AiPanel({
         if (prev.includes(part.dbId!)) {
           return prev;
         }
-        console.log('✅ 부품 참조 추가:', { dbId: part.dbId, partName });
         return [...prev, part.dbId!];
       });
     } else {
@@ -204,8 +196,6 @@ export function AiPanel({
       ? mentionedPartIds.map(dbId => ({ componentId: dbId }))
       : undefined;
     
-    console.log('📤 메시지 전송:', { content: trimmed, references });
-
     setInput('');
     setMentionedPartIds([]); // 전송 후 초기화
     
@@ -356,17 +346,14 @@ export function AiPanel({
       <div className="h-[83px] px-6 py-3 relative">
         {/* 멘션 드롭다운 */}
         {isMentionOpen && (
-          <>
-            {console.log('🎨 멘션 드롭다운 렌더링:', { isMentionOpen, partsCount: parts.length, position: mentionPosition })}
-            <AiMentionMenu
-              parts={parts}
-              query={mentionQuery}
-              position={mentionPosition}
-              onSelect={handleSelectPart}
-              onClose={() => setIsMentionOpen(false)}
-              modelName={modelName}
-            />
-          </>
+          <AiMentionMenu
+            parts={parts}
+            query={mentionQuery}
+            position={mentionPosition}
+            onSelect={handleSelectPart}
+            onClose={() => setIsMentionOpen(false)}
+            modelName={modelName}
+          />
         )}
 
         <div className="flex items-center gap-3">

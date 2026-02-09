@@ -6,7 +6,7 @@
 
 import Image from 'next/image';
 import { ViewerIcon } from './ViewerIcon';
-import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon, DownloadIcon } from './icons';
+import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon } from './icons';
 
 /**
  * ViewerSidebar 컴포넌트의 Props 인터페이스
@@ -131,13 +131,6 @@ export function ViewerSidebar({
         onClick={() => onIconSelect('pdf')}
         aria-label="PDF"
       />
-      <ViewerIcon
-        icon={<DownloadIcon />}
-        selected={selectedIcon === 'download'}
-        onClick={() => onIconSelect('download')}
-        aria-label="GLTF 다운로드"
-      />
-      
       {/* 퀴즈 진행도 표시 버튼: 현재 퀴즈 완료율을 표시 */}
       <button
         type="button"
@@ -147,14 +140,38 @@ export function ViewerSidebar({
           border border-border-default
           flex flex-col items-center justify-center
           transition-colors
-          ${isQuizMode ? 'bg-point-500 text-base-black' : 'bg-bg-sub hover:bg-bg-hovered'}
+          bg-bg-hovered hover: hover:border-border-hovered
         `}
         aria-label="퀴즈"
       >
-        <span className="text-b-sm font-weight-semibold text-text-title">퀴즈</span>
-        <span className={`text-b-xs ${isQuizMode ? 'text-base-black' : 'text-point-500'}`}>
-          {Math.max(0, Math.min(100, Math.round(quizProgressPercent)))}%
-        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="9"
+            stroke={isQuizMode ? 'var(--color-base-black)' : 'var(--color-sub)'}
+            strokeWidth="1.8"
+          />
+          <path
+            d="M9.5 9.5a2.5 2.5 0 1 1 4.1 1.9c-.8.6-1.1 1-1.1 2"
+            stroke={isQuizMode ? 'var(--color-base-black)' : 'var(--color-sub)'}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <circle
+            cx="12"
+            cy="16.7"
+            r="1"
+            fill={isQuizMode ? 'var(--color-base-black)' : 'var(--color-sub)'}
+          />
+        </svg>
       </button>
 
       <ViewerIcon

@@ -62,7 +62,6 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
             {scenes.map((item) => (
               <div
                 key={item.id}
-                onClick={() => console.log(item) }
                 className="group flex items-center justify-between px-3 py-3.5 rounded-[10px] transition-all duration-200 hover:bg-bg-hovered cursor-pointer"
               >
                 <div className="flex items-center gap-4">

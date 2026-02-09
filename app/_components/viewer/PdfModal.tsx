@@ -62,7 +62,6 @@ interface PdfModalProps {
  * <PdfModal
  *   isPrinting={isPrinting}
  *   onPrintClick={(config) => {
- *     console.log('PDF 출력 설정:', config);
  *     // PDF 출력 로직 실행
  *   }}
  * />

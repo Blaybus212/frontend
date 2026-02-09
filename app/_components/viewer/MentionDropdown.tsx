@@ -55,7 +55,9 @@ const DEFAULT_ITEMS: MentionItem[] = [
  * // 비제어형 컴포넌트
  * <MentionDropdown
  *   items={items}
- *   onSelectItem={(id) => console.log('선택:', id)}
+ *   onSelectItem={(id) => {
+ *     // handle select
+ *   }}
  * />
  * 
  * // 제어형 컴포넌트

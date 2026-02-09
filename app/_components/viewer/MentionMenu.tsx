@@ -34,21 +34,29 @@ export function MentionMenu({
   const handleSelect = (part: SelectablePart) => {
     editor.chain().focus().deleteRange(range).run();
     onClose();
-    const content: Array<Record<string, unknown>> = [
-      { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: part.nodeName }] },
-    ];
-    content.push({ type: 'paragraph' });
-    editor.chain().focus().insertContent(content).run();
+    const label = part.nodeName;
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        { type: 'text', text: label, marks: [{ type: 'mentionHighlight' }] },
+        { type: 'text', text: ' ' },
+      ])
+      .run();
   };
 
   const handleSelectModel = () => {
     editor.chain().focus().deleteRange(range).run();
     onClose();
-    const content: Array<Record<string, unknown>> = [
-      { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: modelName }] },
-    ];
-    content.push({ type: 'paragraph' });
-    editor.chain().focus().insertContent(content).run();
+    const label = modelName;
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        { type: 'text', text: label, marks: [{ type: 'mentionHighlight' }] },
+        { type: 'text', text: ' ' },
+      ])
+      .run();
   };
 
   return (

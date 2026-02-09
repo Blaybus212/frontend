@@ -23,9 +23,6 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     await signOut();
   }
 
-  console.log('🔵 $fetch 토큰:', token);
-  console.log(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`)
-
   // 3. 실제 API 서버로 요청 보내기
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
     ...options,
@@ -34,11 +31,6 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
 
   // 4. 인증 만료(401) 시 즉시 로그인 페이지로 리다이렉트
   if (response.status === 401) {
-    const res = await response.json();
-    const date = new Date();
-    console.log(date);
-    console.log(res);
-    console.log(response.status)
     // await signOut();
   }
 

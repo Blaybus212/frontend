@@ -43,9 +43,7 @@ interface UseObjectInfoProps {
  * useObjectInfo({
  *   selectedObjectRef: selectedObjectRef,
  *   onObjectInfoChange: (info) => {
- *     console.log('Position:', info.position);
- *     console.log('Rotation:', info.rotation);
- *     console.log('Scale:', info.scale);
+ *     // handle object info
  *   },
  * });
  * ```

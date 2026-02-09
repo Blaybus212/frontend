@@ -18,20 +18,9 @@ async function conversationFetch<T>(endpoint: string, options: RequestInit = {})
   headers.set('Content-Type', 'application/json');
   headers.set('Authorization', `Bearer ${token}`);
 
-  console.log('🔵 conversationFetch:', {
-    url: `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-    method: options.method || 'GET',
-    hasBody: !!options.body,
-  });
-
   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
     ...options,
     headers,
-  });
-
-  console.log('📥 conversationFetch 응답:', {
-    status: response.status,
-    ok: response.ok,
   });
 
   if (response.status === 401) {
@@ -45,7 +34,6 @@ async function conversationFetch<T>(endpoint: string, options: RequestInit = {})
 
   // ✅ response.json()을 한 번만 호출
   const data = await response.json();
-  console.log('✅ conversationFetch 데이터:', data);
   return data;
 }
 
@@ -158,13 +146,6 @@ export async function fetchZipData(
 
   const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/viewer?target=${encodeURIComponent(target)}`;
   
-  console.log('🟢 fetchZipData 토큰:', token);
-  console.log('📦 fetchZipData - 서버 액션 실행:', {
-    url,
-    hasToken: !!token,
-    tokenPreview: token.substring(0, 20) + '...',
-  });
-
   const response = await fetch(url, {
     method: 'GET',
     headers: {
@@ -172,12 +153,6 @@ export async function fetchZipData(
     },
     cache: 'no-store', // 캐시 비활성화 - 항상 최신 데이터 가져오기
     next: { revalidate: 0 }, // Next.js 캐시도 비활성화
-  });
-
-  console.log('📡 백엔드 응답:', {
-    status: response.status,
-    statusText: response.statusText,
-    contentType: response.headers.get('content-type'),
   });
 
   if (response.status === 401) {
@@ -244,6 +219,123 @@ export async function fetchSceneInfo(sceneId: string): Promise<SceneInfo> {
   return response.json();
 }
 
+export interface DisassemblyLevelResponse {
+  disassemblyLevel: number;
+}
+
+export async function fetchDisassemblyLevel(sceneId: string): Promise<DisassemblyLevelResponse | null> {
+  return $fetch(`/scenes/${encodeURIComponent(sceneId)}/disassembly-level`, {
+    method: 'GET',
+  });
+}
+
+export async function updateDisassemblyLevel(sceneId: string, disassemblyLevel: number) {
+  await $fetch(`/scenes/${encodeURIComponent(sceneId)}/disassembly-level`, {
+    method: 'PUT',
+    body: JSON.stringify({ disassemblyLevel }),
+  });
+}
+
+export interface SceneNoteResponse {
+  content: string;
+}
+
+export interface NoteDebugInfo {
+  url: string;
+  status: number;
+  ok: boolean;
+  contentType: string | null;
+  body: string;
+}
+
+export async function fetchSceneNote(
+  sceneId: string
+): Promise<{ data: SceneNoteResponse | string | null; debug?: NoteDebugInfo }> {
+  const session = await auth();
+  const token = session?.accessToken;
+
+  if (!token) {
+    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+  }
+
+  const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/note`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const rawText = await response.text().catch(() => '');
+  const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_NOTE === 'true';
+  const debugInfo = debugEnabled
+    ? {
+        url,
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type'),
+        body: rawText,
+      }
+    : undefined;
+
+  if (response.status === 401) {
+    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+  }
+
+  if (!response.ok) {
+    return { data: null, debug: debugInfo };
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    const data = rawText ? JSON.parse(rawText) : null;
+    return { data, debug: debugInfo };
+  }
+
+  return { data: rawText || null, debug: debugInfo };
+}
+
+export async function updateSceneNote(
+  sceneId: string,
+  content: string
+): Promise<{ debug?: NoteDebugInfo }> {
+  const payload = JSON.stringify({ note: content });
+  const session = await auth();
+  const token = session?.accessToken;
+
+  if (!token) {
+    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+  }
+
+  const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/note`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: payload,
+  });
+
+  const rawText = await response.text().catch(() => '');
+  const debugEnabled = process.env.NEXT_PUBLIC_DEBUG_NOTE === 'true';
+  const debugInfo = debugEnabled
+    ? {
+        url,
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type'),
+        body: rawText,
+      }
+    : undefined;
+
+  if (response.status === 401) {
+    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+  }
+
+  return { debug: debugInfo };
+}
+
 /**
  * 대화 이력 가져오기
  */
@@ -269,14 +361,10 @@ export async function sendMessage(
   sceneId: string,
   request: SendMessageRequest
 ): Promise<SendMessageResponse> {
-  console.log('🚀 sendMessage 호출:', { sceneId, request });
-  
   const response = await conversationFetch<SendMessageResponse>(`/scenes/${encodeURIComponent(sceneId)}/conversation/messages`, {
     method: 'POST',
     body: JSON.stringify(request),
   });
-  
-  console.log('✅ sendMessage 응답:', response);
   return response;
 }
 
@@ -322,12 +410,6 @@ export async function gradeQuizAnswer(
 
   for (const endpoint of endpoints) {
     const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
-    console.log('🟣 [quiz grade] 요청', {
-      url,
-      method: 'POST',
-      body: requestBody,
-    });
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -338,12 +420,6 @@ export async function gradeQuizAnswer(
     });
 
     const responseText = await response.text();
-    console.log('🟢 [quiz grade] 응답', {
-      url,
-      status: response.status,
-      ok: response.ok,
-      body: responseText,
-    });
 
     if (response.status === 401) {
       throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');

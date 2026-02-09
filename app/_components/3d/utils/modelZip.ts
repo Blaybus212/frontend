@@ -84,18 +84,6 @@ export async function downloadAndExtractModelZip(params: {
   let defaultUrl: string | null = null;
   let customUrl: string | null = null;
   let parts: Array<{ nodeId: string; nodeName: string }> = [];
-  const logGltfMatrices = (label: string, gltfData: any) => {
-    if (!gltfData?.nodes) return;
-    const nodes = gltfData.nodes.map((node: any, index: number) => ({
-      index,
-      name: node.name || `Node_${index}`,
-      matrix: node.matrix ?? null,
-      translation: node.translation ?? null,
-      rotation: node.rotation ?? null,
-      scale: node.scale ?? null,
-    }));
-    console.log('🧩 [gltf matrices]', { label, count: nodes.length, nodes });
-  };
 
   // 새로운 형식: { default: "default.gltf", custom: "custom.gltf" }
   if (manifest.default || manifest.custom) {
@@ -123,12 +111,6 @@ export async function downloadAndExtractModelZip(params: {
                 originalName: node.name,
               }))
               .filter((part: any) => !part.originalName?.includes('Solid'));
-          }
-          if (manifest.default && filename === manifest.default) {
-            logGltfMatrices('default', gltfData);
-          }
-          if (manifest.custom && filename === manifest.custom) {
-            logGltfMatrices('custom', gltfData);
           }
         } catch (e) {
           console.error(`GLTF 파싱 실패:`, e);

@@ -58,7 +58,6 @@ const DEFAULT_QUIZ_TYPES: QuizType[] = [
  *   onSelectQuizType={setSelectedId}
  *   isStarting={isStarting}
  *   onStartQuizClick={(id) => {
- *     console.log('퀴즈 시작:', id);
  *     // 퀴즈 시작 로직 실행
  *   }}
  * />

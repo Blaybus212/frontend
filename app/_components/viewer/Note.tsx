@@ -5,7 +5,8 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Heading from '@tiptap/extension-heading';
-import { textblockTypeInputRule, mergeAttributes } from '@tiptap/core';
+import { textblockTypeInputRule, mergeAttributes, Mark } from '@tiptap/core';
+import { MarkdownSerializer, defaultMarkdownSerializer } from 'prosemirror-markdown';
 import type { SelectablePart } from '@/app/_components/3d/types';
 import { SlashMenu } from './SlashMenu';
 import { MentionMenu } from './MentionMenu';
@@ -67,7 +68,9 @@ interface NoteProps {
  * // 비제어형 컴포넌트
  * <Note
  *   defaultValue="초기 메모"
- *   onChange={(value) => console.log(value)}
+ *   onChange={(value) => {
+ *     // handle change
+ *   }}
  * />
  * 
  * // 제어형 컴포넌트
@@ -122,6 +125,27 @@ export function Note({
       return [`h${level}`, mergeAttributes(HTMLAttributes, { class: className }), 0];
     },
   });
+  const MentionHighlight = Mark.create({
+    name: 'mentionHighlight',
+    addAttributes() {
+      return {
+        style: {
+          default:
+            'background-color: rgba(197, 255, 0, 0.2); color: var(--color-text-title); padding: 0 4px; border-radius: 4px;',
+        },
+      };
+    },
+    parseHTML() {
+      return [{ tag: 'span[data-mention-highlight]' }];
+    },
+    renderHTML({ HTMLAttributes }) {
+      return [
+        'span',
+        mergeAttributes(HTMLAttributes, { 'data-mention-highlight': 'true' }),
+        0,
+      ];
+    },
+  });
   /** 비제어형 컴포넌트용 내부 텍스트 상태 */
   const [internalValue, setInternalValue] = useState(defaultValue);
   /** 텍스트 영역의 포커스 상태 */
@@ -167,20 +191,62 @@ export function Note({
 
   const isHtmlLike = useCallback((input: string) => /<\/?[a-z][\s\S]*>/i.test(input), []);
 
-  const normalizeContent = useCallback(
-    (input: string) => {
-      if (!input) return '';
-      if (isHtmlLike(input)) return input;
-      const escaped = input
+  const markdownToHtml = useCallback((markdown: string) => {
+    if (!markdown) return '';
+    const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+    const blocks: string[] = [];
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        blocks.push('');
+        return;
+      }
+      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const content = headingMatch[2]
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+        blocks.push(`<h${level}>${content}</h${level}>`);
+        return;
+      }
+      const escaped = line
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\r?\n/g, '<br />');
-      return `<p>${escaped}</p>`;
+        .replace(/'/g, '&#39;');
+      blocks.push(`<p>${escaped}</p>`);
+    });
+    return blocks.filter((block) => block !== '').join('');
+  }, []);
+
+  const serializeMarkdown = useCallback((editorInstance: Editor) => {
+    const serializer = new MarkdownSerializer(
+      defaultMarkdownSerializer.nodes,
+      {
+        ...defaultMarkdownSerializer.marks,
+        mentionHighlight: {
+          open: '',
+          close: '',
+          mixable: true,
+          expelEnclosingWhitespace: true,
+        },
+      }
+    );
+    return serializer.serialize(editorInstance.state.doc);
+  }, []);
+
+  const normalizeContent = useCallback(
+    (input: string) => {
+      if (!input) return '';
+      if (isHtmlLike(input)) return input;
+      return markdownToHtml(input);
     },
-    [isHtmlLike]
+    [isHtmlLike, markdownToHtml]
   );
 
   const editor = useEditor({
@@ -193,6 +259,7 @@ export function Note({
       MarkdownHeading.configure({
         levels: NOTE_HEADING_LEVELS,
       }),
+      MentionHighlight,
       Placeholder.configure({
         placeholder,
         showOnlyCurrent: true,
@@ -228,11 +295,11 @@ export function Note({
       editorInstanceRef.current = editor;
     },
     onUpdate: ({ editor }: { editor: Editor }) => {
-      const html = editor.getHTML();
+      const markdown = serializeMarkdown(editor);
       if (!isControlled) {
-        setInternalValue(html);
+        setInternalValue(markdown);
       }
-      onChange?.(html);
+      onChange?.(markdown);
 
       const { state, view } = editor;
       const { from } = state.selection;
