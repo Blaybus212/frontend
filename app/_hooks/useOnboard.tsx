@@ -68,10 +68,10 @@ export const useOnboard = (totalSteps: number) => {
           loginUser: {
             ...session?.loginUser,
             name: formData.name,
+            themeColor: formData.themeColor,
             preferCategory: formData.preferCategory,
           },
         });
-        console.log(session?.loginUser);
 
         await $fetch('/onboard', { 
           method: 'PATCH', 
