@@ -30,7 +30,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             width={24}
             height={24}
           />
-          <span className="text-b-xl font-semibold text-white">SIMVEX</span>
+          <span className="font-rem text-b-xl font-semibold text-white">SIMVEX</span>
         </div>
 
         {/* 중앙: 뷰어 경로일 때만 상태 구독 컴포넌트 마운트 */}

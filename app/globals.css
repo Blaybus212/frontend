@@ -63,6 +63,7 @@
 
   /* [Typography] */
   --font-pretendard: "var(--font-pretendard)", "Pretendard", sans-serif;
+  --font-rem: "var(--font-rem)", "REM", sans-serif;
   --font-weight-bold: 700;
   --font-weight-semibold: 600;
   --font-weight-medium: 500;
