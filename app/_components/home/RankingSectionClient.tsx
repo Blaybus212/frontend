@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { RankingSectionData } from '@/app/_types/home';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const RankingSectionClient: React.FC<RankingSectionData> = ({
   today,
@@ -12,10 +13,15 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [rank, setRank] = useState<string>(searchParams.get("rank")?.toString() || 'all');
 
   const handleClick = (rank: string) => {
+    if (rank == "my") {
+      rank = session?.loginUser?.preferCategory ?? "";
+    }
+
     setRank(rank);
 
     const newParams = new URLSearchParams(searchParams);
@@ -52,7 +58,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
             <button
               onClick={() => handleClick("my")}
               className={`rounded-lg px-3.75 py-1.5 text-b-sm font-medium ${
-                rank === "my" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
+                rank !== "all" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
               }`}
             >
               내 분야
