@@ -88,9 +88,12 @@ export function useAssemblyDisassembly({
 
           const distance = maxSize * 2;
 
-          const initialLocalPosition = child.position.clone();
-          const initialLocalRotation = child.rotation.clone();
-          const initialLocalScale = child.scale.clone();
+        const initialLocalPosition = (child.userData?.initialPosition as THREE.Vector3 | undefined)?.clone()
+          ?? child.position.clone();
+        const initialLocalRotation = (child.userData?.initialRotation as THREE.Euler | undefined)?.clone()
+          ?? child.rotation.clone();
+        const initialLocalScale = (child.userData?.initialScale as THREE.Vector3 | undefined)?.clone()
+          ?? child.scale.clone();
 
           nodes.push({
             node: child,

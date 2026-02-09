@@ -94,6 +94,16 @@ export function Model({
         child.userData.nodeName = child.userData.description || child.name || nodeId;
         // GLTF 원본 name을 originalName에 저장 (영문 이름)
         child.userData.originalName = child.name;
+        // 최초 로드 기준 로컬 변환값 저장 (조립 기준)
+        if (!child.userData.initialPosition) {
+          child.userData.initialPosition = child.position.clone();
+        }
+        if (!child.userData.initialRotation) {
+          child.userData.initialRotation = child.rotation.clone();
+        }
+        if (!child.userData.initialScale) {
+          child.userData.initialScale = child.scale.clone();
+        }
         child.userData.selectable = true;
         
         // 모든 하위 객체에도 동일한 정보 전파

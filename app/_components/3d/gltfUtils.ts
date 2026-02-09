@@ -51,7 +51,7 @@ export interface GLTFNodeInfo {
  * @example
  * ```tsx
  * const nodes = await extractGLTFNodes('/models/scene.gltf');
- * console.log(nodes); // [{ index: 0, name: 'Node1', hasMesh: true, nodePath: '0/1', ... }, ...]
+ * // nodes: [{ index: 0, name: 'Node1', hasMesh: true, nodePath: '0/1', ... }, ...]
  * ```
  */
 export async function extractGLTFNodes(url: string): Promise<GLTFNodeInfo[]> {
@@ -167,7 +167,7 @@ export async function extractGLTFNodes(url: string): Promise<GLTFNodeInfo[]> {
  * ```tsx
  * const hasMeshValue = hasMesh(groupObject);
  * if (hasMeshValue) {
- *   console.log('이 객체는 메시를 포함합니다');
+ *   // handle mesh case
  * }
  * ```
  */

@@ -47,11 +47,7 @@ export function arraysEqual(a: number[], b: number[]): boolean {
  * ```tsx
  * const info = extractObjectInfo(modelGroup);
  * if (info) {
- *   console.log('Position:', info.position);
- *   console.log('Rotation:', info.rotation);
- *   console.log('Scale:', info.scale);
- *   console.log('Matrix:', info.matrix);
- *   console.log('Meshes:', info.meshes);
+ *   // handle object info
  * }
  * ```
  */
