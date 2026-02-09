@@ -1,6 +1,6 @@
 'use client';
 
-import { LearningSectionData } from "@/app/_types/home";
+import { LearningSectionData, SceneCategory } from "@/app/_types/home";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -50,7 +50,7 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
               
               <div>
                 <span className="inline-block bg-bg-sub text-sub2 px-3 py-1 rounded-full text-b-sm font-regular">
-                  {scene.category}
+                  {/* {SceneCategory[scene.category] } */}
                 </span>
               </div>
 

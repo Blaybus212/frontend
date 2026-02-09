@@ -7,6 +7,12 @@ export interface GrassSectionData {
   };
 }
 
+export enum SceneCategory {
+  로봇공학 = "robotics",
+  자동차공학 = "automotive_engineering",
+  항공우주공학 = "aerospace_engineering",
+  제조공학 = "manufacturing_engineering"
+}
 export interface LearningSectionData {
 	scenes: {
 		id: string;
