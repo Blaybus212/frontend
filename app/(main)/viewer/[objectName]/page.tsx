@@ -28,7 +28,10 @@ import {
   fetchSceneQuizzes,
   gradeQuizAnswer,
   updateQuizProgress,
-  fetchZipData,
+  fetchDisassemblyLevel,
+  updateDisassemblyLevel,
+  fetchSceneNote,
+  updateSceneNote,
   type SceneQuiz,
   type SceneQuizResponse,
   type GradeResponse,
@@ -39,6 +42,16 @@ import {
   ICON_FLASH_DELAY_MS,
   PDF_EMPTY_SUMMARY_TEXT,
 } from '@/app/_components/viewer/constants';
+import {
+  extractNoteContent,
+  formatDateLabel,
+  formatDuration,
+  formatQuizTimer,
+  markdownToHtml,
+  shuffleChoices,
+  sortMessages,
+  splitChoicesByComma,
+} from './viewerUtils';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -96,6 +109,7 @@ export default function ViewerPage() {
   const [assemblyValue, setAssemblyValue] = useState(0);
   /** 메모 입력 필드의 값 */
   const [noteValue, setNoteValue] = useState('');
+  const [isNoteLoaded, setIsNoteLoaded] = useState(false);
   /** 현재 선택된 뷰어 아이콘 (홈, 줌인, 줌아웃 등) */
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   /** 3D 씬에서 선택된 모델의 인덱스 배열 */
@@ -142,6 +156,39 @@ export default function ViewerPage() {
     };
 
     loadSceneInfo();
+  }, [sceneIdParam]);
+
+  useEffect(() => {
+    if (!sceneIdParam) return;
+    const loadDisassemblyLevel = async () => {
+      try {
+        const response = await fetchDisassemblyLevel(sceneIdParam);
+        if (response && typeof response.disassemblyLevel === 'number') {
+          setAssemblyValue(Math.round(response.disassemblyLevel));
+        }
+      } catch (error) {
+        console.error('[viewer] 분해도 로드 실패', error);
+      }
+    };
+
+    loadDisassemblyLevel();
+  }, [sceneIdParam]);
+
+  useEffect(() => {
+    if (!sceneIdParam) return;
+    const loadNote = async () => {
+      try {
+        const { data } = await fetchSceneNote(sceneIdParam);
+        const markdown = extractNoteContent(data);
+        setNoteValue(markdown);
+      } catch (error) {
+        console.error('[viewer] 노트 로드 실패', error);
+      } finally {
+        setIsNoteLoaded(true);
+      }
+    };
+
+    loadNote();
   }, [sceneIdParam]);
 
   /**
@@ -195,9 +242,7 @@ export default function ViewerPage() {
       if (references && references.length > 0) {
         requestPayload.references = references;
       }
-      console.log('📤 AI 메시지 전송:', requestPayload);
       const response = await sendMessage(sceneIdParam, requestPayload);
-      console.log('📥 AI 응답 수신:', response);
       
       // 응답이 null이거나 sender가 없는 경우 처리
       if (!response || !response.sender) {
@@ -311,110 +356,12 @@ export default function ViewerPage() {
   const currentQuiz = quizData?.quizzes[currentQuizIndex];
   const isQuizComplete = Boolean(quizData && currentQuizIndex >= quizData.quizzes.length);
 
-  const shuffleChoices = (choices: string[]) => {
-    const array = [...choices];
-    for (let i = array.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  };
-
-  const splitChoicesByComma = (choiceText: string) =>
-    choiceText
-      .split(',')
-      .map((choice) => choice.trim())
-      .filter(Boolean);
-
   const shuffledChoices = useMemo(() => {
     if (!currentQuiz?.choice) return [];
     return shuffleChoices(splitChoicesByComma(currentQuiz.choice));
   }, [currentQuiz?.id, currentQuiz?.choice]);
 
-  const formatDateLabel = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}. ${month}. ${day}.`;
-  };
-
-  const formatDuration = (seconds: number) => {
-    const clamped = Math.max(0, Math.floor(seconds));
-    const minutes = Math.floor(clamped / 60);
-    const remain = clamped % 60;
-    return `${minutes}m ${remain}s`;
-  };
-
-  const parsePostedAt = (value: string) => {
-    const cleaned = value.replace(/\./g, '').replace(/\s+/g, ' ').trim();
-    const meridiemMatch = cleaned.match(
-      /(\d{4})[- ](\d{2})[- ](\d{2})[- ](오전|오후)\s+(\d{1,2}):(\d{2})/
-    );
-    if (meridiemMatch) {
-      const [, year, month, day, meridiem, hourRaw, minute] = meridiemMatch;
-      let hour = Number(hourRaw);
-      if (meridiem === '오후' && hour < 12) {
-        hour += 12;
-      }
-      if (meridiem === '오전' && hour === 12) {
-        hour = 0;
-      }
-      return new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        hour,
-        Number(minute)
-      ).getTime();
-    }
-    const match = cleaned.match(/(\d{4})[- ](\d{2})[- ](\d{2})\s+(\d{2}):(\d{2})/);
-    if (match) {
-      const [, year, month, day, hour, minute] = match;
-      return new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute)
-      ).getTime();
-    }
-    const parsed = Date.parse(cleaned);
-    return Number.isNaN(parsed) ? null : parsed;
-  };
-
-  const getMessageTime = (message: ConversationMessage) => {
-    const time = parsePostedAt(message.postedAt);
-    if (time === null) return null;
-    const hasMeridiem = /오전|오후/.test(message.postedAt);
-    if (!hasMeridiem) {
-      return time + 9 * 60 * 60 * 1000;
-    }
-    return time;
-  };
-
-  const sortMessages = (messages: ConversationMessage[]) =>
-    [...messages].sort((a, b) => {
-      const timeA = getMessageTime(a);
-      const timeB = getMessageTime(b);
-      if (timeA !== null && timeB === null) return -1;
-      if (timeA === null && timeB !== null) return 1;
-      if (timeA !== null && timeB !== null && timeA !== timeB) {
-        return timeA - timeB;
-      }
-      if (a.postedAt !== b.postedAt) {
-        return a.postedAt.localeCompare(b.postedAt);
-      }
-      if (a.sender !== b.sender) {
-        return a.sender === 'USER' ? -1 : 1;
-      }
-      return 0;
-    });
-
-  const formatQuizTimer = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remain = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remain.toString().padStart(2, '0')}`;
-  };
+  
 
   /**
    * 3D 모델 데이터 배열
@@ -609,21 +556,11 @@ export default function ViewerPage() {
     if (!answer) return;
     setIsGrading(true);
     try {
-      console.log('🟡 [quiz input] 제출 요청', {
-        sceneId: sceneIdParam,
-        quizId: currentQuiz.id,
-        answer,
-      });
       const grade = await gradeQuizAnswer(sceneIdParam, currentQuiz.id, answer);
       if (!grade) {
         console.error('[quiz] 채점 결과가 없습니다.');
         return;
       }
-      console.log('🟢 [quiz input] 채점 결과', {
-        sceneId: sceneIdParam,
-        quizId: currentQuiz.id,
-        grade,
-      });
       setQuizAnswers((prev) => ({ ...prev, [currentQuiz.id]: answer }));
       updateLocalProgress(currentQuiz.id, grade);
       setSubmittedQuizIds((prev) => ({ ...prev, [currentQuiz.id]: true }));
@@ -673,26 +610,6 @@ export default function ViewerPage() {
       case 'pdf':
         setIsPdfOpen((prev) => !prev);
         setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
-        return;
-      case 'download':
-        if (!sceneIdParam) return;
-        (async () => {
-          try {
-            const { data, filename } = await fetchZipData(sceneIdParam, 'both');
-            const blob = new Blob([data], { type: 'application/zip' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = filename ?? `scene_${sceneIdParam}.zip`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            flashIcon();
-          } catch (error) {
-            console.error('[viewer] ZIP 다운로드 실패', error);
-          }
-        })();
         return;
       case 'parts':
         setIsPartsOpen((prev) => !prev);
@@ -771,20 +688,9 @@ export default function ViewerPage() {
       parts.map(part => [part.nodeId, part.originalName || part.nodeName])
     );
     
-    console.log('🔍 Parts 배열 확인:', {
-      partsCount: parts.length,
-      sampleParts: parts.slice(0, 3).map(p => ({
-        nodeId: p.nodeId,
-        nodeName: p.nodeName,
-        originalName: p.originalName,
-      })),
-      nodeIdToOriginalName: Array.from(nodeIdToOriginalName.entries()).slice(0, 3),
-    });
-    
     const payload = {
       components: sceneState.nodeTransforms.map(({ nodeId, nodeName, matrix }) => {
         const name = nodeIdToOriginalName.get(nodeId) || nodeName || nodeId;
-        console.log(`매핑: ${nodeId} → ${name}`);
         return {
           nodeName: name, // GLTF 원본 name 우선
           matrix,
@@ -792,15 +698,18 @@ export default function ViewerPage() {
       }),
     };
 
-    console.log('📤 백엔드로 전송하는 데이터:');
-    console.log('URL:', `/scenes/${sceneIdParam}/sync`);
-    console.log('Body:', JSON.stringify(payload, null, 2));
-
     setStatus('saving');
     
     try {
-      await syncSceneState(sceneIdParam, payload);
-      console.log('✅ 저장 완료');
+      const notePayload = noteValue ?? '';
+      const tasks: Promise<unknown>[] = [
+        syncSceneState(sceneIdParam, payload),
+        updateDisassemblyLevel(sceneIdParam, Math.round(assemblyValue)),
+      ];
+      if (isNoteLoaded) {
+        tasks.push(updateSceneNote(sceneIdParam, notePayload));
+      }
+      await Promise.all(tasks);
       setStatus('saved');
       
       // 1초 후 saved 상태를 idle로 전환
@@ -816,7 +725,7 @@ export default function ViewerPage() {
         setStatus('idle');
       }, 2000);
     }
-  }, [sceneIdParam, setStatus, parts]);
+  }, [sceneIdParam, setStatus, parts, assemblyValue, noteValue, isNoteLoaded]);
 
   /**
    * 수동 저장 함수 등록
@@ -853,7 +762,7 @@ export default function ViewerPage() {
       window.clearInterval(timerInterval);
       window.clearInterval(saveInterval);
     };
-  }, [sceneIdParam, setStatus, setElapsedSeconds]);
+  }, [sceneIdParam, handleSaveSceneState, setElapsedSeconds]);
 
   useEffect(() => {
     return () => {
@@ -1014,7 +923,7 @@ export default function ViewerPage() {
       dateLabel,
       includeSummary,
       summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
-      noteHtml: noteValue,
+      noteHtml: markdownToHtml(noteValue),
       noteElement: noteExportRef.current,
     });
 
@@ -1160,6 +1069,7 @@ export default function ViewerPage() {
           modelName={modelRootName}
         />
       )}
+
 
       {isQuizOpen && (
         <div className="absolute right-8 top-8 bottom-8 w-[360px] z-20">

@@ -39,6 +39,7 @@ export function AssemblySlider({ value, onChange }: AssemblySliderProps) {
         type="range"
         min="0"
         max="100"
+        step="1"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="flex-1 h-2 bg-bg-sub rounded-full appearance-none cursor-pointer slider-custom"
