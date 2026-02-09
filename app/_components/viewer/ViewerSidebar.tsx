@@ -5,7 +5,7 @@
  */
 
 import { ViewerIcon } from './ViewerIcon';
-import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon } from './icons';
+import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon, DownloadIcon } from './icons';
 
 /**
  * ViewerSidebar 컴포넌트의 Props 인터페이스
@@ -89,6 +89,12 @@ export function ViewerSidebar({
         selected={selectedIcon === 'pdf'}
         onClick={() => onIconSelect('pdf')}
         aria-label="PDF"
+      />
+      <ViewerIcon
+        icon={<DownloadIcon />}
+        selected={selectedIcon === 'download'}
+        onClick={() => onIconSelect('download')}
+        aria-label="GLTF 다운로드"
       />
       
       {/* 퀴즈 진행도 표시 버튼: 현재 퀴즈 완료율을 표시 */}

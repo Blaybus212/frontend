@@ -145,7 +145,11 @@ export default function ViewerPage() {
     setIsAiLoading(true);
 
     try {
-      const requestPayload = { content, references: references || [] };
+      // references가 있을 때만 포함
+      const requestPayload: any = { content };
+      if (references && references.length > 0) {
+        requestPayload.references = references;
+      }
       console.log('📤 AI 메시지 전송:', requestPayload);
       const response = await sendMessage(sceneIdParam, requestPayload);
       console.log('📥 AI 응답 수신:', response);
@@ -300,6 +304,10 @@ export default function ViewerPage() {
       case 'pdf':
         setIsPdfOpen((prev) => !prev);
         setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
+        return;
+      case 'download':
+        scene3DRef.current?.exportScene();
+        flashIcon();
         return;
       case 'parts':
         setIsPartsOpen((prev) => !prev);
