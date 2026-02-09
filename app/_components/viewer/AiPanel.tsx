@@ -67,6 +67,41 @@ export function AiPanel({
 
   const expanded = isExpanded !== undefined ? isExpanded : internalExpanded;
 
+  const formatPostedAt = (message: AiMessage) => {
+    const raw = message.postedAt;
+    const hasMeridiem = /오전|오후/.test(raw);
+    if (hasMeridiem) {
+      return raw;
+    }
+
+    const cleaned = raw.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+    const match = cleaned.match(/(\d{4})[- ](\d{2})[- ](\d{2})\s+(\d{2}):(\d{2})/);
+    if (!match) {
+      return raw;
+    }
+    const [, year, month, day, hour, minute] = match;
+    const utcTime = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute)
+    ).getTime();
+    const kstDate = new Date(utcTime + 9 * 60 * 60 * 1000);
+
+    return kstDate
+      .toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+      .replace(/\.\s/g, '-')
+      .replace('.', '');
+  };
+
   /**
    * 패널 확대/축소 토글 핸들러
    */
@@ -301,7 +336,7 @@ export function AiPanel({
             >
               <div>{renderContent(message.content, message.references)}</div>
               {message.sender === 'ASSISTANT' && renderReferences(message.references)}
-              <div className="text-xs text-sub3 mt-1">{message.postedAt}</div>
+              <div className="text-xs text-sub3 mt-1">{formatPostedAt(message)}</div>
             </div>
           ))
         )}
