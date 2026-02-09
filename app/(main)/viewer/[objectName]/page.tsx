@@ -28,6 +28,7 @@ import {
   fetchSceneQuizzes,
   gradeQuizAnswer,
   updateQuizProgress,
+  fetchZipData,
   type SceneQuiz,
   type SceneQuizResponse,
   type GradeResponse,
@@ -674,8 +675,24 @@ export default function ViewerPage() {
         setSelectedIcon((prev) => (prev === 'pdf' ? null : 'pdf'));
         return;
       case 'download':
-        scene3DRef.current?.exportScene();
-        flashIcon();
+        if (!sceneIdParam) return;
+        (async () => {
+          try {
+            const { data, filename } = await fetchZipData(sceneIdParam, 'both');
+            const blob = new Blob([data], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename ?? `scene_${sceneIdParam}.zip`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            flashIcon();
+          } catch (error) {
+            console.error('[viewer] ZIP 다운로드 실패', error);
+          }
+        })();
         return;
       case 'parts':
         setIsPartsOpen((prev) => !prev);
@@ -765,15 +782,14 @@ export default function ViewerPage() {
     });
     
     const payload = {
-      components: sceneState.nodeTransforms.map(({ nodeId, matrix }) => {
-        const name = nodeIdToOriginalName.get(nodeId) || nodeId;
+      components: sceneState.nodeTransforms.map(({ nodeId, nodeName, matrix }) => {
+        const name = nodeIdToOriginalName.get(nodeId) || nodeName || nodeId;
         console.log(`매핑: ${nodeId} → ${name}`);
         return {
-          nodeName: name, // 영어 이름 (originalName) 사용
+          nodeName: name, // GLTF 원본 name 우선
           matrix,
         };
       }),
-      assemblyValue: sceneState.assemblyValue,
     };
 
     console.log('📤 백엔드로 전송하는 데이터:');
