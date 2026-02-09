@@ -37,7 +37,7 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
           >
             <div className="relative w-70 h-52.5 overflow-hidden">
               <Image
-                src={"/images/objectcard_example.png"} // TODO: 추후 수정
+                src={`/thumb/${scene.title}.png`}
                 alt={scene.title}
                 layout='fill'
                 className="transition-transform duration-250 ease-out group-hover:scale-105 object-cover"
