@@ -164,8 +164,10 @@ export function AiPanel({
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
 
-    // references 생성 (componentId 배열)
-    const references = mentionedPartIds.map(dbId => ({ componentId: dbId }));
+    // references 생성: 있을 때만 전달, 없으면 undefined
+    const references = mentionedPartIds.length > 0
+      ? mentionedPartIds.map(dbId => ({ componentId: dbId }))
+      : undefined;
     
     console.log('📤 메시지 전송:', { content: trimmed, references });
 

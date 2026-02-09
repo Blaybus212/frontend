@@ -52,9 +52,42 @@ export function exportScene(
   // clone(true)는 깊은 복사를 의미하며, 원본 모델은 그대로 유지됩니다
   modelRefs.forEach((modelGroup, index) => {
     if (modelGroup) {
+      // ✅ 순환 참조 제거: clone 전에 원본의 userData를 임시로 정리
+      const userDataBackup = new Map<THREE.Object3D, any>();
+      
+      modelGroup.traverse((node) => {
+        if (node.userData && Object.keys(node.userData).length > 0) {
+          // 원본 userData 백업
+          userDataBackup.set(node, node.userData);
+          
+          // 순환 참조 제거한 깨끗한 userData 생성
+          const cleanUserData: any = {};
+          Object.keys(node.userData).forEach((key) => {
+            // Three.js 객체 참조나 함수가 아닌 값만 복사
+            if (
+              key !== 'modelRef' &&
+              key !== 'selectable' &&
+              typeof node.userData[key] !== 'function' &&
+              !(node.userData[key] instanceof THREE.Object3D)
+            ) {
+              cleanUserData[key] = node.userData[key];
+            }
+          });
+          
+          // 임시로 깨끗한 userData 설정
+          node.userData = cleanUserData;
+        }
+      });
+      
+      // 이제 안전하게 clone
       const cloned = modelGroup.clone(true);
-      // 모델 이름 설정 (메타데이터에서 가져오거나 기본값 사용)
       cloned.name = models[index]?.name || `Model_${index}`;
+      
+      // 원본 userData 복원
+      userDataBackup.forEach((userData, node) => {
+        node.userData = userData;
+      });
+      
       exportGroup.add(cloned);
     }
   });
