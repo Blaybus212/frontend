@@ -8,15 +8,14 @@ export interface GrassSectionData {
 }
 
 export interface LearningSectionData {
-	length: number;
 	scenes: {
 		id: string;
 		title: string;
-    engTitle: string; // TODO: API에 맞게 변경 필요
-    isPopular: boolean; // TODO: API에 맞게 변경 필요
+    engTitle: string;
 		category: string;
     imageUrl: string;
 		progress: number;
+    popular: boolean;
 	}[]
 }
 

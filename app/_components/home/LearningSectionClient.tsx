@@ -2,10 +2,13 @@
 
 import { LearningSectionData } from "@/app/_types/home";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const LearningSectionClient: React.FC<LearningSectionData> = ({
 	scenes
 }) => {
+  const router = useRouter();
+
   return (
     <div className="flex flex-col gap-5 items-start">
       <div className="flex gap-2 items-center">
@@ -19,16 +22,20 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
       </div>
       <div className="flex flex-row gap-5">
         {scenes.map((scene)=> (
-          <div key={scene.id} className="group w-70 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered">
+          <div 
+            key={scene.id} 
+            onClick={()=>router.push(`/viewer/${scene.title}`)}
+            className="group w-70 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered"
+          >
             <div className="relative w-70 h-52.5 overflow-hidden">
               <Image
-                src={scene.imageUrl}
+                src={"/images/objectcard_example.png"} // TODO: 추후 수정
                 alt={scene.title}
                 layout='fill'
                 className="transition-transform duration-250 ease-out group-hover:scale-105 object-cover"
               />
               
-              {scene.isPopular && (
+              {scene.popular && (
                 <div className="absolute top-3.5 left-4 bg-base-white px-2 py-1 rounded-md flex items-center">
                   <span className=" text-base-black text-b-sm font-medium">🔥 인기</span>
                 </div>
