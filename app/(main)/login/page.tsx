@@ -5,6 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -44,7 +45,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex gap-24 h-[calc(100vh-64px)] items-center justify-center bg-surface px-43.25 py-10">
+    <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-surface px-40 py-12">
       {/* 왼쪽: 그라데이션 아트 카드 */}
       <div className="relative hidden lg:flex shrink-0 aspect-[550/735.94] h-full overflow-hidden"> 
         <Image
@@ -64,10 +65,14 @@ export default function LoginPage() {
             className="object-contain"
           />
         </div>
+        <div className='absolute bottom-10 left-9 flex flex-col text-left'>
+          <h1 className='font-rem text-[50px] text-[#0B2314]'>SIMVEX</h1>
+          <p className='text-placeholder text-[18px]/[24px] font-medium'>공학 학습과 연구를 하나로 잇는<br/>3D 시각화·시뮬레이션 플랫폼</p>
+        </div>
       </div>
 
       {/* 오른쪽: 로그인 폼 섹션 */}
-      <div className="w-full">
+      <div className="w-full pl-24">
         <div className="mb-12">
           <Image
             src="/images/logo.svg" 
