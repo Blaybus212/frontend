@@ -184,6 +184,7 @@ export function Note({
   );
 
   const editor = useEditor({
+    immediatelyRender: false, // SSR hydration 문제 방지
     extensions: [
       StarterKit.configure({
         heading: false,

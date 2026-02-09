@@ -147,6 +147,7 @@ export interface Scene3DRef {
 export interface SelectablePart {
   nodeId: string;
   nodeName: string;
+  originalName?: string; // GLTF의 원본 name (영문 이름)
   modelIndex: number;
 }
 

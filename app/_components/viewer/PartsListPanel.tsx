@@ -17,6 +17,9 @@ export function PartsListPanel({
 }: PartsListPanelProps) {
   const allSelected = parts.length > 0 && selectedIds.length === parts.length;
   const isChecked = (nodeId: string) => selectedIds.includes(nodeId);
+  
+  // 한글 이름에서 맨 뒤 숫자 제거 (예: "베이스 플레이트1" → "베이스 플레이트")
+  const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
 
   return (
     <div className="w-[320px] max-h-[460px] bg-bg-default rounded-2xl border border-border-default overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
@@ -52,10 +55,10 @@ export function PartsListPanel({
           >
             <div className="flex flex-col">
               <span className="text-b-md font-weight-semibold text-text-title">
-                {part.nodeName}
+                {part.originalName || part.nodeId}
               </span>
               <span className="text-b-xs text-sub3">
-                {part.nodeId}
+                {removeTrailingNumbers(part.nodeName)}
               </span>
             </div>
             <input

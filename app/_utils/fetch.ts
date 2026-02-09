@@ -23,6 +23,7 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     await signOut();
   }
 
+  console.log('🔵 $fetch 토큰:', token);
   console.log(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`)
 
   // 3. 실제 API 서버로 요청 보내기
