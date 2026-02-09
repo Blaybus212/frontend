@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { RankingSectionData } from '@/app/_types/home';
+import { RankingSectionData, SceneCategory } from '@/app/_types/home';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
@@ -18,15 +18,17 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
   const [rank, setRank] = useState<string>(searchParams.get("rank")?.toString() || 'all');
 
   const handleClick = (rank: string) => {
+    const newParams = new URLSearchParams(searchParams);
+
     if (rank == "my") {
       rank = session?.loginUser?.preferCategory ?? "";
+      newParams.set("rank", SceneCategory[rank as keyof typeof SceneCategory]);
+    } else {
+      newParams.delete("rank");
     }
 
     setRank(rank);
 
-    const newParams = new URLSearchParams(searchParams);
-
-    newParams.set("rank", rank);
 
     router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
@@ -68,7 +70,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
             {scenes.map((item) => (
               <div
                 key={item.id}
-                onClick={() => console.log(item) }
+                onClick={() => router.push(`viewer/${item.title}`) }
                 className="group flex items-center justify-between px-3 py-3.5 rounded-[10px] transition-all duration-200 hover:bg-bg-hovered cursor-pointer"
               >
                 <div className="flex items-center gap-4">
