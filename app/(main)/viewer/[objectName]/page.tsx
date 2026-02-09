@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
+import { downloadAndExtractModelZip } from '@/app/_components/3d/utils/modelZip';
 import {
   ASSEMBLY_VALUE_ASSEMBLED,
   ICON_FLASH_DELAY_MS,
@@ -35,8 +37,10 @@ import {
  */
 export default function ViewerPage() {
   const params = useParams();
+  const { data: session } = useSession();
   /** URL에서 추출한 객체 이름 */
   const objectName = params.objectName as string;
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
 
   /** 조립/분해 슬라이더 값 (0-100, 기본값: 0=조립 상태) */
   const [assemblyValue, setAssemblyValue] = useState(0);
@@ -55,6 +59,12 @@ export default function ViewerPage() {
   const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
   const [modelRootName, setModelRootName] = useState<string>('모델');
   const [isPrinting, setIsPrinting] = useState(false);
+  const [modelUrls, setModelUrls] = useState<{
+    defaultUrl: string | null;
+    customUrl: string | null;
+    revoke: () => void;
+  } | null>(null);
+  const [activeModelUrl, setActiveModelUrl] = useState<string | null>(null);
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
   const noteExportRef = useRef<HTMLDivElement | null>(null);
@@ -75,13 +85,17 @@ export default function ViewerPage() {
    * 3D 모델 데이터 배열
    * TODO: 나중에 objectName 기반으로 API에서 로드 예정
    */
-  const models = [
-    {
-      id: 'robot-arm',
-      url: '/Assets/Robot Gripper/Robot Gripper.gltf',
-      nodeIndex: 0,
-    },
-  ];
+  const modelUrl = activeModelUrl ?? '/Assets/Robot Gripper/Robot Gripper.gltf';
+  const models = useMemo(
+    () => [
+      {
+        id: 'scene-model',
+        url: modelUrl,
+        nodeIndex: 0,
+      },
+    ],
+    [modelUrl]
+  );
 
   const handleIconSelect = (iconId: string) => {
     const flashIcon = () => {
@@ -102,6 +116,9 @@ export default function ViewerPage() {
         return;
       case 'refresh':
         scene3DRef.current?.resetToAssembly();
+        if (modelUrls?.defaultUrl) {
+          setActiveModelUrl(modelUrls.defaultUrl);
+        }
         flashIcon();
         return;
       case 'pdf':
@@ -129,6 +146,91 @@ export default function ViewerPage() {
       setModelRootName(name);
     }
   }, [models]);
+
+  useEffect(() => {
+    const accessToken = session?.accessToken;
+    if (typeof accessToken !== 'string' || !apiBaseUrl || !objectName) return;
+    const controller = new AbortController();
+    let disposed = false;
+
+    const loadModels = async () => {
+      try {
+        const result = await downloadAndExtractModelZip({
+          apiBaseUrl,
+          accessToken,
+          sceneId: objectName,
+          target: 'both',
+          signal: controller.signal,
+        });
+        if (disposed) {
+          result.revoke();
+          return;
+        }
+        setModelUrls(result);
+        setActiveModelUrl(result.customUrl ?? result.defaultUrl);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('[viewer] 모델 다운로드 실패', error);
+      }
+    };
+
+    loadModels();
+
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [session?.accessToken, apiBaseUrl, objectName]);
+
+  useEffect(() => {
+    const accessToken = session?.accessToken;
+    if (typeof accessToken !== 'string' || !apiBaseUrl || !objectName) return;
+    const syncSceneState = async () => {
+      const sceneState = scene3DRef.current?.getSceneState();
+      if (!sceneState) return;
+      const zoom = Math.hypot(
+        sceneState.camera.position.x - sceneState.camera.target.x,
+        sceneState.camera.position.y - sceneState.camera.target.y,
+        sceneState.camera.position.z - sceneState.camera.target.z
+      );
+      const payload = {
+        components: sceneState.nodeTransforms.map(({ nodeName, matrix }) => ({
+          nodeName,
+          matrix,
+        })),
+        camera: sceneState.camera,
+        zoom,
+        assemblyValue: sceneState.assemblyValue,
+      };
+
+      try {
+        await fetch(`${apiBaseUrl}/scenes/${encodeURIComponent(objectName)}/sync`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        console.error('[viewer] 씬 동기화 실패', error);
+      }
+    };
+
+    syncSceneState();
+    const intervalId = window.setInterval(syncSceneState, 5000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [session?.accessToken, apiBaseUrl, objectName]);
+
+  useEffect(() => {
+    return () => {
+      if (modelUrls) {
+        modelUrls.revoke();
+      }
+    };
+  }, [modelUrls]);
 
 
   useEffect(() => {
@@ -260,7 +362,7 @@ export default function ViewerPage() {
         >
           {/* 3D 뷰어 영역의 전체 높이를 따라가도록 하는 래퍼 */}
           <div className="w-full h-full flex items-end" style={{ pointerEvents: 'none' }}>
-            <div className="w-full" style={{ pointerEvents: 'auto' }}>
+            <div className="w-full h-full flex flex-col justify-end" style={{ pointerEvents: 'auto' }}>
               <AiPanel
                 isVisible={isAiPanelOpen}
                 onClose={() => setIsAiPanelOpen(false)}
@@ -323,14 +425,7 @@ export default function ViewerPage() {
         widthPercent={rightPanelWidthPercent}
         onResizeWidth={setRightPanelWidthPercent}
         parts={parts}
-        onInsertPartSnapshot={async (nodeId) => {
-          return scene3DRef.current?.capturePartSnapshot(nodeId) ?? null;
-        }}
-        onInsertModelSnapshot={async (modelId) => {
-          return scene3DRef.current?.captureModelSnapshot(modelId) ?? null;
-        }}
         modelName={modelRootName}
-        modelId={models[0]?.id ?? 'model'}
       />
 
     </div>
