@@ -94,6 +94,46 @@ export interface SendMessageResponse {
   references: Record<string, ComponentInfo>;
 }
 
+export type QuizType = 'SELECT' | 'INPUT';
+
+export interface SceneQuiz {
+  id: number;
+  targetPurpose: string;
+  type: QuizType;
+  question: string;
+  choice: string | null;
+}
+
+export interface QuizUserProgress {
+  userProgressId: number;
+  lastQuizId: number | null;
+  totalQuestions: number;
+  success: number;
+  failure: number;
+  isComplete?: boolean;
+}
+
+export interface SceneQuizResponse {
+  sceneInfoId: number;
+  userProgress: QuizUserProgress;
+  quizzes: SceneQuiz[];
+}
+
+export interface QuizProgressRequest {
+  lastQuizId: number | null;
+  totalQuestions: number;
+  success: number;
+  failure: number;
+  solveTime: number;
+  isComplete: boolean;
+}
+
+export interface GradeResponse {
+  correct: boolean;
+  score: number;
+  correctAnswer: string;
+}
+
 export async function syncSceneState(sceneId: string, payload: unknown) {
   await $fetch(`/scenes/${encodeURIComponent(sceneId)}/sync`, {
     method: 'PUT',
@@ -238,4 +278,86 @@ export async function sendMessage(
   
   console.log('✅ sendMessage 응답:', response);
   return response;
+}
+
+/**
+ * 씬 퀴즈 목록 및 진행 정보 가져오기
+ */
+export async function fetchSceneQuizzes(sceneId: string): Promise<SceneQuizResponse | null> {
+  return $fetch(`/scenes/${encodeURIComponent(sceneId)}/quizzes`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * 퀴즈 진행 정보 저장 (종료 시점)
+ */
+export async function updateQuizProgress(sceneId: string, payload: QuizProgressRequest) {
+  await $fetch(`/scenes/${encodeURIComponent(sceneId)}/quizzes/progress`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * 퀴즈 답안 제출 및 채점
+ */
+export async function gradeQuizAnswer(
+  sceneId: string,
+  quizId: number,
+  answer: string
+): Promise<GradeResponse | null> {
+  const session = await auth();
+  const token = session?.accessToken;
+
+  if (!token) {
+    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+  }
+
+  const requestBody = JSON.stringify({ answer: String(answer) });
+  const endpoints = [
+    `/scenes/${encodeURIComponent(sceneId)}/quizzes/${encodeURIComponent(String(quizId))}/grade`,
+    `/scenes/${encodeURIComponent(sceneId)}/quiz/${encodeURIComponent(String(quizId))}/grade`,
+  ];
+
+  for (const endpoint of endpoints) {
+    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    console.log('🟣 [quiz grade] 요청', {
+      url,
+      method: 'POST',
+      body: requestBody,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: requestBody,
+    });
+
+    const responseText = await response.text();
+    console.log('🟢 [quiz grade] 응답', {
+      url,
+      status: response.status,
+      ok: response.ok,
+      body: responseText,
+    });
+
+    if (response.status === 401) {
+      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    }
+
+    if (!response.ok) {
+      continue;
+    }
+
+    const data = responseText ? JSON.parse(responseText) : null;
+    if (data) {
+      return data as GradeResponse;
+    }
+  }
+
+  return null;
 }

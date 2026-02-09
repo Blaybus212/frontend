@@ -88,8 +88,12 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 }
 
 function AutoSaveStatus() {
-  const { status, elapsedSeconds, triggerSave } = useSaveStatus();
+  const { status, elapsedSeconds, triggerSave, isAutoSaveVisible } = useSaveStatus();
   const [isSaving, setIsSaving] = useState(false);
+
+  if (!isAutoSaveVisible) {
+    return null;
+  }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
