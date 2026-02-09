@@ -17,7 +17,7 @@ export default function LoginPage() {
   useEffect(() => {
       if (status === 'authenticated' && session) {
         if (session.loginUser?.isFinishOnboard) {
-          router.push('/home');
+          router.push(`/home?category=${session.loginUser.preferCategory}`);
         } else {
           router.push('/onboard');
         }
