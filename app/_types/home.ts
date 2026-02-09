@@ -3,7 +3,7 @@ export interface GrassSectionData {
   streak: number;
   solvedQuizCount: number;
   cells: { 
-    [date: string]: { solved: GrassLevel }; 
+    [date: string]: { score: number, level: GrassLevel }; 
   };
 }
 
