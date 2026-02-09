@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
 import { downloadAndExtractModelZip } from '@/app/_components/3d/utils/modelZip';
-import { syncSceneState } from './actions';
+import { syncSceneState, fetchSceneInfo, type SceneInfo, fetchConversation, sendMessage, type ConversationMessage } from './actions';
+import { useSaveStatus } from '@/app/_contexts/SaveStatusContext';
 import {
   ASSEMBLY_VALUE_ASSEMBLED,
   ICON_FLASH_DELAY_MS,
@@ -43,6 +44,9 @@ export default function ViewerPage() {
     ? String(Number(objectName))
     : objectName;
 
+  // SaveStatus Context
+  const { setStatus, setElapsedSeconds, setTriggerSave } = useSaveStatus();
+
   /** 조립/분해 슬라이더 값 (0-100, 기본값: 0=조립 상태) */
   const [assemblyValue, setAssemblyValue] = useState(0);
   /** 메모 입력 필드의 값 */
@@ -53,6 +57,11 @@ export default function ViewerPage() {
   const [selectedModelIndices, setSelectedModelIndices] = useState<number[]>([]);
   /** AI 패널 표시 여부 */
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [aiMessages, setAiMessages] = useState<ConversationMessage[]>([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiLoadingMore, setIsAiLoadingMore] = useState(false);
+  const [aiNextCursor, setAiNextCursor] = useState<string | null>(null);
+  const [aiHasNext, setAiHasNext] = useState(false);
   const [isPartsOpen, setIsPartsOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [parts, setParts] = useState<SelectablePart[]>([]);
@@ -60,6 +69,7 @@ export default function ViewerPage() {
   const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
   const [modelRootName, setModelRootName] = useState<string>('모델');
   const [isPrinting, setIsPrinting] = useState(false);
+  const [sceneInfo, setSceneInfo] = useState<SceneInfo | null>(null);
   const [modelUrls, setModelUrls] = useState<{
     defaultUrl: string | null;
     customUrl: string | null;
@@ -72,16 +82,174 @@ export default function ViewerPage() {
   const noteExportRef = useRef<HTMLDivElement | null>(null);
 
   /**
-   * 객체 정보 데이터
-   * TODO: 나중에 API로 교체 예정
+   * 씬 정보 가져오기
    */
-  const objectData = {
-    korean: '로봇팔',
-    english: 'Robot arm',
-    description: '로봇팔은 산업 자동화에서 핵심적인 역할을 하는 기계 장치입니다. 여러 관절과 링크로 구성되어 있어 3차원 공간에서 자유롭게 움직일 수 있으며, 정밀한 작업부터 무거운 물체 이동까지 다양한 작업을 수행할 수 있습니다.',
-    materials: ['알루미늄 합금', '탄소 섬유', '고강도 플라스틱'],
-    applications: ['제조', '조립', '용접', '도장', '검사 작업'],
+  useEffect(() => {
+    if (!sceneIdParam) return;
+
+    const loadSceneInfo = async () => {
+      try {
+        const info = await fetchSceneInfo(sceneIdParam);
+        setSceneInfo(info);
+      } catch (error) {
+        console.error('[viewer] 씬 정보 로드 실패', error);
+      }
+    };
+
+    loadSceneInfo();
+  }, [sceneIdParam]);
+
+  /**
+   * AI 패널 열릴 때 대화 이력 로드
+   */
+  useEffect(() => {
+    if (!isAiPanelOpen || !sceneIdParam) return;
+    
+    // 이미 메시지가 있으면 로드하지 않음
+    if (aiMessages.length > 0) return;
+
+    const loadConversation = async () => {
+      try {
+        const response = await fetchConversation(sceneIdParam, 5);
+        setAiMessages(response.messages.reverse()); // 오래된 순서로 정렬
+        setAiNextCursor(response.pages.nextCursor);
+        setAiHasNext(response.pages.hasNext);
+      } catch (error) {
+        console.error('[AI] 대화 이력 로드 실패', error);
+      }
+    };
+
+    loadConversation();
+  }, [isAiPanelOpen, sceneIdParam, aiMessages.length]);
+
+  /**
+   * AI 메시지 전송 핸들러
+   */
+  const handleSendAiMessage = async (content: string, references?: Array<{ componentId: number }>) => {
+    if (!sceneIdParam) return;
+
+    // 사용자 메시지 즉시 표시
+    const userMessage: ConversationMessage = {
+      sender: 'USER',
+      content,
+      postedAt: new Date().toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).replace(/\. /g, '-').replace('.', ''),
+      references: {},
+    };
+    setAiMessages(prev => [...prev, userMessage]);
+    setIsAiLoading(true);
+
+    try {
+      const requestPayload = { content, references: references || [] };
+      console.log('📤 AI 메시지 전송:', requestPayload);
+      const response = await sendMessage(sceneIdParam, requestPayload);
+      console.log('📥 AI 응답 수신:', response);
+      
+      // 응답이 null이거나 sender가 없는 경우 처리
+      if (!response || !response.sender) {
+        throw new Error('Invalid response from server');
+      }
+      
+      // AI 응답 추가
+      const aiMessage: ConversationMessage = {
+        sender: response.sender,
+        content: response.content,
+        postedAt: response.postedAt,
+        references: response.references || {},
+      };
+      setAiMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('[AI] 메시지 전송 실패', error);
+      // 에러 메시지 표시
+      const errorMessage: ConversationMessage = {
+        sender: 'ASSISTANT',
+        content: '죄송합니다. 응답을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        postedAt: new Date().toLocaleString('ko-KR'),
+        references: {},
+      };
+      setAiMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
+
+  /**
+   * 이전 대화 로드 (무한 스크롤)
+   */
+  const handleLoadMoreAi = async () => {
+    if (!sceneIdParam || !aiNextCursor || isAiLoadingMore) return;
+
+    setIsAiLoadingMore(true);
+    try {
+      const response = await fetchConversation(sceneIdParam, 5, aiNextCursor);
+      setAiMessages(prev => [...response.messages.reverse(), ...prev]);
+      setAiNextCursor(response.pages.nextCursor);
+      setAiHasNext(response.pages.hasNext);
+    } catch (error) {
+      console.error('[AI] 이전 대화 로드 실패', error);
+    } finally {
+      setIsAiLoadingMore(false);
+    }
+  };
+
+  /**
+   * 선택 상태에 따라 표시할 객체 정보 계산
+   * - 선택 없음 or 전체 선택 → 씬 정보
+   * - 부품 선택 (단일/다중) → 마지막으로 선택한 부품 정보
+   */
+  const objectData = useMemo(() => {
+    // 기본값: 씬 정보
+    if (!sceneInfo) {
+      return {
+        korean: '로딩 중...',
+        english: 'Loading...',
+        description: '씬 정보를 불러오는 중입니다.',
+      };
+    }
+
+    // 선택 없음 or 전체 선택 → 씬 정보
+    if (selectedPartIds.length === 0 || selectedPartIds.length === parts.length) {
+      return {
+        korean: sceneInfo.title,
+        english: sceneInfo.engTitle,
+        description: sceneInfo.description,
+        isSceneInformation: sceneInfo.isSceneInformation,
+      };
+    }
+
+    // 부품 선택 (단일/다중) → 마지막으로 선택한 부품 정보
+    if (selectedPartIds.length > 0) {
+      // 배열의 마지막 요소가 가장 최근에 선택한 부품
+      const lastSelectedId = selectedPartIds[selectedPartIds.length - 1];
+      const selectedPart = parts.find((part) => part.nodeId === lastSelectedId);
+      
+      if (selectedPart) {
+        // 한글 이름에서 끝 숫자 제거
+        const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
+
+        return {
+          korean: selectedPart.originalName || selectedPart.nodeId,
+          english: removeTrailingNumbers(selectedPart.nodeName),
+          description: selectedPart.partDescription || '부품 설명이 없습니다.',
+          materials: selectedPart.texture ? selectedPart.texture.split(',').map((m) => m.trim()) : [],
+          applications: [],
+        };
+      }
+    }
+
+    // 폴백: 씬 정보
+    return {
+      korean: sceneInfo.title,
+      english: sceneInfo.engTitle,
+      description: sceneInfo.description,
+      isSceneInformation: sceneInfo.isSceneInformation,
+    };
+  }, [sceneInfo, selectedPartIds, parts]);
 
   /**
    * 3D 모델 데이터 배열
@@ -198,39 +366,102 @@ export default function ViewerPage() {
     };
   }, [sceneIdParam]);
 
+  /**
+   * 씬 상태 저장 함수
+   */
+  const handleSaveSceneState = useCallback(async () => {
+    const sceneState = scene3DRef.current?.getSceneState();
+    if (!sceneState) return;
+    
+    // nodeId로 originalName을 찾기 위한 맵 생성
+    const nodeIdToOriginalName = new Map(
+      parts.map(part => [part.nodeId, part.originalName || part.nodeName])
+    );
+    
+    console.log('🔍 Parts 배열 확인:', {
+      partsCount: parts.length,
+      sampleParts: parts.slice(0, 3).map(p => ({
+        nodeId: p.nodeId,
+        nodeName: p.nodeName,
+        originalName: p.originalName,
+      })),
+      nodeIdToOriginalName: Array.from(nodeIdToOriginalName.entries()).slice(0, 3),
+    });
+    
+    const payload = {
+      components: sceneState.nodeTransforms.map(({ nodeId, matrix }) => {
+        const name = nodeIdToOriginalName.get(nodeId) || nodeId;
+        console.log(`매핑: ${nodeId} → ${name}`);
+        return {
+          nodeName: name, // 영어 이름 (originalName) 사용
+          matrix,
+        };
+      }),
+      assemblyValue: sceneState.assemblyValue,
+    };
+
+    console.log('📤 백엔드로 전송하는 데이터:');
+    console.log('URL:', `/scenes/${sceneIdParam}/sync`);
+    console.log('Body:', JSON.stringify(payload, null, 2));
+
+    setStatus('saving');
+    
+    try {
+      await syncSceneState(sceneIdParam, payload);
+      console.log('✅ 저장 완료');
+      setStatus('saved');
+      
+      // 1초 후 saved 상태를 idle로 전환
+      setTimeout(() => {
+        setStatus('idle');
+      }, 1000);
+    } catch (error) {
+      console.error('❌ 씬 동기화 실패:', error);
+      setStatus('error');
+      
+      // 2초 후 error 상태를 idle로 전환
+      setTimeout(() => {
+        setStatus('idle');
+      }, 2000);
+    }
+  }, [sceneIdParam, setStatus, parts]);
+
+  /**
+   * 수동 저장 함수 등록
+   */
+  useEffect(() => {
+    setTriggerSave(handleSaveSceneState);
+  }, [handleSaveSceneState, setTriggerSave]);
+
+  /**
+   * 30초마다 자동 저장 및 타이머 업데이트
+   */
   useEffect(() => {
     if (!sceneIdParam) return;
-    const handleSyncSceneState = async () => {
-      const sceneState = scene3DRef.current?.getSceneState();
-      if (!sceneState) return;
-      const zoom = Math.hypot(
-        sceneState.camera.position.x - sceneState.camera.target.x,
-        sceneState.camera.position.y - sceneState.camera.target.y,
-        sceneState.camera.position.z - sceneState.camera.target.z
-      );
-      const payload = {
-        components: sceneState.nodeTransforms.map(({ nodeName, matrix }) => ({
-          nodeName,
-          matrix,
-        })),
-        camera: sceneState.camera,
-        zoom,
-        assemblyValue: sceneState.assemblyValue,
-      };
 
-      try {
-        await syncSceneState(sceneIdParam, payload);
-      } catch (error) {
-        console.error('[viewer] 씬 동기화 실패', error);
-      }
-    };
-
-    handleSyncSceneState();
-    const intervalId = window.setInterval(handleSyncSceneState, 5000);
+    let elapsedSeconds = 0;
+    
+    // 초기 저장
+    handleSaveSceneState();
+    
+    // 1초마다 경과 시간 업데이트
+    const timerInterval = window.setInterval(() => {
+      elapsedSeconds = (elapsedSeconds + 1) % 30; // 30초마다 0으로 초기화
+      setElapsedSeconds(elapsedSeconds);
+    }, 1000);
+    
+    // 30초마다 자동 저장
+    const saveInterval = window.setInterval(() => {
+      handleSaveSceneState();
+      elapsedSeconds = 0; // 저장 후 타이머 초기화
+      setElapsedSeconds(0);
+    }, 30000);
+    
     return () => {
-      window.clearInterval(intervalId);
+      window.clearInterval(timerInterval);
+      window.clearInterval(saveInterval);
     };
-  }, [sceneIdParam]);
+  }, [sceneIdParam, setStatus, setElapsedSeconds]);
 
   useEffect(() => {
     return () => {
@@ -372,9 +603,18 @@ export default function ViewerPage() {
           <div className="w-full h-full flex items-end" style={{ pointerEvents: 'none' }}>
             <div className="w-full h-full flex flex-col justify-end" style={{ pointerEvents: 'auto' }}>
               <AiPanel
+                sceneId={sceneIdParam}
+                messages={aiMessages}
+                onSendMessage={handleSendAiMessage}
+                isLoading={isAiLoading}
                 isVisible={isAiPanelOpen}
                 onClose={() => setIsAiPanelOpen(false)}
                 maxExpandedHeight="100%"
+                hasNext={aiHasNext}
+                onLoadMore={handleLoadMoreAi}
+                isLoadingMore={isAiLoadingMore}
+                parts={parts}
+                modelName={modelRootName}
               />
             </div>
           </div>

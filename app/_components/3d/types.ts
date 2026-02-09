@@ -149,6 +149,10 @@ export interface SelectablePart {
   nodeName: string;
   originalName?: string; // GLTF의 원본 name (영문 이름)
   modelIndex: number;
+  // GLTF extras 정보
+  texture?: string; // 재질
+  dbId?: number; // DB ID
+  partDescription?: string; // 부품 설명
 }
 
 /**
