@@ -1,13 +1,3 @@
-export const CATEGORY_LIST = [
-  "기계공학",
-  "우주공학",
-  "생명공학",
-  "의공학",
-  "로봇공학", 
-  "자동차공학", 
-  "항공우주공학",
-  "제조공학"
-]
 
 export const ORDER_LIST = [
   "인기순",

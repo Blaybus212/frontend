@@ -10,7 +10,7 @@ const RankingSection = async ({
   rank
 }: RankingSectionProps) => {
   // "오늘 사람들이 많이 학습한 오브젝트" 정보 (GET /scenes/ranks/?category=)
-  const data: RankingSectionData = await $fetch("/scenes/ranks/")
+  const data: RankingSectionData = await $fetch(`/scenes/ranks`)
 
   return <RankingSectionClient {...data} />
 }

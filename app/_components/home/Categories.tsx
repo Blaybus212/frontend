@@ -1,7 +1,7 @@
 "use client";
 
+import { SceneCategory } from "@/app/_types/home";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CATEGORY_LIST } from "@/app/_constants/onboard";
 import { useState } from "react";
 
 const Categories = () => {
@@ -24,7 +24,7 @@ const Categories = () => {
 
   return (
     <div className="flex flex-wrap gap-3.5">
-      {CATEGORY_LIST.map((category) => (
+      {Object.keys(SceneCategory).map((category) => (
         <button
           key={category}
           onClick={() => handleClick(category)}
