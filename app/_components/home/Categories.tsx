@@ -12,12 +12,18 @@ const Categories = () => {
   const [currentCategory, setCurrentCategory] = useState<string | undefined>(searchParams.get("category")?.toString());
 
   const handleClick = (category: string) => {
-    setCurrentCategory(category);
 
     const newParams = new URLSearchParams(searchParams);
 
-    newParams.set("category", category);
-    newParams.set("curr", "1");
+    if(category === currentCategory) {
+      setCurrentCategory("");
+      newParams.delete("category");
+
+    } else {
+      setCurrentCategory(category);
+      newParams.set("category", category);
+      newParams.set("curr", "1");
+    }
 
     router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
