@@ -1,13 +1,37 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  AiPanel,
+  ViewerSidebar,
+  AssemblySlider,
+  ViewerRightPanel,
+  PartsListPanel,
+  PdfModal,
+  QuizButton,
+  QuizInput,
+  QuizSubmitButton,
+  QuizAnswer,
+} from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
 import { downloadAndExtractModelZip } from '@/app/_components/3d/utils/modelZip';
-import { syncSceneState, fetchSceneInfo, type SceneInfo, fetchConversation, sendMessage, type ConversationMessage } from './actions';
+import {
+  syncSceneState,
+  fetchSceneInfo,
+  type SceneInfo,
+  fetchConversation,
+  sendMessage,
+  type ConversationMessage,
+  fetchSceneQuizzes,
+  gradeQuizAnswer,
+  updateQuizProgress,
+  type SceneQuiz,
+  type SceneQuizResponse,
+  type GradeResponse,
+} from './actions';
 import { useSaveStatus } from '@/app/_contexts/SaveStatusContext';
 import {
   ASSEMBLY_VALUE_ASSEMBLED,
@@ -38,6 +62,7 @@ import {
  */
 export default function ViewerPage() {
   const params = useParams();
+  const router = useRouter();
   /** URL에서 추출한 객체 이름 */
   const objectName = params.objectName as string;
   const sceneIdParam = Number.isFinite(Number(objectName))
@@ -45,7 +70,26 @@ export default function ViewerPage() {
     : objectName;
 
   // SaveStatus Context
-  const { setStatus, setElapsedSeconds, setTriggerSave } = useSaveStatus();
+  const { setStatus, setElapsedSeconds, setTriggerSave, setIsAutoSaveVisible } = useSaveStatus();
+
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [isQuizLoading, setIsQuizLoading] = useState(false);
+  const [quizData, setQuizData] = useState<SceneQuizResponse | null>(null);
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [currentAnswer, setCurrentAnswer] = useState('');
+  const [currentGrade, setCurrentGrade] = useState<GradeResponse | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
+  const [quizResults, setQuizResults] = useState<Record<number, GradeResponse>>({});
+  const [quizCorrectAnswers, setQuizCorrectAnswers] = useState<Record<number, string>>({});
+  const [submittedQuizIds, setSubmittedQuizIds] = useState<Record<number, boolean>>({});
+  const [isGrading, setIsGrading] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [quizTimerSeconds, setQuizTimerSeconds] = useState(0);
+  const quizTimerRef = useRef<number | null>(null);
+  const [quizSolveTimeSeconds, setQuizSolveTimeSeconds] = useState<number | null>(null);
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const quizStartAtRef = useRef<number | null>(null);
+  const quizCompletionSavedRef = useRef(false);
 
   /** 조립/분해 슬라이더 값 (0-100, 기본값: 0=조립 상태) */
   const [assemblyValue, setAssemblyValue] = useState(0);
@@ -255,6 +299,57 @@ export default function ViewerPage() {
     };
   }, [sceneInfo, selectedPartIds, parts]);
 
+  const quizProgressPercent = useMemo(() => {
+    if (!quizData?.userProgress) return 0;
+    const total = quizData.userProgress.totalQuestions || quizData.quizzes.length;
+    if (!total) return 0;
+    const answered = quizData.userProgress.success + quizData.userProgress.failure;
+    return Math.min(100, Math.round((answered / total) * 100));
+  }, [quizData]);
+
+  const currentQuiz = quizData?.quizzes[currentQuizIndex];
+  const isQuizComplete = Boolean(quizData && currentQuizIndex >= quizData.quizzes.length);
+
+  const shuffleChoices = (choices: string[]) => {
+    const array = [...choices];
+    for (let i = array.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  const splitChoicesByComma = (choiceText: string) =>
+    choiceText
+      .split(',')
+      .map((choice) => choice.trim())
+      .filter(Boolean);
+
+  const shuffledChoices = useMemo(() => {
+    if (!currentQuiz?.choice) return [];
+    return shuffleChoices(splitChoicesByComma(currentQuiz.choice));
+  }, [currentQuiz?.id, currentQuiz?.choice]);
+
+  const formatDateLabel = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}. ${month}. ${day}.`;
+  };
+
+  const formatDuration = (seconds: number) => {
+    const clamped = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(clamped / 60);
+    const remain = clamped % 60;
+    return `${minutes}m ${remain}s`;
+  };
+
+  const formatQuizTimer = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remain = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remain.toString().padStart(2, '0')}`;
+  };
+
   /**
    * 3D 모델 데이터 배열
    * ZIP 파일에서 로드한 모델만 표시 (기본 모델 제거)
@@ -277,7 +372,208 @@ export default function ViewerPage() {
     [activeModelUrl]
   );
 
+  const buildQuizProgressPayload = (isComplete: boolean) => {
+    const baseProgress = quizData?.userProgress;
+    const totalQuestions = baseProgress?.totalQuestions ?? quizData?.quizzes.length ?? 0;
+    const success = baseProgress?.success ?? 0;
+    const failure = baseProgress?.failure ?? 0;
+    const lastQuizId = baseProgress?.lastQuizId ?? null;
+    const solveTime = quizStartAtRef.current
+      ? Math.max(0, Math.floor((Date.now() - quizStartAtRef.current) / 1000))
+      : 0;
+
+    return {
+      lastQuizId,
+      totalQuestions,
+      success,
+      failure,
+      solveTime,
+      isComplete,
+    };
+  };
+
+  const loadQuizData = async () => {
+    if (!sceneIdParam) return;
+    setIsQuizLoading(true);
+    try {
+      const response = await fetchSceneQuizzes(sceneIdParam);
+      if (!response) {
+        setQuizData(null);
+        return;
+      }
+      const sortedQuizzes = [...response.quizzes].sort((a, b) => a.id - b.id);
+      const nextData: SceneQuizResponse = {
+        ...response,
+        quizzes: sortedQuizzes,
+      };
+      setQuizData(nextData);
+      const correctAnswerMap: Record<number, string> = {};
+      sortedQuizzes.forEach((quiz) => {
+        if (quiz.type === 'SELECT' && quiz.choice) {
+          const firstChoice = splitChoicesByComma(quiz.choice)[0];
+          if (firstChoice) {
+            correctAnswerMap[quiz.id] = firstChoice;
+          }
+        }
+      });
+      setQuizCorrectAnswers(correctAnswerMap);
+      setCurrentQuizIndex(0);
+      quizStartAtRef.current = Date.now();
+      quizCompletionSavedRef.current = false;
+      setQuizSolveTimeSeconds(null);
+      setQuizAnswers({});
+      setQuizResults({});
+      setQuizCorrectAnswers(correctAnswerMap);
+      setSubmittedQuizIds({});
+      setIsReviewOpen(false);
+      setCurrentAnswer('');
+      setCurrentGrade(null);
+      setReviewIndex(0);
+    } catch (error) {
+      console.error('[quiz] 퀴즈 로드 실패', error);
+    } finally {
+      setIsQuizLoading(false);
+    }
+  };
+
+  const handleOpenQuiz = async () => {
+    if (!sceneIdParam) return;
+    setIsQuizOpen(true);
+    setQuizTimerSeconds(0);
+    setIsAiPanelOpen(false);
+    setIsPartsOpen(false);
+    setIsPdfOpen(false);
+    setSelectedIcon(null);
+    await loadQuizData();
+  };
+
+  const handleSaveQuizProgress = async (isComplete: boolean) => {
+    if (!sceneIdParam || !quizData) return;
+    const payload = buildQuizProgressPayload(isComplete);
+    try {
+      await updateQuizProgress(sceneIdParam, payload);
+    } catch (error) {
+      console.error('[quiz] 진행 상황 저장 실패', error);
+    }
+  };
+
+  const handleExitQuiz = async (navigateHome: boolean = false) => {
+    await handleSaveQuizProgress(false);
+    setIsQuizOpen(false);
+    setSelectedIcon(null);
+    if (navigateHome) {
+      router.push('/home');
+    }
+  };
+
+  const updateLocalProgress = (quizId: number, grade: GradeResponse) => {
+    setQuizResults((prevResults) => {
+      const alreadyUpdated = Boolean(prevResults[quizId]);
+      const correctAnswerFallback = quizCorrectAnswers[quizId] ?? grade.correctAnswer;
+      const nextResults = {
+        ...prevResults,
+        [quizId]: {
+          ...grade,
+          correctAnswer: correctAnswerFallback,
+        },
+      };
+
+      setQuizData((prevData) => {
+        if (!prevData) return prevData;
+        const nextProgress = {
+          ...prevData.userProgress,
+          lastQuizId: quizId,
+        };
+        if (!alreadyUpdated) {
+          nextProgress.success =
+            nextProgress.success + (grade.correct ? 1 : 0);
+          nextProgress.failure =
+            nextProgress.failure + (grade.correct ? 0 : 1);
+        }
+        return {
+          ...prevData,
+          userProgress: nextProgress,
+        };
+      });
+
+      return nextResults;
+    });
+  };
+
+  const evaluateLocalAnswer = (quiz: SceneQuiz, answer: string): GradeResponse => {
+    const normalized = (value: string) => value.trim().toLowerCase();
+    const correctAnswer = quizCorrectAnswers[quiz.id] ?? '';
+    const isCorrect =
+      Boolean(correctAnswer) && normalized(answer) === normalized(correctAnswer);
+
+    return {
+      correct: isCorrect,
+      score: isCorrect ? 1 : 0,
+      correctAnswer,
+    };
+  };
+
+  const moveToNextQuiz = () => {
+    setCurrentAnswer('');
+    setCurrentGrade(null);
+    setCurrentQuizIndex((prev) => prev + 1);
+  };
+
+  const handleSelectChoice = (choice: string) => {
+    if (!currentQuiz) return;
+    setQuizAnswers((prev) => ({ ...prev, [currentQuiz.id]: choice }));
+    const grade = evaluateLocalAnswer(currentQuiz, choice);
+    updateLocalProgress(currentQuiz.id, grade);
+    setSubmittedQuizIds((prev) => ({ ...prev, [currentQuiz.id]: true }));
+    moveToNextQuiz();
+  };
+
+  const handlePrevQuiz = () => {
+    setCurrentQuizIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextQuiz = () => {
+    if (!quizData) return;
+    setCurrentQuizIndex((prev) => Math.min(quizData.quizzes.length - 1, prev + 1));
+  };
+
+  const handleSubmitInputAnswer = async () => {
+    if (!sceneIdParam || !currentQuiz || isGrading) return;
+    const answer = currentAnswer.trim();
+    if (!answer) return;
+    setIsGrading(true);
+    try {
+      console.log('🟡 [quiz input] 제출 요청', {
+        sceneId: sceneIdParam,
+        quizId: currentQuiz.id,
+        answer,
+      });
+      const grade = await gradeQuizAnswer(sceneIdParam, currentQuiz.id, answer);
+      if (!grade) {
+        console.error('[quiz] 채점 결과가 없습니다.');
+        return;
+      }
+      console.log('🟢 [quiz input] 채점 결과', {
+        sceneId: sceneIdParam,
+        quizId: currentQuiz.id,
+        grade,
+      });
+      setQuizAnswers((prev) => ({ ...prev, [currentQuiz.id]: answer }));
+      updateLocalProgress(currentQuiz.id, grade);
+      setSubmittedQuizIds((prev) => ({ ...prev, [currentQuiz.id]: true }));
+      moveToNextQuiz();
+      setSubmittedQuizIds((prev) => ({ ...prev, [currentQuiz.id]: true }));
+    } catch (error) {
+      console.error('[quiz] 채점 실패', error);
+    } finally {
+      setIsGrading(false);
+    }
+  };
+
   const handleIconSelect = (iconId: string) => {
+    if (isQuizOpen && iconId !== 'home') {
+      return;
+    }
     const flashIcon = () => {
       setSelectedIcon(iconId);
       window.setTimeout(() => {
@@ -286,6 +582,13 @@ export default function ViewerPage() {
     };
 
     switch (iconId) {
+      case 'home':
+        if (isQuizOpen) {
+          handleExitQuiz(true);
+          return;
+        }
+        router.push('/home');
+        return;
       case 'zoomin':
         scene3DRef.current?.zoomIn();
         flashIcon();
@@ -485,6 +788,67 @@ export default function ViewerPage() {
     scene3DRef.current.setSelectedNodeIds(selectedPartIds);
   }, [selectedPartIds]);
 
+  useEffect(() => {
+    setIsAutoSaveVisible(!isQuizOpen);
+    return () => {
+      setIsAutoSaveVisible(true);
+    };
+  }, [isQuizOpen, setIsAutoSaveVisible]);
+
+  useEffect(() => {
+    if (!isQuizOpen) {
+      if (quizTimerRef.current) {
+        window.clearInterval(quizTimerRef.current);
+        quizTimerRef.current = null;
+      }
+      return;
+    }
+    setQuizTimerSeconds(0);
+    quizTimerRef.current = window.setInterval(() => {
+      setQuizTimerSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      if (quizTimerRef.current) {
+        window.clearInterval(quizTimerRef.current);
+        quizTimerRef.current = null;
+      }
+    };
+  }, [isQuizOpen]);
+
+  useEffect(() => {
+    if (!currentQuiz) return;
+    const storedAnswer = quizAnswers[currentQuiz.id] ?? '';
+    setCurrentAnswer(storedAnswer);
+    const hasSubmitted = Boolean(submittedQuizIds[currentQuiz.id]);
+    setCurrentGrade(hasSubmitted ? quizResults[currentQuiz.id] ?? null : null);
+  }, [currentQuiz?.id, quizAnswers, quizResults, submittedQuizIds]);
+
+  useEffect(() => {
+    if (!sceneIdParam || !quizData || !isQuizComplete) return;
+    if (quizCompletionSavedRef.current) return;
+    quizCompletionSavedRef.current = true;
+    const solveTime = quizStartAtRef.current
+      ? Math.max(0, Math.floor((Date.now() - quizStartAtRef.current) / 1000))
+      : 0;
+    setQuizSolveTimeSeconds(solveTime);
+    setQuizData((prev) =>
+      prev
+        ? {
+            ...prev,
+            userProgress: {
+              ...prev.userProgress,
+              isComplete: true,
+            },
+          }
+        : prev
+    );
+    const payload = buildQuizProgressPayload(true);
+    payload.solveTime = solveTime;
+    updateQuizProgress(sceneIdParam, payload).catch((error) => {
+      console.error('[quiz] 완료 저장 실패', error);
+    });
+  }, [sceneIdParam, quizData, isQuizComplete]);
+
   const updateSelectedPartIds = (nextIds: string[]) => {
     setSelectedPartIds((prev) => {
       if (prev.length === nextIds.length && nextIds.every((id) => prev.includes(id))) {
@@ -577,12 +941,29 @@ export default function ViewerPage() {
     setIsPdfOpen(false);
   };
 
+  const effectiveRightPanelWidth = isQuizOpen ? 0 : rightPanelWidthPercent;
+  const totalQuizCount = quizData?.quizzes.length ?? 0;
+  const scorePercent =
+    totalQuizCount > 0
+      ? Math.round(((quizData?.userProgress.success ?? 0) / totalQuizCount) * 100)
+      : 0;
+
+  const wrongQuizIds = useMemo(() => {
+    if (!quizData) return [];
+    return quizData.quizzes
+      .filter((quiz) => quizResults[quiz.id] && !quizResults[quiz.id].correct)
+      .map((quiz) => quiz.id);
+  }, [quizData, quizResults]);
+
+  const currentWrongQuizId = wrongQuizIds[reviewIndex] ?? null;
+  const currentWrongQuiz = quizData?.quizzes.find((quiz) => quiz.id === currentWrongQuizId) ?? null;
+
   return (
     <div className="h-full w-full relative overflow-hidden bg-surface">
       {/* 3D 씬 렌더링 영역: 상단 네비게이션 바와 우측 패널을 제외한 전체 영역 (전체 너비의 70%) */}
       <div
         className="absolute top-[0px] left-0 bottom-0"
-        style={{ right: `${rightPanelWidthPercent}%` }}
+        style={{ right: `${effectiveRightPanelWidth}%` }}
       >
         <Scene3D
           ref={scene3DRef}
@@ -601,7 +982,7 @@ export default function ViewerPage() {
           className="absolute z-20"
           style={{
             left: '7%',
-            right: `calc(${rightPanelWidthPercent}% + 12px)`,
+            right: `calc(${effectiveRightPanelWidth}% + 12px)`,
             top: 0,
             bottom: 0,
             pointerEvents: 'none',
@@ -636,7 +1017,18 @@ export default function ViewerPage() {
         onIconSelect={handleIconSelect}
         isAiPanelOpen={isAiPanelOpen}
         onOpenAiPanel={() => setIsAiPanelOpen(true)}
+        onQuizClick={handleOpenQuiz}
+        quizProgressPercent={quizProgressPercent}
+        isQuizMode={isQuizOpen}
       />
+
+      {isQuizOpen && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
+          <div className="px-6 py-2 rounded-full bg-point-500 text-base-black text-b-md font-weight-semibold shadow-md">
+            {formatQuizTimer(quizTimerSeconds)}
+          </div>
+        </div>
+      )}
 
       {isPartsOpen && (
         <div className="absolute left-[112px] top-[210px] z-20">
@@ -667,22 +1059,214 @@ export default function ViewerPage() {
       )}
 
       {/* 조립/분해 슬라이더 */}
-      <AssemblySlider
-        value={assemblyValue}
-        onChange={setAssemblyValue}
-      />
+      {!isQuizOpen && (
+        <AssemblySlider
+          value={assemblyValue}
+          onChange={setAssemblyValue}
+        />
+      )}
 
       {/* 우측 정보 사이드바 */}
-      <ViewerRightPanel
-        objectData={objectData}
-        noteValue={noteValue}
-        onNoteChange={setNoteValue}
-        noteExportRef={noteExportRef}
-        widthPercent={rightPanelWidthPercent}
-        onResizeWidth={setRightPanelWidthPercent}
-        parts={parts}
-        modelName={modelRootName}
-      />
+      {!isQuizOpen && (
+        <ViewerRightPanel
+          objectData={objectData}
+          noteValue={noteValue}
+          onNoteChange={setNoteValue}
+          noteExportRef={noteExportRef}
+          widthPercent={rightPanelWidthPercent}
+          onResizeWidth={setRightPanelWidthPercent}
+          parts={parts}
+          modelName={modelRootName}
+        />
+      )}
+
+      {isQuizOpen && (
+        <div className="absolute right-8 top-8 bottom-8 w-[360px] z-20">
+          <div className="h-full bg-bg-default rounded-3xl border border-border-default shadow-lg px-5 py-6 flex flex-col gap-4">
+            {isQuizLoading && (
+              <div className="flex-1 flex items-center justify-center text-sub2 text-b-md">
+                퀴즈를 불러오는 중...
+              </div>
+            )}
+
+            {!isQuizLoading && !quizData && (
+              <div className="flex-1 flex items-center justify-center text-sub2 text-b-md">
+                퀴즈 정보가 없습니다.
+              </div>
+            )}
+
+            {!isQuizLoading && quizData && isQuizComplete && (
+              <>
+                {!isReviewOpen && (
+                  <>
+                    <div className="flex items-center justify-between text-b-xs text-sub">
+                      <span>{formatDateLabel(new Date())}</span>
+                      <span>{formatDuration(quizSolveTimeSeconds ?? 0)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-b-lg font-weight-semibold text-text-title">
+                        모든 문제를 풀었습니다!
+                      </p>
+                      <p className="text-b-sm text-sub2">제출하기를 눌러 결과를 확인하세요.</p>
+                    </div>
+                    <QuizSubmitButton
+                      enabled
+                      onClick={() => setIsReviewOpen(true)}
+                      label="제출하기"
+                    />
+                  </>
+                )}
+
+                {isReviewOpen && (
+                  <>
+                    <div className="flex items-center justify-between text-b-xs text-sub">
+                      <span>{formatDateLabel(new Date())}</span>
+                      <span>{formatDuration(quizSolveTimeSeconds ?? 0)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-b-lg font-weight-semibold text-text-title">
+                        퀴즈 점수는 {scorePercent}점!
+                      </p>
+                      <p className="text-b-sm text-sub2">조금 더 공부해 봐요!</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleExitQuiz(true)}
+                        className="flex-1 py-2.5 rounded-xl border border-border-default text-sub2 text-b-sm font-weight-semibold hover:bg-bg-hovered"
+                      >
+                        홈화면으로
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExitQuiz(false)}
+                        className="flex-1 py-2.5 rounded-xl border border-border-default text-sub2 text-b-sm font-weight-semibold hover:bg-bg-hovered"
+                      >
+                        뷰어로 돌아가기
+                      </button>
+                    </div>
+
+                    {wrongQuizIds.length > 0 && (
+                      <div className="mt-2 space-y-3">
+                        <div className="flex items-center justify-between text-b-sm text-sub2">
+                          <span>
+                            오답 문항 보기{' '}
+                            <span className="text-sub">
+                              {reviewIndex + 1}/{wrongQuizIds.length}문제
+                            </span>
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReviewIndex((prev) =>
+                                  prev <= 0 ? wrongQuizIds.length - 1 : prev - 1
+                                )
+                              }
+                              className="w-7 h-7 rounded-full border border-border-default text-sub2 hover:bg-bg-hovered"
+                              aria-label="이전 오답"
+                            >
+                              ‹
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReviewIndex((prev) =>
+                                  prev >= wrongQuizIds.length - 1 ? 0 : prev + 1
+                                )
+                              }
+                              className="w-7 h-7 rounded-full border border-border-default text-sub2 hover:bg-bg-hovered"
+                              aria-label="다음 오답"
+                            >
+                              ›
+                            </button>
+                          </div>
+                        </div>
+                        {currentWrongQuiz && (
+                          <div className="space-y-2">
+                            <p className="text-b-sm text-sub2">{currentWrongQuiz.question}</p>
+                            <QuizAnswer
+                              answer={quizAnswers[currentWrongQuiz.id] ?? '미답변'}
+                              isSelected
+                            />
+                            <QuizAnswer
+                              answer={quizResults[currentWrongQuiz.id]?.correctAnswer ?? ''}
+                              isCorrect
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            {!isQuizLoading && quizData && !isQuizComplete && currentQuiz && (
+              <>
+                <div className="flex items-center justify-between text-b-xs text-sub">
+                  <span>
+                    Q{currentQuizIndex + 1} / {quizData.quizzes.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrevQuiz}
+                      disabled={currentQuizIndex === 0}
+                      className="w-7 h-7 rounded-full border border-border-default text-sub2 hover:bg-bg-hovered disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="이전 문제"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextQuiz}
+                      disabled={currentQuizIndex >= quizData.quizzes.length - 1}
+                      className="w-7 h-7 rounded-full border border-border-default text-sub2 hover:bg-bg-hovered disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="다음 문제"
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-b-md font-weight-semibold text-text-title">
+                    {currentQuiz.question}
+                  </p>
+                  {currentQuiz.type === 'SELECT' && (
+                    <div className="space-y-2">
+                      {shuffledChoices.map((choice) => (
+                        <QuizButton
+                          key={choice}
+                          label={choice}
+                          selected={quizAnswers[currentQuiz.id] === choice}
+                          onClick={() => handleSelectChoice(choice)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {currentQuiz.type === 'INPUT' && (
+                    <div className="space-y-3">
+                      <QuizInput
+                        value={currentAnswer}
+                        onChange={setCurrentAnswer}
+                        placeholder="단어를 입력하세요!"
+                      />
+                      <QuizSubmitButton
+                        enabled={currentAnswer.trim().length > 0}
+                        isSubmitting={isGrading}
+                        onClick={handleSubmitInputAnswer}
+                        label="제출하기"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -13,6 +13,8 @@ interface SaveStatusContextValue {
   setElapsedSeconds: (seconds: number) => void;
   triggerSave?: () => Promise<void>; // 수동 저장 함수
   setTriggerSave: (fn: () => Promise<void>) => void;
+  isAutoSaveVisible: boolean;
+  setIsAutoSaveVisible: (visible: boolean) => void;
 }
 
 const SaveStatusContext = createContext<SaveStatusContextValue | null>(null);
@@ -22,6 +24,7 @@ export function SaveStatusProvider({ children }: { children: ReactNode }) {
   const [lastSavedTime, setLastSavedTime] = useState(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [triggerSave, setTriggerSaveInternal] = useState<(() => Promise<void>) | undefined>();
+  const [isAutoSaveVisible, setIsAutoSaveVisible] = useState(true);
 
   const setTriggerSave = useCallback((fn: () => Promise<void>) => {
     setTriggerSaveInternal(() => fn);
@@ -38,6 +41,8 @@ export function SaveStatusProvider({ children }: { children: ReactNode }) {
         setElapsedSeconds,
         triggerSave,
         setTriggerSave,
+        isAutoSaveVisible,
+        setIsAutoSaveVisible,
       }}
     >
       {children}
