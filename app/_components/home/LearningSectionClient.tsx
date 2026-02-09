@@ -9,6 +9,14 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
 }) => {
   const router = useRouter();
 
+  const getCategoryName = (value: string): string => {
+    // Enum의 모든 키-값 쌍을 배열로 만든 뒤, 값이 일치하는 항목을 찾습니다.
+    const entry = Object.entries(SceneCategory).find(([key, val]) => val === value);
+    
+    // 찾으면 키("로봇공학")를 반환하고, 못 찾으면 입력값 그대로 반환합니다.
+    return entry ? entry[0] : value;
+  };
+
   return (
     <div className="flex flex-col gap-5 items-start">
       <div className="flex gap-2 items-center">
@@ -50,7 +58,7 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
               
               <div>
                 <span className="inline-block bg-bg-sub text-sub2 px-3 py-1 rounded-full text-b-sm font-regular">
-                  {/* {SceneCategory[scene.category] } */}
+                  {getCategoryName(scene.category)}
                 </span>
               </div>
 
