@@ -57,7 +57,7 @@ export function ModelList({
     <>
       {models.map((model, index) => {
         return (
-          <Suspense key={model.id} fallback={null}>
+          <Suspense key={`${model.id}-${model.url}`} fallback={null}>
             <Model
               url={model.url}
               isSelected={selectedIndices.includes(index)}

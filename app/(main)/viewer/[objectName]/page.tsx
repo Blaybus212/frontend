@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { AiPanel, ViewerSidebar, AssemblySlider, ViewerRightPanel, PartsListPanel, PdfModal } from '@/app/_components/viewer';
 import Scene3D from '@/app/_components/Scene3D';
 import type { Scene3DRef, SelectablePart } from '@/app/_components/3d/types';
 import { exportNotePdf, exportSummaryPdf } from '@/app/_components/viewer/utils/pdfExport';
 import { downloadAndExtractModelZip } from '@/app/_components/3d/utils/modelZip';
+import { syncSceneState } from './actions';
 import {
   ASSEMBLY_VALUE_ASSEMBLED,
   ICON_FLASH_DELAY_MS,
@@ -37,10 +37,11 @@ import {
  */
 export default function ViewerPage() {
   const params = useParams();
-  const { data: session } = useSession();
   /** URL에서 추출한 객체 이름 */
   const objectName = params.objectName as string;
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+  const sceneIdParam = Number.isFinite(Number(objectName))
+    ? String(Number(objectName))
+    : objectName;
 
   /** 조립/분해 슬라이더 값 (0-100, 기본값: 0=조립 상태) */
   const [assemblyValue, setAssemblyValue] = useState(0);
@@ -62,6 +63,7 @@ export default function ViewerPage() {
   const [modelUrls, setModelUrls] = useState<{
     defaultUrl: string | null;
     customUrl: string | null;
+    parts: Array<{ nodeId: string; nodeName: string }>;
     revoke: () => void;
   } | null>(null);
   const [activeModelUrl, setActiveModelUrl] = useState<string | null>(null);
@@ -83,18 +85,24 @@ export default function ViewerPage() {
 
   /**
    * 3D 모델 데이터 배열
-   * TODO: 나중에 objectName 기반으로 API에서 로드 예정
+   * ZIP 파일에서 로드한 모델만 표시 (기본 모델 제거)
    */
-  const modelUrl = activeModelUrl ?? '/Assets/Robot Gripper/Robot Gripper.gltf';
   const models = useMemo(
-    () => [
-      {
-        id: 'scene-model',
-        url: modelUrl,
-        nodeIndex: 0,
-      },
-    ],
-    [modelUrl]
+    () => {
+      // activeModelUrl이 없으면 빈 배열 (로딩 중)
+      if (!activeModelUrl) {
+        return [];
+      }
+      
+      return [
+        {
+          id: 'scene-model',
+          url: activeModelUrl,
+          nodeIndex: 0,
+        },
+      ];
+    },
+    [activeModelUrl]
   );
 
   const handleIconSelect = (iconId: string) => {
@@ -148,17 +156,14 @@ export default function ViewerPage() {
   }, [models]);
 
   useEffect(() => {
-    const accessToken = session?.accessToken;
-    if (typeof accessToken !== 'string' || !apiBaseUrl || !objectName) return;
+    if (!sceneIdParam) return;
     const controller = new AbortController();
     let disposed = false;
 
     const loadModels = async () => {
       try {
         const result = await downloadAndExtractModelZip({
-          apiBaseUrl,
-          accessToken,
-          sceneId: objectName,
+          sceneId: sceneIdParam,
           target: 'both',
           signal: controller.signal,
         });
@@ -167,7 +172,18 @@ export default function ViewerPage() {
           return;
         }
         setModelUrls(result);
-        setActiveModelUrl(result.customUrl ?? result.defaultUrl);
+        const selectedUrl = result.customUrl ?? result.defaultUrl;
+        
+        // 부품 정보를 SelectablePart 형식으로 변환
+        const selectableParts: SelectablePart[] = result.parts.map((part) => ({
+          nodeId: part.nodeId,
+          nodeName: part.nodeName,
+          originalName: part.originalName,
+          modelIndex: 0,
+        }));
+        
+        setParts(selectableParts);
+        setActiveModelUrl(selectedUrl);
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error('[viewer] 모델 다운로드 실패', error);
@@ -180,12 +196,11 @@ export default function ViewerPage() {
       disposed = true;
       controller.abort();
     };
-  }, [session?.accessToken, apiBaseUrl, objectName]);
+  }, [sceneIdParam]);
 
   useEffect(() => {
-    const accessToken = session?.accessToken;
-    if (typeof accessToken !== 'string' || !apiBaseUrl || !objectName) return;
-    const syncSceneState = async () => {
+    if (!sceneIdParam) return;
+    const handleSyncSceneState = async () => {
       const sceneState = scene3DRef.current?.getSceneState();
       if (!sceneState) return;
       const zoom = Math.hypot(
@@ -204,25 +219,18 @@ export default function ViewerPage() {
       };
 
       try {
-        await fetch(`${apiBaseUrl}/scenes/${encodeURIComponent(objectName)}/sync`, {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+        await syncSceneState(sceneIdParam, payload);
       } catch (error) {
         console.error('[viewer] 씬 동기화 실패', error);
       }
     };
 
-    syncSceneState();
-    const intervalId = window.setInterval(syncSceneState, 5000);
+    handleSyncSceneState();
+    const intervalId = window.setInterval(handleSyncSceneState, 5000);
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [session?.accessToken, apiBaseUrl, objectName]);
+  }, [sceneIdParam]);
 
   useEffect(() => {
     return () => {

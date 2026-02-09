@@ -323,21 +323,25 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
   const getSelectableParts = useCallback((): SelectablePart[] => {
     const partsMap = new Map<string, SelectablePart>();
+    
     modelRefs.current.forEach((modelRef, modelIndex) => {
       if (!modelRef) return;
       modelRef.traverse((node) => {
         const nodeId = node.userData?.nodeId;
         const selectable = node.userData?.selectable === true;
+        
         if (!nodeId || !selectable) return;
         if (!partsMap.has(nodeId)) {
           partsMap.set(nodeId, {
             nodeId,
             nodeName: node.userData?.nodeName || node.name || nodeId,
+            originalName: node.userData?.originalName || node.name,
             modelIndex,
           });
         }
       });
     });
+    
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
 
@@ -347,9 +351,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   React.useEffect(() => {
     if (!onSelectablePartsChange) return;
     const list = getSelectableParts();
-    if (list.length === 0) return;
-    const nextKey = list.map((part) => part.nodeId).sort().join('|');
+    
+    // 부품이 없어도 콜백 호출 (빈 배열 전달)
+    const nextKey = list.length > 0 
+      ? list.map((part) => part.nodeId).sort().join('|')
+      : 'empty';
+    
     if (nextKey === lastSelectablePartsKeyRef.current) return;
+    
     lastSelectablePartsKeyRef.current = nextKey;
     onSelectablePartsChange(list);
   }, [getSelectableParts, onSelectablePartsChange, modelRefsVersion]);
