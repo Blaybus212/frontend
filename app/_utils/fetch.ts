@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from "@/auth";
-import { signOut } from "next-auth/react";
+import { signOut } from "@/auth";
 
 /**
  * [$fetch 유틸리티]
@@ -20,7 +20,7 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
     headers.set("Authorization", `Bearer ${token}`);
   } else {
     // 토큰이 아예 없으면 로그인 페이지로 강제 이동
-    await signOut();
+    // await signOut();
   }
 
   console.log(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`)
@@ -44,7 +44,7 @@ export async function $fetch<T>(endpoint: string, options: RequestInit = {}): Pr
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
 
-    // throw new Error(`API 요청 실패 (${response.status}): ${errorData?.message}`);
+    throw new Error(`API 요청 실패 (${response.status}): ${errorData?.message}`);
   }
 
   return response.json().catch(() => null);

@@ -5,7 +5,6 @@ import { $fetch } from '../_utils/fetch';
 import { useRouter } from 'next/navigation';
 import { SceneCategory } from '../_types/home';
 import { useSession } from 'next-auth/react';
-import { User } from 'next-auth';
 
 const initialData: OnboardData = {
   name: '',
@@ -64,11 +63,6 @@ export const useOnboard = (totalSteps: number) => {
           specialized: formData.specialized.join(',')
         };
 
-        await $fetch('/onboard', { 
-          method: 'PATCH', 
-          body: JSON.stringify(reqData) 
-        });
-
         await update({
           ...session,
           loginUser: {
@@ -76,6 +70,12 @@ export const useOnboard = (totalSteps: number) => {
             name: formData.name,
             preferCategory: formData.preferCategory,
           },
+        });
+        console.log(session?.loginUser);
+
+        await $fetch('/onboard', { 
+          method: 'PATCH', 
+          body: JSON.stringify(reqData) 
         });
 
         router.push('/onboard-finished');

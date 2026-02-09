@@ -31,11 +31,17 @@ export const authConfig = {
      * 1. 실행 시점: 로그인 성공 시, 또는 세션이 체크될 때마다 실행
      * 2. 역할: DB나 백엔드에서 받은 정보를 '암호화된 쿠키(JWT)'에 저장함
      */
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.accessToken = user.accessToken;
         token.loginUser = user.loginUser;
       }
+
+      if (trigger === "update" && session?.loginUser) {
+        token.loginUser = session.loginUser;
+        // 만약 accessToken도 업데이트 된다면 여기서 처리
+      }
+
       return token;
     },
     /**
