@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 // import SaveStatus from '@/components/SaveStatus';
 
 interface MainLayoutProps {
@@ -15,14 +16,32 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const isHome = pathname.startsWith('/home');
   const isLoggedIn = !pathname.startsWith('/login');
 
-  const now = new Date();
-  const timeLabel = now.toLocaleTimeString('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
 
   const router = useRouter();
+  
+  // Hydration 오류 방지: 클라이언트에서만 시간 업데이트
+  const [timeLabel, setTimeLabel] = useState('--:--');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const formatted = now.toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      setTimeLabel(formatted);
+    };
+
+    // 초기 시간 설정
+    updateTime();
+
+    // 1초마다 시간 업데이트
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+  
 
   return (
     <div className={`${isViewer ? 'h-screen' : 'min-h-screen'} flex flex-col bg-surface`}>
