@@ -155,7 +155,7 @@ export default function ViewerPage() {
     const loadConversation = async () => {
       try {
         const response = await fetchConversation(sceneIdParam, 5);
-        setAiMessages(response.messages.reverse()); // 오래된 순서로 정렬
+        setAiMessages(sortMessages(response.messages));
         setAiNextCursor(response.pages.nextCursor);
         setAiHasNext(response.pages.hasNext);
       } catch (error) {
@@ -185,7 +185,7 @@ export default function ViewerPage() {
       }).replace(/\. /g, '-').replace('.', ''),
       references: {},
     };
-    setAiMessages(prev => [...prev, userMessage]);
+    setAiMessages((prev) => sortMessages([...prev, userMessage]));
     setIsAiLoading(true);
 
     try {
@@ -210,7 +210,7 @@ export default function ViewerPage() {
         postedAt: response.postedAt,
         references: response.references || {},
       };
-      setAiMessages(prev => [...prev, aiMessage]);
+      setAiMessages((prev) => sortMessages([...prev, aiMessage]));
     } catch (error) {
       console.error('[AI] 메시지 전송 실패', error);
       // 에러 메시지 표시
@@ -220,7 +220,7 @@ export default function ViewerPage() {
         postedAt: new Date().toLocaleString('ko-KR'),
         references: {},
       };
-      setAiMessages(prev => [...prev, errorMessage]);
+      setAiMessages((prev) => sortMessages([...prev, errorMessage]));
     } finally {
       setIsAiLoading(false);
     }
@@ -235,7 +235,7 @@ export default function ViewerPage() {
     setIsAiLoadingMore(true);
     try {
       const response = await fetchConversation(sceneIdParam, 5, aiNextCursor);
-      setAiMessages(prev => [...response.messages.reverse(), ...prev]);
+      setAiMessages((prev) => sortMessages([...response.messages, ...prev]));
       setAiNextCursor(response.pages.nextCursor);
       setAiHasNext(response.pages.hasNext);
     } catch (error) {
@@ -343,6 +343,71 @@ export default function ViewerPage() {
     const remain = clamped % 60;
     return `${minutes}m ${remain}s`;
   };
+
+  const parsePostedAt = (value: string) => {
+    const cleaned = value.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+    const meridiemMatch = cleaned.match(
+      /(\d{4})[- ](\d{2})[- ](\d{2})[- ](오전|오후)\s+(\d{1,2}):(\d{2})/
+    );
+    if (meridiemMatch) {
+      const [, year, month, day, meridiem, hourRaw, minute] = meridiemMatch;
+      let hour = Number(hourRaw);
+      if (meridiem === '오후' && hour < 12) {
+        hour += 12;
+      }
+      if (meridiem === '오전' && hour === 12) {
+        hour = 0;
+      }
+      return new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        hour,
+        Number(minute)
+      ).getTime();
+    }
+    const match = cleaned.match(/(\d{4})[- ](\d{2})[- ](\d{2})\s+(\d{2}):(\d{2})/);
+    if (match) {
+      const [, year, month, day, hour, minute] = match;
+      return new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute)
+      ).getTime();
+    }
+    const parsed = Date.parse(cleaned);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const getMessageTime = (message: ConversationMessage) => {
+    const time = parsePostedAt(message.postedAt);
+    if (time === null) return null;
+    const hasMeridiem = /오전|오후/.test(message.postedAt);
+    if (!hasMeridiem) {
+      return time + 9 * 60 * 60 * 1000;
+    }
+    return time;
+  };
+
+  const sortMessages = (messages: ConversationMessage[]) =>
+    [...messages].sort((a, b) => {
+      const timeA = getMessageTime(a);
+      const timeB = getMessageTime(b);
+      if (timeA !== null && timeB === null) return -1;
+      if (timeA === null && timeB !== null) return 1;
+      if (timeA !== null && timeB !== null && timeA !== timeB) {
+        return timeA - timeB;
+      }
+      if (a.postedAt !== b.postedAt) {
+        return a.postedAt.localeCompare(b.postedAt);
+      }
+      if (a.sender !== b.sender) {
+        return a.sender === 'USER' ? -1 : 1;
+      }
+      return 0;
+    });
 
   const formatQuizTimer = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
