@@ -337,6 +337,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
             nodeName: node.userData?.nodeName || node.name || nodeId,
             originalName: node.userData?.originalName || node.name,
             modelIndex,
+            texture: node.userData?.texture,
+            dbId: node.userData?.dbId,
+            partDescription: node.userData?.description,
           });
         }
       });
