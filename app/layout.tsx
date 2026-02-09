@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { MSWComponent } from "./_components/msw/MSWComponent";
 import localFont from "next/font/local";
 import { SessionProvider } from "next-auth/react";
 import { REM } from 'next/font/google';
@@ -35,9 +34,7 @@ export default function RootLayout({
         className={`${pretendard.variable} ${rem.variable}`}
       >
         <SessionProvider>
-          <MSWComponent>
-            {children}
-          </MSWComponent>
+          {children}
         </SessionProvider>
       </body>
     </html>
