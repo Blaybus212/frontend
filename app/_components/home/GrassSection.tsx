@@ -1,19 +1,10 @@
 import { GrassSectionData } from "@/app/_types/home";
 import GrassSectionClient from "./GrassSectionClient";
+import { $fetch } from "@/app/_utils/fetch";
 
-const GrassSection = () => {
+const GrassSection = async () => {
   // "잔디" 정보 (GET /my/activity)
-  // TODO: API에 맞게 변경
-  const data: GrassSectionData = {
-    streak: 3,
-    solvedQuizCount: 40,
-    cells: {
-      "2026-02-06": { solved: 2 },
-      "2026-02-05": { solved: 3 },
-      "2026-02-04": { solved: 1 },
-      "2026-02-01": { solved: 4 }
-    }
-  }
+  const data: GrassSectionData = await $fetch("/my/activity");
 
   return <GrassSectionClient {...data} />
 }
