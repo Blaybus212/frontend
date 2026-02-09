@@ -10,15 +10,12 @@ interface MentionMenuProps {
   position: { top: number; left: number };
   range: { from: number; to: number };
   onClose: () => void;
-  onInsertPartSnapshot?: (nodeId: string) => Promise<string | null>;
-  onInsertModelSnapshot?: (modelId: string) => Promise<string | null>;
   modelName: string;
-  modelId: string;
 }
 
 /**
  * 노트 멘션 메뉴
- * - 부품/모델을 선택해 헤딩+이미지 블록을 삽입합니다.
+ * - 부품/모델을 선택해 헤딩 블록을 삽입합니다.
  */
 export function MentionMenu({
   editor,
@@ -27,47 +24,29 @@ export function MentionMenu({
   position,
   range,
   onClose,
-  onInsertPartSnapshot,
-  onInsertModelSnapshot,
   modelName,
-  modelId,
 }: MentionMenuProps) {
   const filtered = parts.filter((part) =>
     part.nodeName.toLowerCase().includes(query.toLowerCase())
   );
   const showModel = modelName.toLowerCase().includes(query.toLowerCase());
 
-  const handleSelect = async (part: SelectablePart) => {
+  const handleSelect = (part: SelectablePart) => {
     editor.chain().focus().deleteRange(range).run();
     onClose();
-
-    const snapshot = onInsertPartSnapshot ? await onInsertPartSnapshot(part.nodeId) : null;
     const content: Array<Record<string, unknown>> = [
       { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: part.nodeName }] },
     ];
-    if (snapshot) {
-      content.push({
-        type: 'image',
-        attrs: { src: snapshot, alt: part.nodeName },
-      });
-    }
     content.push({ type: 'paragraph' });
     editor.chain().focus().insertContent(content).run();
   };
 
-  const handleSelectModel = async () => {
+  const handleSelectModel = () => {
     editor.chain().focus().deleteRange(range).run();
     onClose();
-    const snapshot = onInsertModelSnapshot ? await onInsertModelSnapshot(modelId) : null;
     const content: Array<Record<string, unknown>> = [
       { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: modelName }] },
     ];
-    if (snapshot) {
-      content.push({
-        type: 'image',
-        attrs: { src: snapshot, alt: modelName },
-      });
-    }
     content.push({ type: 'paragraph' });
     editor.chain().focus().insertContent(content).run();
   };

@@ -133,10 +133,6 @@ export interface Scene3DRef {
   zoomIn: () => void;
   /** 카메라를 한 단계 축소합니다 */
   zoomOut: () => void;
-  /** 부품 스냅샷 이미지를 생성합니다 */
-  capturePartSnapshot: (nodeId: string) => Promise<string | null>;
-  /** 모델 전체 스냅샷 이미지를 생성합니다 */
-  captureModelSnapshot: (modelId: string) => Promise<string | null>;
   /** 부품 스냅샷 이미지를 3가지 모드로 생성합니다 */
   capturePartSnapshots: (nodeId: string) => Promise<[string | null, string | null, string | null]>;
   /** 모델 전체 스냅샷 이미지를 3가지 모드로 생성합니다 */

@@ -6,7 +6,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Heading from '@tiptap/extension-heading';
 import { textblockTypeInputRule, mergeAttributes } from '@tiptap/core';
-import Image from '@tiptap/extension-image';
 import type { SelectablePart } from '@/app/_components/3d/types';
 import { SlashMenu } from './SlashMenu';
 import { MentionMenu } from './MentionMenu';
@@ -43,10 +42,7 @@ interface NoteProps {
   className?: string;
   placeholder?: string;
   parts?: SelectablePart[];
-  onInsertPartSnapshot?: (nodeId: string) => Promise<string | null>;
-  onInsertModelSnapshot?: (modelId: string) => Promise<string | null>;
   modelName?: string;
-  modelId?: string;
   exportContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
@@ -96,10 +92,7 @@ export function Note({
   className = '',
   placeholder = NOTE_PLACEHOLDER,
   parts = [],
-  onInsertPartSnapshot,
-  onInsertModelSnapshot,
   modelName = '모델',
-  modelId = 'model',
   exportContainerRef,
 }: NoteProps) {
   const MarkdownHeading = Heading.extend({
@@ -202,10 +195,6 @@ export function Note({
       Placeholder.configure({
         placeholder,
         showOnlyCurrent: true,
-      }),
-      Image.configure({
-        inline: false,
-        allowBase64: true,
       }),
     ],
     content: normalizeContent(value ?? ''),
@@ -437,10 +426,7 @@ export function Note({
                 position={{ top: mentionState.top, left: mentionState.left }}
                 range={{ from: mentionState.from, to: mentionState.to }}
                 onClose={() => setMentionState((prev) => ({ ...prev, open: false, query: '' }))}
-                onInsertPartSnapshot={onInsertPartSnapshot}
-                onInsertModelSnapshot={onInsertModelSnapshot}
                 modelName={modelName}
-                modelId={modelId}
               />
             )}
           </>
