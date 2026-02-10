@@ -86,7 +86,7 @@ export default function LoginPage() {
             나에게 쉽게 보이는,<br />
             3D 학습 플랫폼 SIMVEX
           </h2>
-          <p className="mt-2 text-sub text-h-sm font-regular">서비스 부제</p>
+          <p className="mt-2 text-sub text-h-sm font-regular">안그래도 어려운데 더 어려우면 안되니까!</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-7">
