@@ -39,7 +39,9 @@ interface QuizInputProps {
  * <QuizInput
  *   defaultValue=""
  *   placeholder="답을 입력하세요"
- *   onChange={(value) => console.log(value)}
+ *   onChange={(value) => {
+ *     // handle change
+ *   }}
  * />
  * 
  * // 제어형 컴포넌트

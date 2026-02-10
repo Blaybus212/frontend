@@ -171,10 +171,10 @@ const createSnapshotCamera = (camera: THREE.PerspectiveCamera, box: THREE.Box3) 
 const renderSnapshot = (
   gl: THREE.WebGLRenderer,
   scene: THREE.Scene,
-  camera: THREE.PerspectiveCamera
+  camera: THREE.PerspectiveCamera,
+  width: number,
+  height: number
 ) => {
-  const width = SNAPSHOT_CONFIG.WIDTH;
-  const height = SNAPSHOT_CONFIG.HEIGHT;
   const renderTarget = new THREE.WebGLRenderTarget(width, height);
   const prevTarget = gl.getRenderTarget();
   const prevAutoClear = gl.autoClear;
@@ -241,5 +241,20 @@ export const captureObjectSnapshotImage = (
   if (!box) return null;
 
   const snapshotCamera = createSnapshotCamera(camera, box);
-  return renderSnapshot(gl, scene, snapshotCamera);
+  return renderSnapshot(gl, scene, snapshotCamera, SNAPSHOT_CONFIG.WIDTH, SNAPSHOT_CONFIG.HEIGHT);
+};
+
+/**
+ * 현재 카메라 뷰를 기준으로 씬 스냅샷을 캡처합니다.
+ */
+export const captureSceneSnapshotImage = (
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  gl: THREE.WebGLRenderer
+) => {
+  const size = gl.getSize(new THREE.Vector2());
+  const pixelRatio = gl.getPixelRatio();
+  const width = Math.max(1, Math.floor(size.x * pixelRatio));
+  const height = Math.max(1, Math.floor(size.y * pixelRatio));
+  return renderSnapshot(gl, scene, camera, width, height);
 };

@@ -7,6 +7,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Note } from './Note';
 import { ObjectInfoPanel } from './ObjectInfoPanel';
+import type { ObjectData } from './types';
 import type { SelectablePart } from '@/app/_components/3d/types';
 import {
   NOTE_PLACEHOLDER,
@@ -14,22 +15,6 @@ import {
   RIGHT_PANEL_WIDTH_MAX_PERCENT,
   RIGHT_PANEL_WIDTH_MIN_PERCENT,
 } from './constants';
-
-/**
- * 객체 정보 데이터 타입
- */
-interface ObjectData {
-  /** 한글명 */
-  korean: string;
-  /** 영문명 */
-  english: string;
-  /** 설명 */
-  description: string;
-  /** 재질 배열 */
-  materials: string[];
-  /** 활용 분야 배열 */
-  applications: string[];
-}
 
 /**
  * ViewerRightPanel 컴포넌트의 Props 인터페이스
@@ -49,14 +34,10 @@ interface ViewerRightPanelProps {
   onResizeWidth: (nextWidthPercent: number) => void;
   /** 노트에서 사용할 부품 목록 */
   parts: SelectablePart[];
-  /** 부품 스냅샷을 생성하는 함수 */
-  onInsertPartSnapshot: (nodeId: string) => Promise<string | null>;
-  /** 모델 스냅샷을 생성하는 함수 */
-  onInsertModelSnapshot: (modelId: string) => Promise<string | null>;
   /** 모델 이름(전체 선택용) */
   modelName: string;
-  /** 모델 id(전체 선택용) */
-  modelId: string;
+  /** 노트 멘션 선택 핸들러 */
+  onMentionSelect?: (part: SelectablePart) => void;
 }
 
 /**
@@ -88,10 +69,8 @@ export function ViewerRightPanel({
   widthPercent,
   onResizeWidth,
   parts,
-  onInsertPartSnapshot,
-  onInsertModelSnapshot,
   modelName,
-  modelId,
+  onMentionSelect,
 }: ViewerRightPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -263,10 +242,8 @@ export function ViewerRightPanel({
             placeholder={NOTE_PLACEHOLDER}
             className="flex-1 flex flex-col"
             parts={parts}
-            onInsertPartSnapshot={onInsertPartSnapshot}
-            onInsertModelSnapshot={onInsertModelSnapshot}
             modelName={modelName}
-            modelId={modelId}
+            onMentionSelect={onMentionSelect}
             exportContainerRef={noteExportRef}
           />
         </div>

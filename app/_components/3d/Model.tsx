@@ -74,15 +74,14 @@ export function Model({
     let nodeIdCounter = 0;
     
     clonedScene.traverse((child) => {
-      // 최상위/루트 그룹 노드는 전체 객체이므로 선택 대상에서 제외
+      // 씬 자체는 선택 대상에서 제외
       if (child === clonedScene || child.parent === null) {
         child.userData.selectable = false;
         return;
       }
-      if (child.parent === clonedScene && child.children.length > 0) {
-        child.userData.selectable = false;
-        return;
-      }
+      
+      // 이 조건을 제거! 최상위 children도 부품이 될 수 있음
+      // (Base_Plate1, Pin1 등이 최상위 children임)
 
       if (isSelectablePart(child)) {
         // 각 노드에 고유 ID 부여
@@ -91,7 +90,20 @@ export function Model({
         // userData에 모델 참조와 노드 ID 저장
         child.userData.modelRef = modelRef.current;
         child.userData.nodeId = nodeId;
-        child.userData.nodeName = child.name || nodeId;
+        // extras.description 우선 사용, 없으면 노드 이름, 그것도 없으면 nodeId
+        child.userData.nodeName = child.userData.description || child.name || nodeId;
+        // GLTF 원본 name을 originalName에 저장 (영문 이름)
+        child.userData.originalName = child.name;
+        // 최초 로드 기준 로컬 변환값 저장 (조립 기준)
+        if (!child.userData.initialPosition) {
+          child.userData.initialPosition = child.position.clone();
+        }
+        if (!child.userData.initialRotation) {
+          child.userData.initialRotation = child.rotation.clone();
+        }
+        if (!child.userData.initialScale) {
+          child.userData.initialScale = child.scale.clone();
+        }
         child.userData.selectable = true;
         
         // 모든 하위 객체에도 동일한 정보 전파
@@ -104,7 +116,10 @@ export function Model({
               descendant.userData.nodeId = nodeId;
             }
             if (!descendant.userData.nodeName) {
-              descendant.userData.nodeName = child.name || nodeId;
+              descendant.userData.nodeName = child.userData.description || child.name || nodeId;
+            }
+            if (!descendant.userData.originalName) {
+              descendant.userData.originalName = child.name;
             }
             descendant.userData.selectable = true;
           }

@@ -46,7 +46,7 @@ import type { Transform, ObjectInfo } from '../types';
  *   rotation: { x: 45, y: 90, z: 0 },
  *   scale: { x: 2, y: 2, z: 2 }
  * }, (info) => {
- *   console.log('Updated object info:', info);
+ *   // handle updated info
  * });
  * ```
  */

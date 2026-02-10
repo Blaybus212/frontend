@@ -25,7 +25,7 @@ import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
 import { SELECTION_SYNC_DELAY_MS, TRANSFORM_HOTKEYS, ZOOM_SCALE } from './constants';
-import { captureObjectSnapshotImage } from './utils/snapshotUtils';
+import { captureObjectSnapshotImage, captureSceneSnapshotImage } from './utils/snapshotUtils';
 import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
@@ -259,30 +259,107 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     [camera, gl]
   );
 
-  const capturePartSnapshot = useCallback(
-    async (nodeId: string) => {
-      const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
-      if (!targetNode) return null;
-      return captureObjectSnapshot(targetNode, {
-        includeOnlyTarget: true,
-        viewMode: 'lit',
-        renderMode: 'normal',
-      });
-    },
-    [captureObjectSnapshot, findNodeById]
-  );
+  const focusOnAllModels = useCallback(() => {
+    const box = new THREE.Box3();
+    let hasGeometry = false;
 
-  const captureModelSnapshot = useCallback(
-    async (modelId: string) => {
-      const modelRoot = findModelRootById(modelId);
-      if (!modelRoot) return null;
-      return captureObjectSnapshot(modelRoot, {
-        includeOnlyTarget: false,
-        viewMode: 'lit',
-        renderMode: 'normal',
-      });
+    modelRefs.current.forEach((modelRef) => {
+      if (!modelRef) return;
+      const modelBox = new THREE.Box3().setFromObject(modelRef);
+      if (modelBox.isEmpty()) return;
+      if (hasGeometry) {
+        box.union(modelBox);
+      } else {
+        box.copy(modelBox);
+        hasGeometry = true;
+      }
+    });
+
+    if (!hasGeometry || box.isEmpty()) return false;
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = perspective.fov || 50;
+    const distance =
+      (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+
+    const controls = orbitControlsRef.current;
+    const currentTarget = controls?.target ?? center.clone();
+    const direction = camera.position.clone().sub(currentTarget).normalize();
+    const targetPosition = center.clone().add(direction.multiplyScalar(distance));
+
+    const startPosition = camera.position.clone();
+    const startTarget = (controls?.target ?? center).clone();
+    const duration = 700;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      camera.position.lerpVectors(startPosition, targetPosition, eased);
+      if (controls) {
+        controls.target.lerpVectors(startTarget, center, eased);
+        controls.update();
+      } else {
+        camera.lookAt(center);
+      }
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+    return true;
+  }, [camera, orbitControlsRef]);
+
+  const focusOnNodeId = useCallback(
+    (nodeId: string) => {
+      const targetNode = findNodeById(nodeId);
+      if (!targetNode) return;
+
+      const box = new THREE.Box3().setFromObject(targetNode);
+      if (box.isEmpty()) return;
+
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const perspective = camera as THREE.PerspectiveCamera;
+      const fov = perspective.fov || 50;
+      const distance =
+        (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+
+      const controls = orbitControlsRef.current;
+      const currentTarget = controls?.target ?? center.clone();
+      const direction = camera.position.clone().sub(currentTarget).normalize();
+      const targetPosition = center.clone().add(direction.multiplyScalar(distance));
+
+      const startPosition = camera.position.clone();
+      const startTarget = (controls?.target ?? center).clone();
+      const duration = 600;
+      const startTime = performance.now();
+
+      const animate = (now: number) => {
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / duration);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        camera.position.lerpVectors(startPosition, targetPosition, eased);
+        if (controls) {
+          controls.target.lerpVectors(startTarget, center, eased);
+          controls.update();
+        } else {
+          camera.lookAt(center);
+        }
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+
+      requestAnimationFrame(animate);
     },
-    [captureObjectSnapshot, findModelRootById]
+    [camera, findNodeById, orbitControlsRef]
   );
 
   const capturePartSnapshots = useCallback(
@@ -333,6 +410,41 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     [captureObjectSnapshot, findModelRootById]
   );
 
+  const waitForNextFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+
+  const captureCurrentViewSnapshots = useCallback(
+    async (): Promise<[string | null, string | null, string | null]> => {
+      const prevViewMode = viewMode;
+      const prevRenderMode = renderMode;
+
+      const captureWithModes = async (
+        nextViewMode: 'lit' | 'dim',
+        nextRenderMode: 'normal' | 'wireframe'
+      ) => {
+        setViewMode(nextViewMode);
+        setRenderMode(nextRenderMode);
+        await waitForNextFrame();
+        return captureSceneSnapshotImage(scene, camera as THREE.PerspectiveCamera, gl);
+      };
+
+      const lit = await captureWithModes('lit', 'normal');
+      const dim = await captureWithModes('dim', 'normal');
+      const wireframe = await captureWithModes('lit', 'wireframe');
+
+      setViewMode(prevViewMode);
+      setRenderMode(prevRenderMode);
+      await waitForNextFrame();
+
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
+    },
+    [camera, gl, renderMode, scene, setRenderMode, setViewMode, viewMode]
+  );
+
   const handleExportScene = useCallback(() => {
     exportScene(modelRefs.current, models);
   }, [models]);
@@ -349,21 +461,28 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
   const getSelectableParts = useCallback((): SelectablePart[] => {
     const partsMap = new Map<string, SelectablePart>();
+    
     modelRefs.current.forEach((modelRef, modelIndex) => {
       if (!modelRef) return;
       modelRef.traverse((node) => {
         const nodeId = node.userData?.nodeId;
         const selectable = node.userData?.selectable === true;
+        
         if (!nodeId || !selectable) return;
         if (!partsMap.has(nodeId)) {
           partsMap.set(nodeId, {
             nodeId,
             nodeName: node.userData?.nodeName || node.name || nodeId,
+            originalName: node.userData?.originalName || node.name,
             modelIndex,
+            texture: node.userData?.texture,
+            dbId: node.userData?.dbId,
+            partDescription: node.userData?.description,
           });
         }
       });
     });
+    
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
 
@@ -373,9 +492,14 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   React.useEffect(() => {
     if (!onSelectablePartsChange) return;
     const list = getSelectableParts();
-    if (list.length === 0) return;
-    const nextKey = list.map((part) => part.nodeId).sort().join('|');
+    
+    // 부품이 없어도 콜백 호출 (빈 배열 전달)
+    const nextKey = list.length > 0 
+      ? list.map((part) => part.nodeId).sort().join('|')
+      : 'empty';
+    
     if (nextKey === lastSelectablePartsKeyRef.current) return;
+    
     lastSelectablePartsKeyRef.current = nextKey;
     onSelectablePartsChange(list);
   }, [getSelectableParts, onSelectablePartsChange, modelRefsVersion]);
@@ -486,10 +610,11 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     setSelectedNodeIds,
     zoomIn,
     zoomOut,
-    capturePartSnapshot,
-    captureModelSnapshot,
     capturePartSnapshots,
     captureModelSnapshots,
+    captureCurrentViewSnapshots,
+    focusOnNodeId,
+    focusOnAllModels,
     getModelRootName,
   }));
 

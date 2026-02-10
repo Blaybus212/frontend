@@ -5,8 +5,8 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Heading from '@tiptap/extension-heading';
-import { textblockTypeInputRule, mergeAttributes } from '@tiptap/core';
-import Image from '@tiptap/extension-image';
+import { textblockTypeInputRule, mergeAttributes, Mark } from '@tiptap/core';
+import { MarkdownSerializer, defaultMarkdownSerializer } from 'prosemirror-markdown';
 import type { SelectablePart } from '@/app/_components/3d/types';
 import { SlashMenu } from './SlashMenu';
 import { MentionMenu } from './MentionMenu';
@@ -43,10 +43,8 @@ interface NoteProps {
   className?: string;
   placeholder?: string;
   parts?: SelectablePart[];
-  onInsertPartSnapshot?: (nodeId: string) => Promise<string | null>;
-  onInsertModelSnapshot?: (modelId: string) => Promise<string | null>;
   modelName?: string;
-  modelId?: string;
+  onMentionSelect?: (part: SelectablePart) => void;
   exportContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
@@ -71,7 +69,9 @@ interface NoteProps {
  * // 비제어형 컴포넌트
  * <Note
  *   defaultValue="초기 메모"
- *   onChange={(value) => console.log(value)}
+ *   onChange={(value) => {
+ *     // handle change
+ *   }}
  * />
  * 
  * // 제어형 컴포넌트
@@ -96,10 +96,8 @@ export function Note({
   className = '',
   placeholder = NOTE_PLACEHOLDER,
   parts = [],
-  onInsertPartSnapshot,
-  onInsertModelSnapshot,
   modelName = '모델',
-  modelId = 'model',
+  onMentionSelect,
   exportContainerRef,
 }: NoteProps) {
   const MarkdownHeading = Heading.extend({
@@ -129,6 +127,27 @@ export function Note({
       return [`h${level}`, mergeAttributes(HTMLAttributes, { class: className }), 0];
     },
   });
+  const MentionHighlight = Mark.create({
+    name: 'mentionHighlight',
+    addAttributes() {
+      return {
+        style: {
+          default:
+            'background-color: rgba(197, 255, 0, 0.2); color: var(--color-text-title); padding: 0 4px; border-radius: 4px;',
+        },
+      };
+    },
+    parseHTML() {
+      return [{ tag: 'span[data-mention-highlight]' }];
+    },
+    renderHTML({ HTMLAttributes }) {
+      return [
+        'span',
+        mergeAttributes(HTMLAttributes, { 'data-mention-highlight': 'true' }),
+        0,
+      ];
+    },
+  });
   /** 비제어형 컴포넌트용 내부 텍스트 상태 */
   const [internalValue, setInternalValue] = useState(defaultValue);
   /** 텍스트 영역의 포커스 상태 */
@@ -136,6 +155,7 @@ export function Note({
   /** 에디터 래퍼 DOM 참조 */
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const editorInstanceRef = useRef<Editor | null>(null);
+  const lastEmittedMarkdownRef = useRef<string | null>(null);
   const [slashState, setSlashState] = useState<{
     open: boolean;
     query: string;
@@ -174,23 +194,101 @@ export function Note({
 
   const isHtmlLike = useCallback((input: string) => /<\/?[a-z][\s\S]*>/i.test(input), []);
 
-  const normalizeContent = useCallback(
-    (input: string) => {
-      if (!input) return '';
-      if (isHtmlLike(input)) return input;
-      const escaped = input
+  const markdownToHtml = useCallback((markdown: string) => {
+    if (!markdown) return '';
+    const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+    const blocks: string[] = [];
+    let currentList: 'ul' | 'ol' | null = null;
+    const closeList = () => {
+      if (currentList) {
+        blocks.push(`</${currentList}>`);
+        currentList = null;
+      }
+    };
+    const escape = (value: string) =>
+      value
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\r?\n/g, '<br />');
-      return `<p>${escaped}</p>`;
+        .replace(/'/g, '&#39;');
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        closeList();
+        blocks.push('');
+        return;
+      }
+      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        closeList();
+        const level = headingMatch[1].length;
+        const content = escape(headingMatch[2]);
+        blocks.push(`<h${level}>${content}</h${level}>`);
+        return;
+      }
+      const unorderedMatch = trimmed.match(/^[-*]\s+(.*)$/);
+      if (unorderedMatch) {
+        if (currentList !== 'ul') {
+          closeList();
+          currentList = 'ul';
+          blocks.push('<ul>');
+        }
+        blocks.push(`<li>${escape(unorderedMatch[1])}</li>`);
+        return;
+      }
+      const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+      if (orderedMatch) {
+        if (currentList !== 'ol') {
+          closeList();
+          currentList = 'ol';
+          blocks.push('<ol>');
+        }
+        blocks.push(`<li>${escape(orderedMatch[2])}</li>`);
+        return;
+      }
+      closeList();
+      blocks.push(`<p>${escape(line)}</p>`);
+    });
+    closeList();
+    return blocks.filter((block) => block !== '').join('');
+  }, []);
+
+  const serializeMarkdown = useCallback((editorInstance: Editor) => {
+    const nodes = {
+      ...defaultMarkdownSerializer.nodes,
+      bulletList: defaultMarkdownSerializer.nodes.bullet_list,
+      orderedList: defaultMarkdownSerializer.nodes.ordered_list,
+      listItem: defaultMarkdownSerializer.nodes.list_item,
+      hardBreak: defaultMarkdownSerializer.nodes.hard_break,
+    };
+    const serializer = new MarkdownSerializer(
+      nodes,
+      {
+        ...defaultMarkdownSerializer.marks,
+        mentionHighlight: {
+          open: '',
+          close: '',
+          mixable: true,
+          expelEnclosingWhitespace: true,
+        },
+      }
+    );
+    return serializer.serialize(editorInstance.state.doc);
+  }, []);
+
+  const normalizeContent = useCallback(
+    (input: string) => {
+      if (!input) return '';
+      if (isHtmlLike(input)) return input;
+      return markdownToHtml(input);
     },
-    [isHtmlLike]
+    [isHtmlLike, markdownToHtml]
   );
 
   const editor = useEditor({
+    immediatelyRender: false, // SSR hydration 문제 방지
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -199,13 +297,10 @@ export function Note({
       MarkdownHeading.configure({
         levels: NOTE_HEADING_LEVELS,
       }),
+      MentionHighlight,
       Placeholder.configure({
         placeholder,
         showOnlyCurrent: true,
-      }),
-      Image.configure({
-        inline: false,
-        allowBase64: true,
       }),
     ],
     content: normalizeContent(value ?? ''),
@@ -238,11 +333,12 @@ export function Note({
       editorInstanceRef.current = editor;
     },
     onUpdate: ({ editor }: { editor: Editor }) => {
-      const html = editor.getHTML();
+      const markdown = serializeMarkdown(editor);
+      lastEmittedMarkdownRef.current = markdown;
       if (!isControlled) {
-        setInternalValue(html);
+        setInternalValue(markdown);
       }
-      onChange?.(html);
+      onChange?.(markdown);
 
       const { state, view } = editor;
       const { from } = state.selection;
@@ -327,11 +423,14 @@ export function Note({
 
   useEffect(() => {
     if (!editor) return;
+    if (isControlled && lastEmittedMarkdownRef.current === value) {
+      return;
+    }
     const nextContent = normalizeContent(value ?? '');
     if (editor.getHTML() !== nextContent) {
       editor.commands.setContent(nextContent, false);
     }
-  }, [editor, value, normalizeContent]);
+  }, [editor, value, normalizeContent, isControlled]);
 
   useEffect(() => {
     if (!exportContainerRef) return;
@@ -437,10 +536,8 @@ export function Note({
                 position={{ top: mentionState.top, left: mentionState.left }}
                 range={{ from: mentionState.from, to: mentionState.to }}
                 onClose={() => setMentionState((prev) => ({ ...prev, open: false, query: '' }))}
-                onInsertPartSnapshot={onInsertPartSnapshot}
-                onInsertModelSnapshot={onInsertModelSnapshot}
                 modelName={modelName}
-                modelId={modelId}
+                onSelectPart={onMentionSelect}
               />
             )}
           </>

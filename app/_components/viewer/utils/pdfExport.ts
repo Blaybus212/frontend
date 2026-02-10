@@ -1,4 +1,5 @@
 import { PDF_BACKGROUND, PDF_TEXT } from '../constants';
+import type { ObjectData } from '../types';
 import { CAPTURE, NOTE_LAYOUT, PDF_LAYOUT } from './pdf/constants';
 import { buildNoteHeaderCanvas, buildSummaryBlockCanvas } from './pdf/canvas';
 import { buildNoteHtml, buildSummaryHtml } from './pdf/templates';
@@ -6,7 +7,10 @@ import { buildNoteHtml, buildSummaryHtml } from './pdf/templates';
 export type PdfPartSnapshot = {
   title: string;
   images: [string | null, string | null, string | null];
+  info: PdfInfoBlock;
 };
+
+export type PdfInfoBlock = Omit<ObjectData, 'isSceneInformation'>;
 
 export type PdfSummaryPayload = {
   documentTitle: string;
@@ -18,12 +22,14 @@ export type PdfSummaryPayload = {
   includeKeywords: boolean;
   keywords?: string[];
   modelSnapshots: [string | null, string | null, string | null];
+  modelInfo: PdfInfoBlock;
   parts: PdfPartSnapshot[];
 };
 
 export type PdfNotePayload = {
   documentTitle: string;
   modelName: string;
+  modelEnglish?: string;
   dateLabel: string;
   includeSummary: boolean;
   summaryText?: string;

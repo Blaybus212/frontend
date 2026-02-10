@@ -1,4 +1,5 @@
 import type { SelectablePart } from '@/app/_components/3d/types';
+import { removeTrailingNumbers } from './utils/partInfo';
 
 interface PartsListPanelProps {
   parts: SelectablePart[];
@@ -17,7 +18,7 @@ export function PartsListPanel({
 }: PartsListPanelProps) {
   const allSelected = parts.length > 0 && selectedIds.length === parts.length;
   const isChecked = (nodeId: string) => selectedIds.includes(nodeId);
-
+  
   return (
     <div className="w-[320px] max-h-[460px] bg-bg-default rounded-2xl border border-border-default overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
@@ -52,10 +53,10 @@ export function PartsListPanel({
           >
             <div className="flex flex-col">
               <span className="text-b-md font-weight-semibold text-text-title">
-                {part.nodeName}
+                {part.originalName || part.nodeId}
               </span>
               <span className="text-b-xs text-sub3">
-                {part.nodeId}
+                {removeTrailingNumbers(part.nodeName)}
               </span>
             </div>
             <input

@@ -133,14 +133,16 @@ export interface Scene3DRef {
   zoomIn: () => void;
   /** 카메라를 한 단계 축소합니다 */
   zoomOut: () => void;
-  /** 부품 스냅샷 이미지를 생성합니다 */
-  capturePartSnapshot: (nodeId: string) => Promise<string | null>;
-  /** 모델 전체 스냅샷 이미지를 생성합니다 */
-  captureModelSnapshot: (modelId: string) => Promise<string | null>;
   /** 부품 스냅샷 이미지를 3가지 모드로 생성합니다 */
   capturePartSnapshots: (nodeId: string) => Promise<[string | null, string | null, string | null]>;
   /** 모델 전체 스냅샷 이미지를 3가지 모드로 생성합니다 */
   captureModelSnapshots: (modelId: string) => Promise<[string | null, string | null, string | null]>;
+  /** 현재 카메라 시점 기준 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  captureCurrentViewSnapshots: () => Promise<[string | null, string | null, string | null]>;
+  /** 특정 노드를 화면에 맞게 포커스합니다 */
+  focusOnNodeId: (nodeId: string) => void;
+  /** 전체 모델이 화면에 들어오도록 포커스합니다 */
+  focusOnAllModels: () => boolean;
   /** 모델 루트 이름을 반환합니다 */
   getModelRootName: () => string | null;
 }
@@ -151,7 +153,12 @@ export interface Scene3DRef {
 export interface SelectablePart {
   nodeId: string;
   nodeName: string;
+  originalName?: string; // GLTF의 원본 name (영문 이름)
   modelIndex: number;
+  // GLTF extras 정보
+  texture?: string; // 재질
+  dbId?: number; // DB ID
+  partDescription?: string; // 부품 설명
 }
 
 /**

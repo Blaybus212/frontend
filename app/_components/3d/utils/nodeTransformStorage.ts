@@ -66,18 +66,22 @@ export function extractAllNodeTransforms(
     modelRef.traverse((node) => {
       // 선택 가능한 노드만 추출 (userData에 nodeId가 있는 노드)
       if (node.userData && node.userData.nodeId && node.userData.selectable === true) {
-        // 사용자가 수정한 위치가 있으면 그것을 사용, 없으면 현재 위치 사용
+        // 사용자가 수정한 값이 있으면 그것을 사용, 없으면 초기 조립 상태를 우선 사용
+        const initialPosition = node.userData.initialPosition as THREE.Vector3 | undefined;
+        const initialRotation = node.userData.initialRotation as THREE.Euler | undefined;
+        const initialScale = node.userData.initialScale as THREE.Vector3 | undefined;
+
         const position = node.userData.isUserModified && node.userData.userModifiedPosition
           ? node.userData.userModifiedPosition.clone()
-          : node.position.clone();
+          : (initialPosition ? initialPosition.clone() : node.position.clone());
         
         const rotation = node.userData.isUserModified && node.userData.userModifiedRotation
           ? node.userData.userModifiedRotation.clone()
-          : node.rotation.clone();
+          : (initialRotation ? initialRotation.clone() : node.rotation.clone());
         
         const scale = node.userData.isUserModified && node.userData.userModifiedScale
           ? node.userData.userModifiedScale.clone()
-          : node.scale.clone();
+          : (initialScale ? initialScale.clone() : node.scale.clone());
         
         // 매트릭스 계산
         const tempObject = new THREE.Object3D();

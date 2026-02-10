@@ -55,23 +55,29 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
       zoomOut: () => {
         sceneContentRef.current?.zoomOut();
       },
-      capturePartSnapshot: (nodeId) => {
-        return sceneContentRef.current?.capturePartSnapshot(nodeId) ?? Promise.resolve(null);
-      },
-      captureModelSnapshot: (modelId) => {
-        return sceneContentRef.current?.captureModelSnapshot(modelId) ?? Promise.resolve(null);
-      },
-      capturePartSnapshots: (nodeId) => {
+      capturePartSnapshots: (nodeId: string) => {
         return (
           sceneContentRef.current?.capturePartSnapshots(nodeId) ??
           Promise.resolve([null, null, null] as [null, null, null])
         );
       },
-      captureModelSnapshots: (modelId) => {
+      captureModelSnapshots: (modelId: string) => {
         return (
           sceneContentRef.current?.captureModelSnapshots(modelId) ??
           Promise.resolve([null, null, null] as [null, null, null])
         );
+      },
+      captureCurrentViewSnapshots: () => {
+        return (
+          sceneContentRef.current?.captureCurrentViewSnapshots() ??
+          Promise.resolve([null, null, null] as [null, null, null])
+        );
+      },
+      focusOnNodeId: (nodeId: string) => {
+        sceneContentRef.current?.focusOnNodeId(nodeId);
+      },
+      focusOnAllModels: () => {
+        return sceneContentRef.current?.focusOnAllModels() ?? false;
       },
       getModelRootName: () => {
         return sceneContentRef.current?.getModelRootName() ?? null;
