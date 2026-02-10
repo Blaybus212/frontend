@@ -790,7 +790,7 @@ export default function ViewerPage() {
   }, [handleSaveSceneState, setTriggerSave]);
 
   /**
-   * 30초마다 자동 저장 및 타이머 업데이트
+   * 10초마다 자동 저장 및 타이머 업데이트
    */
   useEffect(() => {
     if (!sceneIdParam) return;
@@ -802,16 +802,16 @@ export default function ViewerPage() {
     
     // 1초마다 경과 시간 업데이트
     const timerInterval = window.setInterval(() => {
-      elapsedSeconds = (elapsedSeconds + 1) % 3; // 3초마다 0으로 초기화
+      elapsedSeconds = (elapsedSeconds + 1) % 10; // 10초마다 0으로 초기화
       setElapsedSeconds(elapsedSeconds);
     }, 1000);
     
-    // 3초마다 자동 저장
+    // 10초마다 자동 저장
     const saveInterval = window.setInterval(() => {
       handleSaveSceneState();
       elapsedSeconds = 0; // 저장 후 타이머 초기화
       setElapsedSeconds(0);
-    }, 3000);
+    }, 10000);
     
     return () => {
       window.clearInterval(timerInterval);
