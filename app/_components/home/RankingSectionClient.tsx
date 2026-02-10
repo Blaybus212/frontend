@@ -22,7 +22,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
 
     if (rank == "my") {
       rank = session?.loginUser?.preferCategory ?? "";
-      newParams.set("rank", SceneCategory[rank as keyof typeof SceneCategory]);
+      newParams.set("rank", SceneCategory[rank as keyof typeof SceneCategory] ?? "robotics");
     } else {
       newParams.delete("rank");
     }
