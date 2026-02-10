@@ -424,7 +424,6 @@ export async function gradeQuizAnswer(
   const requestBody = JSON.stringify({ answer: String(answer) });
   const endpoints = [
     `/scenes/${encodeURIComponent(sceneId)}/quizzes/${encodeURIComponent(String(quizId))}/grade`,
-    `/scenes/${encodeURIComponent(sceneId)}/quiz/${encodeURIComponent(String(quizId))}/grade`,
   ];
 
   for (const endpoint of endpoints) {
