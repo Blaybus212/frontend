@@ -4,23 +4,7 @@
  * 3D 객체의 상세 정보(제목, 설명, 재질, 활용 분야)를 표시하는 패널입니다.
  */
 
-/**
- * 객체 정보 데이터 타입
- */
-interface ObjectData {
-  /** 한글명 */
-  korean: string;
-  /** 영문명 */
-  english: string;
-  /** 설명 */
-  description: string;
-  /** 재질 배열 (부품 선택 시에만 표시) */
-  materials?: string[];
-  /** 활용 분야 배열 (부품 선택 시에만 표시) */
-  applications?: string[];
-  /** 씬 정보인지 여부 */
-  isSceneInformation?: boolean;
-}
+import type { ObjectData } from './types';
 
 /**
  * ObjectInfoPanel 컴포넌트의 Props 인터페이스

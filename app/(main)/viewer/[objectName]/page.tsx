@@ -55,6 +55,11 @@ import {
   sortMessages,
   splitChoicesByComma,
 } from './viewerUtils';
+import {
+  buildObjectDataFromPart,
+  buildObjectDataFromScene,
+  removeTrailingNumbers,
+} from '@/app/_components/viewer/utils/partInfo';
 
 /**
  * 3D 객체 뷰어 페이지 컴포넌트
@@ -335,12 +340,7 @@ export default function ViewerPage() {
 
     // 선택 없음 or 전체 선택 → 씬 정보
     if (selectedPartIds.length === 0 || selectedPartIds.length === parts.length) {
-      return {
-        korean: sceneInfo.title,
-        english: sceneInfo.engTitle,
-        description: sceneInfo.description,
-        isSceneInformation: sceneInfo.isSceneInformation,
-      };
+      return buildObjectDataFromScene(sceneInfo);
     }
 
     // 부품 선택 (단일/다중) → 마지막으로 선택한 부품 정보
@@ -350,26 +350,12 @@ export default function ViewerPage() {
       const selectedPart = parts.find((part) => part.nodeId === lastSelectedId);
       
       if (selectedPart) {
-        // 한글 이름에서 끝 숫자 제거
-        const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
-
-        return {
-          korean: selectedPart.originalName || selectedPart.nodeId,
-          english: removeTrailingNumbers(selectedPart.nodeName),
-          description: selectedPart.partDescription || '부품 설명이 없습니다.',
-          materials: selectedPart.texture ? selectedPart.texture.split(',').map((m) => m.trim()) : [],
-          applications: [],
-        };
+        return buildObjectDataFromPart(selectedPart);
       }
     }
 
     // 폴백: 씬 정보
-    return {
-      korean: sceneInfo.title,
-      english: sceneInfo.engTitle,
-      description: sceneInfo.description,
-      isSceneInformation: sceneInfo.isSceneInformation,
-    };
+    return buildObjectDataFromScene(sceneInfo);
   }, [sceneInfo, selectedPartIds, parts]);
 
   const quizProgressPercent = useMemo(() => {
@@ -991,28 +977,15 @@ export default function ViewerPage() {
     }
     for (const part of targetParts) {
       const images = await scene3D.capturePartSnapshots(part.nodeId);
-      const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
       partSnapshots.push({
         title: part.originalName || part.nodeName,
         images,
-        info: {
-          korean: part.originalName || part.nodeId,
-          english: removeTrailingNumbers(part.nodeName),
-          description: part.partDescription || '부품 설명이 없습니다.',
-          materials: part.texture ? part.texture.split(',').map((m) => m.trim()) : [],
-          applications: [],
-        },
+        info: buildObjectDataFromPart(part),
       });
     }
 
     const modelInfo = sceneInfo
-      ? {
-          korean: sceneInfo.title,
-          english: sceneInfo.engTitle,
-          description: sceneInfo.description,
-          materials: [],
-          applications: [],
-        }
+      ? buildObjectDataFromScene(sceneInfo)
       : {
           korean: modelName,
           english: modelEnglish ?? '',
