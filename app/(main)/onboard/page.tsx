@@ -29,7 +29,7 @@ export default function OnboardingPage() {
     },
     3: {
       title: <>혹시..<br />이미 잘 아는 분야가 있다면 알려주세요! </>,
-      subTitle: "AI 튜터가 @@님에게 더 맞춤형으로 설명해줄 거예요",
+      subTitle: `AI 튜터가 ${formData.name}님에게 더 맞춤형으로 설명해줄 거예요`,
       isNextDisabled: !formData.specialized.length,
     },
     4: {
