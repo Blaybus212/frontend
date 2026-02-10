@@ -85,7 +85,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
                 </div>
 
                 {item.rankDiff !== undefined && (
-                  <div className={`flex gap-1 items-center text-b-sm font-regular ${item.rankDiff > 0 ? "text-sub-red" : "text-sub"}`}>
+                  <div className={`flex gap-1.5 items-center text-b-sm font-regular ${item.rankDiff > 0 ? "text-sub-red" : "text-sub"}`}>
                     {
                       item.rankDiff > 0
                       && 
