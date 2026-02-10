@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { RankingSectionData } from '@/app/_types/home';
+import { RankingSectionData, SceneCategory } from '@/app/_types/home';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const RankingSectionClient: React.FC<RankingSectionData> = ({
   today,
@@ -12,15 +13,22 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [rank, setRank] = useState<string>(searchParams.get("rank")?.toString() || 'all');
 
   const handleClick = (rank: string) => {
-    setRank(rank);
-
     const newParams = new URLSearchParams(searchParams);
 
-    newParams.set("rank", rank);
+    if (rank == "my") {
+      rank = session?.loginUser?.preferCategory ?? "";
+      newParams.set("rank", SceneCategory[rank as keyof typeof SceneCategory] ?? "robotics");
+    } else {
+      newParams.delete("rank");
+    }
+
+    setRank(rank);
+
 
     router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
@@ -52,22 +60,22 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
             <button
               onClick={() => handleClick("my")}
               className={`rounded-lg px-3.75 py-1.5 text-b-sm font-medium ${
-                rank === "my" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
+                rank !== "all" ? "text-selected bg-[#2C342A]" : "text-sub bg-bg-sub"
               }`}
             >
               내 분야
             </button>
           </div>
           <div className="flex flex-col gap-2">
-            {scenes.map((item, index) => (
+            {scenes.map((item) => (
               <div
                 key={item.id}
-                onClick={() => router.push(`viewer/${item.id}`)}
+                onClick={() => router.push(`viewer/${item.id}`) }
                 className="group flex items-center justify-between px-3 py-3.5 rounded-[10px] transition-all duration-200 hover:bg-bg-hovered cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-bg-sub text-sub text-b-md font-medium">
-                    {index + 1}
+                    {item.rank}
                   </div>
 
                   <div className="flex flex-col">
