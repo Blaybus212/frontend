@@ -24,6 +24,10 @@ export const authConfig = {
         return true; // 미로그인 유저는 로그인 페이지 접근 허용
       }
 
+      if (pathname === "/") {
+        return Response.redirect(new URL('/login', nextUrl));
+      }
+
       return isLoggedIn;
     },
     /**

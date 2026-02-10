@@ -29,7 +29,7 @@ const Categories = () => {
   };
 
   return (
-    <div className="flex flex-wrap gap-3.5">
+    <div className="flex flex-row gap-3.5 items-center">
       {Object.keys(SceneCategory).map((category) => (
         <button
           key={category}
