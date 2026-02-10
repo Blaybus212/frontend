@@ -8,6 +8,9 @@ interface PartsListPanelProps {
   onClose: () => void;
 }
 
+/**
+ * 부품 리스트 패널 (체크박스 선택)
+ */
 export function PartsListPanel({
   parts,
   selectedIds,

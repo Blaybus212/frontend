@@ -1,15 +1,6 @@
-/**
- * 노드 변환 정보 저장 유틸리티
- * 
- * 사용자가 변경한 노드의 위치, 회전, 스케일 정보를 저장하고
- * 나중에 서버에 전송할 수 있도록 합니다.
- */
-
 import * as THREE from 'three';
 
-/**
- * 노드 변환 정보 인터페이스
- */
+/** 노드 변환 (서버 동기화용) */
 export interface NodeTransformData {
   /** 노드 ID (userData.nodeId) */
   nodeId: string;
@@ -27,9 +18,7 @@ export interface NodeTransformData {
   matrix: number[];
 }
 
-/**
- * 카메라 시점 정보 인터페이스
- */
+/** 카메라 시점 */
 export interface CameraState {
   /** 카메라 위치 */
   position: { x: number; y: number; z: number };
@@ -37,9 +26,7 @@ export interface CameraState {
   target: { x: number; y: number; z: number };
 }
 
-/**
- * 씬 상태 정보 인터페이스 (서버에 전송할 전체 데이터)
- */
+/** 씬 상태 (노드 변환 + 카메라 + assemblyValue) */
 export interface SceneState {
   /** 노드 변환 정보 배열 */
   nodeTransforms: NodeTransformData[];
@@ -49,12 +36,7 @@ export interface SceneState {
   assemblyValue: number;
 }
 
-/**
- * 모든 노드의 변환 정보를 추출합니다
- * 
- * @param modelRefs - 모델 참조 맵
- * @returns 노드 변환 정보 배열
- */
+/** 모든 selectable 노드의 변환 정보 추출 */
 export function extractAllNodeTransforms(
   modelRefs: Map<number, THREE.Group>
 ): NodeTransformData[] {
@@ -111,13 +93,7 @@ export function extractAllNodeTransforms(
   return transforms;
 }
 
-/**
- * 카메라 상태를 추출합니다
- * 
- * @param camera - Three.js 카메라 객체
- * @param orbitControlsTarget - OrbitControls의 타겟 위치
- * @returns 카메라 상태 정보
- */
+/** 카메라 position + target 추출 */
 export function extractCameraState(
   camera: THREE.Camera,
   orbitControlsTarget?: THREE.Vector3
@@ -134,15 +110,7 @@ export function extractCameraState(
   };
 }
 
-/**
- * 전체 씬 상태를 추출합니다
- * 
- * @param modelRefs - 모델 참조 맵
- * @param camera - Three.js 카메라 객체
- * @param orbitControlsTarget - OrbitControls의 타겟 위치
- * @param assemblyValue - 조립/분해 값 (0-100)
- * @returns 씬 상태 정보
- */
+/** 전체 씬 상태 추출 (노드 변환 + 카메라 + assemblyValue) */
 export function extractSceneState(
   modelRefs: Map<number, THREE.Group>,
   camera: THREE.Camera,
@@ -156,12 +124,7 @@ export function extractSceneState(
   };
 }
 
-/**
- * 로컬 스토리지에 씬 상태를 저장합니다
- * 
- * @param sceneState - 저장할 씬 상태
- * @param key - 저장 키 (기본값: 'scene3d_state')
- */
+/** 씬 상태 localStorage 저장 */
 export function saveSceneStateToLocalStorage(
   sceneState: SceneState,
   key: string = 'scene3d_state'
@@ -174,12 +137,7 @@ export function saveSceneStateToLocalStorage(
   }
 }
 
-/**
- * 로컬 스토리지에서 씬 상태를 불러옵니다
- * 
- * @param key - 저장 키 (기본값: 'scene3d_state')
- * @returns 씬 상태 정보 또는 null
- */
+/** 씬 상태 localStorage 로드 */
 export function loadSceneStateFromLocalStorage(
   key: string = 'scene3d_state'
 ): SceneState | null {

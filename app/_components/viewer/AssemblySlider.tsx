@@ -1,36 +1,9 @@
-/**
- * 조립/분해 슬라이더 컴포넌트
- * 
- * 3D 모델의 조립/분해 상태를 조절하는 슬라이더 컨트롤입니다.
- */
-
-/**
- * AssemblySlider 컴포넌트의 Props 인터페이스
- */
 interface AssemblySliderProps {
-  /** 현재 슬라이더 값 (0-100) */
   value: number;
-  /** 값 변경 핸들러 */
   onChange: (value: number) => void;
 }
 
-/**
- * 조립/분해 슬라이더 컴포넌트
- * 
- * 3D 모델의 조립/분해 상태를 조절하는 슬라이더입니다.
- * 좌측은 "조립", 우측은 "분해"를 나타냅니다.
- * 
- * @param props - 컴포넌트 props
- * @returns 조립/분해 슬라이더 JSX
- * 
- * @example
- * ```tsx
- * <AssemblySlider
- *   value={assemblyValue}
- *   onChange={setAssemblyValue}
- * />
- * ```
- */
+/** 조립(0)~분해(100) 슬라이더 */
 export function AssemblySlider({ value, onChange }: AssemblySliderProps) {
   return (
     <div className="absolute flex flex-row items-center gap-4 top-10 left-[35%] transform -translate-x-1/2 w-[550px] h-[54px] px-[37.5px] bg-bg-default rounded-full border border-border-default z-10">

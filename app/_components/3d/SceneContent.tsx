@@ -24,14 +24,19 @@ import { useNodeGroupTransform } from './hooks/useNodeGroupTransform';
 import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
-import { SELECTION_SYNC_DELAY_MS, TRANSFORM_HOTKEYS, ZOOM_SCALE } from './constants';
+import {
+  SELECTION_SYNC_DELAY_MS,
+  TRANSFORM_HOTKEYS,
+  ZOOM_SCALE,
+  FOCUS_ANIMATION_DURATION_MS,
+  FOCUS_DISTANCE_MULTIPLIER,
+} from './constants';
 import { captureObjectSnapshotImage, captureSceneSnapshotImage } from './utils/snapshotUtils';
 import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
- * 3D 씬 내부 컨텐츠를 구성합니다.
- *
- * 조명/헬퍼, 모델 렌더링, 선택/변환, 내보내기 기능을 묶어 관리합니다.
+ * 3D 씬 메인 컨텐츠 (조명, 헬퍼, 모델, 선택/변환, 스냅샷, 내보내기)
+ * @remarks forwardRef로 Scene3DRef 메서드 노출
  */
 export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({ 
   models, 
@@ -283,7 +288,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     const perspective = camera as THREE.PerspectiveCamera;
     const fov = perspective.fov || 50;
     const distance =
-      (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+      (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * FOCUS_DISTANCE_MULTIPLIER;
 
     const controls = orbitControlsRef.current;
     const currentTarget = controls?.target ?? center.clone();
@@ -292,7 +297,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
     const startPosition = camera.position.clone();
     const startTarget = (controls?.target ?? center).clone();
-    const duration = 700;
+    const duration = FOCUS_ANIMATION_DURATION_MS.ALL_MODELS;
     const startTime = performance.now();
 
     const animate = (now: number) => {
@@ -329,7 +334,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       const perspective = camera as THREE.PerspectiveCamera;
       const fov = perspective.fov || 50;
       const distance =
-        (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+        (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * FOCUS_DISTANCE_MULTIPLIER;
 
       const controls = orbitControlsRef.current;
       const currentTarget = controls?.target ?? center.clone();
@@ -338,7 +343,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
 
       const startPosition = camera.position.clone();
       const startTarget = (controls?.target ?? center).clone();
-      const duration = 600;
+      const duration = FOCUS_ANIMATION_DURATION_MS.NODE;
       const startTime = performance.now();
 
       const animate = (now: number) => {
@@ -486,9 +491,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     return Array.from(partsMap.values());
   }, [modelRefsVersion]);
 
-  /**
-   * 모델 로드 이후 선택 가능한 부품 목록을 상위로 전달합니다.
-   */
   React.useEffect(() => {
     if (!onSelectablePartsChange) return;
     const list = getSelectableParts();
@@ -562,7 +564,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   );
 
   const handleResetToAssembly = useCallback(() => {
-    // 선택 여부와 상관없이 원상 복귀하도록 선택 상태를 초기화
     selectedNodesRef.current = null;
     setSelectedNodesVersion((prev) => prev + 1);
     onModelSelect([]);
@@ -622,17 +623,12 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     <>
       <SceneLights mode={viewMode === 'lit' ? 'lit' : 'dim'} />
       <SceneHelpers />
-
-      {/* OrbitControls */}
       <OrbitControlsWrapper
         orbitControlsRef={orbitControlsRef}
         enabled={orbitControlsEnabled}
         onStart={onOrbitStart}
         onEnd={onOrbitEnd}
       />
-
-      {/* TransformControls - 단일 또는 다중 선택 지원 */}
-      {/* 개별 노드 선택 또는 모델 선택 시 TransformControls 렌더링 */}
       {selectedObjectRef && (selectedNodesRef.current && selectedNodesRef.current.length > 0 || selectedIndices.length > 0) && (
         <TransformControls
           ref={transformControlsRef}
@@ -642,13 +638,11 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           showY
           showZ
           onMouseDown={() => {
-            // 드래그 시작 시점의 위치 저장
             if (selectedNodesRef.current && selectedNodesRef.current.length === 1) {
               const node = selectedNodesRef.current[0].nodeRef;
               const controlledObject = transformControlsRef.current?.object;
               
               if (node && controlledObject === node) {
-                // 드래그 시작 위치 저장
                 node.userData.dragStartLocalPos = node.position.clone();
                 node.userData.dragStartWorldPos = node.getWorldPosition(new THREE.Vector3());
                 controlledObject.userData.dragStartLocalPos = controlledObject.position.clone();
@@ -659,8 +653,6 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
           }}
         />
       )}
-
-      {/* 로드된 모델들 */}
       <ModelList
         models={models}
         selectedIndices={selectedIndices}
