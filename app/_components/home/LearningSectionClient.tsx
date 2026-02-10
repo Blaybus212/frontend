@@ -4,17 +4,17 @@ import { LearningSectionData, SceneCategory } from "@/app/_types/home";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+const categoryNameMap = Object.fromEntries(
+  Object.entries(SceneCategory).map(([key, value]) => [value, key])
+);
+
 const LearningSectionClient: React.FC<LearningSectionData> = ({
 	scenes
 }) => {
   const router = useRouter();
 
   const getCategoryName = (value: string): string => {
-    // Enum의 모든 키-값 쌍을 배열로 만든 뒤, 값이 일치하는 항목을 찾습니다.
-    const entry = Object.entries(SceneCategory).find(([key, val]) => val === value);
-    
-    // 찾으면 키("로봇공학")를 반환하고, 못 찾으면 입력값 그대로 반환합니다.
-    return entry ? entry[0] : value;
+    return categoryNameMap[value] || value;
   };
 
   return (
