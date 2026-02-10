@@ -16,11 +16,12 @@ export const buildObjectDataFromPart = (part: SelectablePart): ObjectData => ({
   description: part.partDescription || '부품 설명이 없습니다.',
   materials: part.texture ? part.texture.split(',').map((m) => m.trim()) : [],
   applications: [],
+  isSceneInformation: false,
 });
 
 export const buildObjectDataFromScene = (sceneInfo: SceneInfoShape): ObjectData => ({
   korean: sceneInfo.title,
   english: sceneInfo.engTitle,
   description: sceneInfo.description,
-  isSceneInformation: sceneInfo.isSceneInformation,
+  isSceneInformation: true,
 });

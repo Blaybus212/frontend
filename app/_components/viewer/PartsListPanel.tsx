@@ -1,5 +1,4 @@
 import type { SelectablePart } from '@/app/_components/3d/types';
-import { removeTrailingNumbers } from './utils/partInfo';
 
 interface PartsListPanelProps {
   parts: SelectablePart[];
@@ -43,20 +42,17 @@ export function PartsListPanel({
         />
       </div>
 
-      <div className="max-h-[360px] overflow-y-auto custom-scrollbar py-2">
+      <div className="max-h-[360px] overflow-y-auto custom-scrollbar py-2 divide-y divide-border-default">
         {parts.map((part) => (
           <button
             key={part.nodeId}
             type="button"
             onClick={() => onTogglePart(part.nodeId)}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-bg-sub transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-bg-sub transition-colors"
           >
             <div className="flex flex-col">
               <span className="text-b-md font-weight-semibold text-text-title">
                 {part.originalName || part.nodeId}
-              </span>
-              <span className="text-b-xs text-sub3">
-                {removeTrailingNumbers(part.nodeName)}
               </span>
             </div>
             <input
