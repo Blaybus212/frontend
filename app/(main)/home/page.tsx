@@ -7,6 +7,7 @@ import ListSection from "@/app/_components/home/ListSection";
 import Search from "@/app/_components/home/Search";
 import OrderDropdown from "@/app/_components/home/OrderDropdown";
 import Categories from "@/app/_components/home/Categories";
+import { GrassSectionSkeleton, LearningSectionSkeleton, ModelGridSkeleton, RankingSectionSkeleton } from "@/app/_components/home/Skeletons";
 
 export default async function HomePage(props: {
   searchParams: Promise<{
@@ -25,24 +26,24 @@ export default async function HomePage(props: {
   const rank = searchParams?.rank || '';
 
   return (
-    <div className="flex flex-col max-w-min min-w-max py-13.75 gap-17.5 mx-auto">
+    <div className="flex flex-col w-full max-w-[1344px] my-13.75 gap-17.5 mx-auto">
 
       <div className="flex justify-between">
         {/* 환영 문구 */}
         <WelcomSection />
         {/* 잔디 */}
-        <Suspense fallback={<></>}>
+        <Suspense fallback={<GrassSectionSkeleton />}>
           <GrassSection />
         </Suspense>
       </div>
 
-      <div className="flex gap-6.5">
+      <div className="flex justify-between">
         {/* 학습 중인 오브젝트 */}
-        <Suspense fallback={<></>}>
+        <Suspense fallback={<LearningSectionSkeleton />}>
           <LearningSection />
         </Suspense>
         {/* 오늘 사람들이 많이 학습한 오브젝트 */}
-        <Suspense fallback={<></>}>
+        <Suspense fallback={<RankingSectionSkeleton />}>
           <RankingSection rank={rank} />
         </Suspense>
       </div>
@@ -54,7 +55,7 @@ export default async function HomePage(props: {
           <Categories />
           <OrderDropdown />
         </div>
-        <Suspense fallback={<></>}>
+        <Suspense fallback={<ModelGridSkeleton />}>
           <ListSection query={query} order={order} category={category} curr={curr} />
         </Suspense>
       </div>

@@ -17,7 +17,7 @@ export default function LoginPage() {
   useEffect(() => {
       if (status === 'authenticated' && session) {
         if (session.loginUser?.isFinishOnboard) {
-          router.push('/home');
+          router.push(`/home?category=${session.loginUser.preferCategory}`);
         } else {
           router.push('/onboard');
         }
@@ -83,10 +83,10 @@ export default function LoginPage() {
             className='mb-5.5'
           />
           <h2 className="text-h-1xl font-bold  text-title">
-            서비스 슬로건<br />
-            두 줄 정도 넣겠습니다
+            나에게 쉽게 보이는,<br />
+            3D 학습 플랫폼 SIMVEX
           </h2>
-          <p className="mt-2 text-sub text-h-sm font-regular">서비스 부제</p>
+          <p className="mt-2 text-sub text-h-sm font-regular">안그래도 어려운데 더 어려우면 안되니까!</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-7">

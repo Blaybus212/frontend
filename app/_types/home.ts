@@ -3,7 +3,7 @@ export interface GrassSectionData {
   streak: number;
   solvedQuizCount: number;
   cells: { 
-    [date: string]: { solved: GrassLevel }; 
+    [date: string]: { score: number, level: GrassLevel }; 
   };
 }
 
@@ -51,11 +51,6 @@ export interface ListSectionItem {
 export interface ListSectionData {
 	scenes: ListSectionItem[];
 	pages: {
-		curPage: number; // 1-based
-		size: number; // 페이지 당 항목 개수
-		totalCount: number; // 전체 데이터 개수
-		totalPages: number; // 전체 페이지 수
-		hasNext: boolean; // 이후 페이지 존재 여부
-		hasPrevious: boolean; // 이전 페이지 존재 여부 
+		totalPages: number;
 	}
 }

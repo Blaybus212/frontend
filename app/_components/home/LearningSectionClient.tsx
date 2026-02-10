@@ -4,10 +4,18 @@ import { LearningSectionData, SceneCategory } from "@/app/_types/home";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+const categoryNameMap = Object.fromEntries(
+  Object.entries(SceneCategory).map(([key, value]) => [value, key])
+);
+
 const LearningSectionClient: React.FC<LearningSectionData> = ({
 	scenes
 }) => {
   const router = useRouter();
+
+  const getCategoryName = (value: string): string => {
+    return categoryNameMap[value] || value;
+  };
 
   return (
     <div className="flex flex-col gap-5 items-start">
@@ -24,12 +32,12 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
         {scenes.map((scene)=> (
           <div 
             key={scene.id} 
-            onClick={()=>router.push(`/viewer/${scene.title}`)}
+            onClick={()=>router.push(`/viewer/${scene.id}`)}
             className="group w-70 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered"
           >
             <div className="relative w-70 h-52.5 overflow-hidden">
               <Image
-                src={"/images/objectcard_example.png"} // TODO: 추후 수정
+                src={`/thumb/${scene.title}.png`}
                 alt={scene.title}
                 layout='fill'
                 className="transition-transform duration-250 ease-out group-hover:scale-105 object-cover"
@@ -50,7 +58,7 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
               
               <div>
                 <span className="inline-block bg-bg-sub text-sub2 px-3 py-1 rounded-full text-b-sm font-regular">
-                  {/* {SceneCategory[scene.category] } */}
+                  {getCategoryName(scene.category)}
                 </span>
               </div>
 

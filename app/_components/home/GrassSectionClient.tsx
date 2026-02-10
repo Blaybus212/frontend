@@ -13,7 +13,7 @@ const GrassSectionClient: React.FC<GrassSectionData> = ({
 }) => {
   // 세션에서 테마 컬러 가져오기
   const { data: userData } = useSession();
-  const themeColor: string =  'green'; // userData?.loginUser?.themeColor ??
+  const themeColor: string = userData?.loginUser?.themeColor ?? 'green';
 
   // 잔디 데이터 전처리
   const grassData = getFullMonthlySolvedList(cells, 2026, 2);

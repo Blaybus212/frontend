@@ -1,6 +1,6 @@
 "use client";
 
-import { ORDER_LIST } from "@/app/_constants/onboard";
+import { ORDER_LIST, ORDER_MAP } from "@/app/_constants/onboard";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
@@ -24,18 +24,18 @@ const OrderDropdown = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleClick = (order: string) => {
-    setOrder(order);
+  const handleClick = (korOrder: string) => {
+  setOrder(korOrder);
 
-    const newParams = new URLSearchParams(searchParams);
+  const newParams = new URLSearchParams(searchParams);
+  const engOrder = ORDER_MAP[korOrder];
 
-    newParams.set("order", order);
-    newParams.set("curr", "1");
+  newParams.set("order", engOrder);
+  newParams.set("curr", "1");
 
-    router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
-    setIsOpen(false);
-
-  };
+  router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+  setIsOpen(false);
+};
 
   return (
     <div className="relative w-39.75" ref={OrderDropdownRef}>

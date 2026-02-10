@@ -1,8 +1,8 @@
-
-export const ORDER_LIST = [
-  "인기순",
-  "가나다순"
-]
+export const ORDER_MAP: Record<string, string> = {
+  "인기순": "popularity",
+  "가나다순": "alphabetical"
+};
+export const ORDER_LIST = Object.keys(ORDER_MAP);
 
 export const SPECIALIZED_LIST = [
   "없음",

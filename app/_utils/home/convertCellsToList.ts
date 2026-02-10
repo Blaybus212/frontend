@@ -3,9 +3,12 @@
  * @param year 예: 2026, month 예: 2 (1~12)
  * @returns [10, 0, 0, 10, ...] - 1일부터 말일까지의 solved 값 배열
  */
+
+import { GrassLevel } from "@/app/_types/home";
+
 // TODO: API에 맞게 변경
 export const getFullMonthlySolvedList = (
-  cells: Record<string, { solved: number }>,
+  cells: Record<string, { score: number, level: GrassLevel }>,
   year: number,
   month: number
 ): number[] => {
@@ -16,6 +19,6 @@ export const getFullMonthlySolvedList = (
   // 1일부터 말일까지 배열 생성 및 데이터 매핑
   return Array.from({ length: lastDay }, (_, i) => {
     const dateKey = `${year}-${monthStr}-${String(i + 1).padStart(2, '0')}`;
-    return cells[dateKey]?.solved ?? 0;
+    return cells[dateKey]?.level ?? 0;
   });
 };
