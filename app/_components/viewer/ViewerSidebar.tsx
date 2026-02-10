@@ -28,7 +28,7 @@ export function ViewerSidebar({
 }: ViewerSidebarProps) {
   return (
     <aside className="absolute left-12 top-[36px] bottom-4 flex flex-col items-center py-4 z-10">
-      <div className="flex-1 w-full overflow-y-auto pr-1 flex flex-col items-center gap-[22px]">
+      <div className="flex-1 w-full overflow-y-auto overflow-x-hidden pr-1 flex flex-col items-center gap-[22px]">
         <ViewerIcon
           icon={
             <Image
