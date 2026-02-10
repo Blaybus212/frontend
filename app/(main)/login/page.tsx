@@ -83,8 +83,8 @@ export default function LoginPage() {
             className='mb-5.5'
           />
           <h2 className="text-h-1xl font-bold  text-title">
-            서비스 슬로건<br />
-            두 줄 정도 넣겠습니다
+            나에게 쉽게 보이는,<br />
+            3D 학습 플랫폼 SIMVEX
           </h2>
           <p className="mt-2 text-sub text-h-sm font-regular">서비스 부제</p>
         </div>
