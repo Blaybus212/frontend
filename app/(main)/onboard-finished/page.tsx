@@ -23,11 +23,7 @@ export default function OnboardFinishedPage() {
       </h1>
 
       <button
-        onClick={() => 
-          
-          router.push(`/home?category=${session.data?.loginUser?.preferCategory}`)
-
-        }
+        onClick={() => router.push(`/home?category=${session.data?.loginUser?.preferCategory}`)}
         className="px-[40.5px] py-4.5 rounded-[14px] bg-point-500 text-b-xl font-semibold text-base-black"
       >
         홈 화면으로 바로가기
