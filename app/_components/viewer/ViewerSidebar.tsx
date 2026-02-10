@@ -1,61 +1,20 @@
-/**
- * 뷰어 사이드바 컴포넌트
- * 
- * 좌측에 표시되는 뷰어 컨트롤 아이콘들을 포함하는 사이드바입니다.
- */
-
 import Image from 'next/image';
 import { ViewerIcon } from './ViewerIcon';
 import { HomeIcon, ZoomInIcon, ZoomOutIcon, RefreshIcon, FileIcon, AiIcon, HamburgerIcon } from './icons';
 
-/**
- * ViewerSidebar 컴포넌트의 Props 인터페이스
- */
 interface ViewerSidebarProps {
-  /** 현재 선택된 아이콘 ID */
   selectedIcon: string | null;
-  /** 부품 리스트 패널 열림 여부 */
   isPartsOpen: boolean;
-  /** 아이콘 선택 핸들러 */
   onIconSelect: (iconId: string) => void;
-  /** AI 패널 열림 여부 */
   isAiPanelOpen: boolean;
-  /** AI 패널 열기 핸들러 */
   onOpenAiPanel: () => void;
-  /** 퀴즈 버튼 클릭 핸들러 */
   onQuizClick: () => void;
-  /** 퀴즈 진행률(%) */
   quizProgressPercent?: number;
-  /** 퀴즈 모드 여부 */
   isQuizMode?: boolean;
 }
 
 /**
- * 뷰어 사이드바 컴포넌트
- * 
- * 좌측에 세로로 배치된 뷰어 컨트롤 아이콘들을 렌더링합니다.
- * 
- * **포함된 아이콘:**
- * - 홈: 뷰어 초기 상태로 리셋
- * - 줌인: 카메라 확대
- * - 줌아웃: 카메라 축소
- * - 리프레시: 뷰어 새로고침
- * - PDF: PDF 출력 모달 열기
- * - 퀴즈: 퀴즈 진행도 표시
- * - AI: AI 패널 열기 (하단 고정)
- * 
- * @param props - 컴포넌트 props
- * @returns 뷰어 사이드바 JSX
- * 
- * @example
- * ```tsx
- * <ViewerSidebar
- *   selectedIcon={selectedIcon}
- *   onIconSelect={setSelectedIcon}
- *   isAiPanelOpen={isAiPanelOpen}
- *   onOpenAiPanel={() => setIsAiPanelOpen(true)}
- * />
- * ```
+ * 뷰어 좌측 사이드바 (홈, 줌, 리프레시, PDF, 퀴즈, 부품, AI 아이콘)
  */
 export function ViewerSidebar({
   selectedIcon,
@@ -70,7 +29,6 @@ export function ViewerSidebar({
   return (
     <aside className="absolute left-12 top-[36px] bottom-4 flex flex-col items-center py-4 z-10">
       <div className="flex-1 w-full overflow-y-auto pr-1 flex flex-col items-center gap-[22px]">
-        {/* 뷰어 컨트롤 아이콘들 */}
         <ViewerIcon
           icon={
             <Image
@@ -151,7 +109,6 @@ export function ViewerSidebar({
               aria-label="PDF"
               tooltip="PDF"
             />
-            {/* 퀴즈 진행도 표시 버튼: 현재 퀴즈 완료율을 표시 */}
             <button
               type="button"
               onClick={onQuizClick}
@@ -179,7 +136,6 @@ export function ViewerSidebar({
           </>
         )}
       </div>
-      {/* AI 패널 열기 버튼: AI 아이콘이 하단에 고정되어 있으며, 클릭 시 AI 패널을 엽니다 */}
       {!isAiPanelOpen && !isQuizMode && (
         <div className="mt-4 mb-[40px] ai-icon-ripple">
           <ViewerIcon

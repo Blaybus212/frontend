@@ -1,38 +1,14 @@
-/**
- * 씬 헬퍼 컴포넌트
- * 
- * 3D 씬에서 공간을 이해하고 객체의 위치를 파악하는 데 도움이 되는
- * 시각적 보조 도구들을 렌더링합니다.
- * 
- * 포함된 헬퍼:
- * - Grid Helper: 바닥에 격자선을 그려 공간의 크기와 위치를 시각화
- * - Axes Helper: 좌표축을 표시하여 X, Y, Z 방향을 구분
- */
+import { GRID_SIZE, AXES_LENGTH } from './constants';
 
 /**
- * 씬 헬퍼 요소들을 렌더링하는 컴포넌트
- * 
- * @returns 헬퍼 요소들을 포함한 React Fragment
- * 
- * @example
- * ```tsx
- * <SceneHelpers />
- * ```
+ * 3D 씬 시각 보조 도구 (그리드, 좌표축) 렌더링
+ * @returns R3F 프리미티브 그리드·축 헬퍼
  */
 export function SceneHelpers() {
   return (
     <>
-      {/* 격자 헬퍼: 바닥에 격자선을 그립니다
-          args[0]: 격자의 크기 (20 = -10 ~ +10 범위)
-          args[1]: 격자선의 개수 (20 = 20x20 격자)
-          객체의 위치와 크기를 파악하는 데 유용합니다 */}
-      <gridHelper args={[20, 20]} />
-      
-      {/* 축 헬퍼: 좌표축을 표시합니다
-          args[0]: 축의 길이 (5 = 각 축이 5 단위 길이)
-          X축: 빨간색, Y축: 초록색, Z축: 파란색
-          객체의 방향과 회전을 파악하는 데 유용합니다 */}
-      <axesHelper args={[5]} />
+      <gridHelper args={[GRID_SIZE, GRID_SIZE]} />
+      <axesHelper args={[AXES_LENGTH]} />
     </>
   );
 }

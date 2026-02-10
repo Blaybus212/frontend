@@ -1,14 +1,13 @@
+/**
+ * 뷰어 객체 정보 (제품/부품 공통)
+ * @module viewer/types
+ */
 export interface ObjectData {
-  /** 한글명 */
   korean: string;
-  /** 영문명 */
   english: string;
-  /** 설명 */
   description: string;
-  /** 재질 배열 (부품 선택 시에만 표시) */
   materials?: string[];
-  /** 활용 분야 배열 (부품 선택 시에만 표시) */
   applications?: string[];
-  /** 씬 정보인지 여부 */
+  /** true: 제품 전체 모드, false/undefined: 부품 선택 모드 */
   isSceneInformation?: boolean;
 }

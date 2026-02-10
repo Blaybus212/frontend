@@ -1,14 +1,9 @@
 /**
  * 3D 씬 관련 타입 정의
- * 
- * 이 파일은 3D 씬 컴포넌트에서 사용하는 모든 타입과 인터페이스를 정의합니다.
+ * @module 3d/types
  */
 
-/**
- * 3D 객체의 정보를 담는 인터페이스
- * 
- * 객체의 변환 정보(위치, 회전, 스케일, 매트릭스)와 메시 정보를 포함합니다.
- */
+/** 3D 객체 변환·메시 정보 */
 export interface ObjectInfo {
   /** 4x4 변환 매트릭스 (16개 요소 배열, 행 우선 순서) */
   matrix: number[];
@@ -40,11 +35,7 @@ export interface ObjectInfo {
   }>;
 }
 
-/**
- * 3D 모델의 메타데이터 인터페이스
- * 
- * GLTF 파일에서 추출한 노드 정보를 담습니다.
- */
+/** GLTF 모델 메타데이터 */
 export interface Model {
   /** GLTF/GLB 파일의 URL 경로 */
   url: string;
@@ -58,11 +49,7 @@ export interface Model {
   nodePath?: string;
 }
 
-/**
- * TransformControls의 변환 모드 타입
- * 
- * 객체를 조작하는 방법을 나타냅니다.
- */
+/** TransformControls 변환 모드 */
 export type TransformMode = 
   /** 이동 모드: 객체의 위치를 변경 */
   | 'translate' 
@@ -71,12 +58,7 @@ export type TransformMode =
   /** 스케일 모드: 객체의 크기를 변경 */
   | 'scale';
 
-/**
- * 객체 변환 정보 인터페이스
- * 
- * 객체의 위치, 회전, 스케일을 업데이트할 때 사용합니다.
- * 각 속성은 선택적이며, 제공된 값만 업데이트됩니다.
- */
+/** 객체 변환 업데이트용 (부분 업데이트) */
 export interface Transform {
   /** 위치 정보 (선택적, 각 축도 선택적) */
   position?: { x?: number; y?: number; z?: number };
@@ -86,9 +68,7 @@ export interface Transform {
   scale?: { x?: number; y?: number; z?: number };
 }
 
-/**
- * 씬 상태 정보 인터페이스 (서버에 전송할 전체 데이터)
- */
+/** 씬 상태 (서버 동기화용) */
 export interface SceneState {
   /** 노드 변환 정보 배열 */
   nodeTransforms: Array<{
@@ -109,11 +89,7 @@ export interface SceneState {
   assemblyValue: number;
 }
 
-/**
- * Scene3D 컴포넌트의 ref 인터페이스
- * 
- * 부모 컴포넌트에서 Scene3D의 메서드에 접근하기 위한 인터페이스입니다.
- */
+/** Scene3D ref 메서드 */
 export interface Scene3DRef {
   /** 씬을 GLTF/GLB 파일로 내보내는 함수 */
   exportScene: () => void;
@@ -147,25 +123,18 @@ export interface Scene3DRef {
   getModelRootName: () => string | null;
 }
 
-/**
- * 선택 가능한 부품 정보
- */
+/** 선택 가능한 부품 (GLTF extras 포함) */
 export interface SelectablePart {
   nodeId: string;
   nodeName: string;
-  originalName?: string; // GLTF의 원본 name (영문 이름)
+  originalName?: string;
   modelIndex: number;
-  // GLTF extras 정보
-  texture?: string; // 재질
-  dbId?: number; // DB ID
-  partDescription?: string; // 부품 설명
+  texture?: string;
+  dbId?: number;
+  partDescription?: string;
 }
 
-/**
- * SceneContent 컴포넌트의 props 인터페이스
- * 
- * SceneContent 컴포넌트에 전달되는 모든 속성을 정의합니다.
- */
+/** SceneContent props */
 export interface SceneContentProps {
   /** 렌더링할 모델 배열 */
   models: Model[];

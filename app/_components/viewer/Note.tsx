@@ -19,19 +19,6 @@ import {
   NOTE_TEXT_LOOKBACK,
 } from './constants';
 
-/**
- * Note 컴포넌트의 Props 인터페이스
- * @interface NoteProps
- * @property {boolean} [selected=false] - 노트의 선택/활성 상태 (true일 경우 자동 포커스 및 밝은 테두리)
- * @property {string} [value] - 제어 컴포넌트용 텍스트 값
- * @property {string} [defaultValue=''] - 비제어 컴포넌트용 초기 텍스트 값
- * @property {(value: string) => void} [onChange] - 텍스트 값 변경 시 호출되는 콜백 함수
- * @property {() => void} [onFocus] - 텍스트 영역 포커스 시 호출되는 콜백 함수
- * @property {() => void} [onBlur] - 텍스트 영역 포커스 해제 시 호출되는 콜백 함수
- * @property {() => void} [onClick] - 텍스트 영역 클릭 시 호출되는 콜백 함수
- * @property {string} [className=''] - 추가 CSS 클래스명
- * @property {string} [placeholder='메모를 입력하세요...'] - 플레이스홀더 텍스트
- */
 interface NoteProps {
   selected?: boolean;
   value?: string;
@@ -58,32 +45,7 @@ interface NoteProps {
  * - 제어형/비제어형 컴포넌트 지원
  * - 선택 상태에 따른 자동 포커스
  * - 포커스/블러 상태에 따른 테두리 색상 변경
- * - 자동 높이 조절 (flex-1 클래스 사용 시)
- * 
- * **상태별 스타일:**
- * - 기본: 회색 테두리
- * - 포커스/선택: 네온 그린 테두리 (border-focus 색상)
- * 
- * **사용 예시:**
- * ```tsx
- * // 비제어형 컴포넌트
- * <Note
- *   defaultValue="초기 메모"
- *   onChange={(value) => {
- *     // handle change
- *   }}
- * />
- * 
- * // 제어형 컴포넌트
- * <Note
- *   value={noteValue}
- *   onChange={setNoteValue}
- *   selected={isSelected}
- * />
- * ```
- * 
- * @param {NoteProps} props - 컴포넌트 props
- * @returns {JSX.Element} Note 컴포넌트
+ * - TipTap 에디터, / 명령 меню, @ 멘션
  */
 export function Note({
   selected = false,
