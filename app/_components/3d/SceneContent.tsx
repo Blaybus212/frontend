@@ -25,7 +25,7 @@ import { OrbitControlsWrapper } from './components/OrbitControlsWrapper';
 import { ModelList } from './components/ModelList';
 import { extractSceneState } from './utils/nodeTransformStorage';
 import { SELECTION_SYNC_DELAY_MS, TRANSFORM_HOTKEYS, ZOOM_SCALE } from './constants';
-import { captureObjectSnapshotImage } from './utils/snapshotUtils';
+import { captureObjectSnapshotImage, captureSceneSnapshotImage } from './utils/snapshotUtils';
 import type { TransformMode, Transform, Scene3DRef, SceneContentProps, SelectablePart } from './types';
 
 /**
@@ -259,6 +259,109 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     [camera, gl]
   );
 
+  const focusOnAllModels = useCallback(() => {
+    const box = new THREE.Box3();
+    let hasGeometry = false;
+
+    modelRefs.current.forEach((modelRef) => {
+      if (!modelRef) return;
+      const modelBox = new THREE.Box3().setFromObject(modelRef);
+      if (modelBox.isEmpty()) return;
+      if (hasGeometry) {
+        box.union(modelBox);
+      } else {
+        box.copy(modelBox);
+        hasGeometry = true;
+      }
+    });
+
+    if (!hasGeometry || box.isEmpty()) return false;
+
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const perspective = camera as THREE.PerspectiveCamera;
+    const fov = perspective.fov || 50;
+    const distance =
+      (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+
+    const controls = orbitControlsRef.current;
+    const currentTarget = controls?.target ?? center.clone();
+    const direction = camera.position.clone().sub(currentTarget).normalize();
+    const targetPosition = center.clone().add(direction.multiplyScalar(distance));
+
+    const startPosition = camera.position.clone();
+    const startTarget = (controls?.target ?? center).clone();
+    const duration = 700;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      camera.position.lerpVectors(startPosition, targetPosition, eased);
+      if (controls) {
+        controls.target.lerpVectors(startTarget, center, eased);
+        controls.update();
+      } else {
+        camera.lookAt(center);
+      }
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+    return true;
+  }, [camera, orbitControlsRef]);
+
+  const focusOnNodeId = useCallback(
+    (nodeId: string) => {
+      const targetNode = findNodeById(nodeId);
+      if (!targetNode) return;
+
+      const box = new THREE.Box3().setFromObject(targetNode);
+      if (box.isEmpty()) return;
+
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const perspective = camera as THREE.PerspectiveCamera;
+      const fov = perspective.fov || 50;
+      const distance =
+        (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)))) * 1.4;
+
+      const controls = orbitControlsRef.current;
+      const currentTarget = controls?.target ?? center.clone();
+      const direction = camera.position.clone().sub(currentTarget).normalize();
+      const targetPosition = center.clone().add(direction.multiplyScalar(distance));
+
+      const startPosition = camera.position.clone();
+      const startTarget = (controls?.target ?? center).clone();
+      const duration = 600;
+      const startTime = performance.now();
+
+      const animate = (now: number) => {
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / duration);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        camera.position.lerpVectors(startPosition, targetPosition, eased);
+        if (controls) {
+          controls.target.lerpVectors(startTarget, center, eased);
+          controls.update();
+        } else {
+          camera.lookAt(center);
+        }
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        }
+      };
+
+      requestAnimationFrame(animate);
+    },
+    [camera, findNodeById, orbitControlsRef]
+  );
+
   const capturePartSnapshots = useCallback(
     async (nodeId: string): Promise<[string | null, string | null, string | null]> => {
       const targetNode = findNodeById(nodeId) as THREE.Object3D | null;
@@ -305,6 +408,41 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
       return [lit, dim, wireframe] as [string | null, string | null, string | null];
     },
     [captureObjectSnapshot, findModelRootById]
+  );
+
+  const waitForNextFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+
+  const captureCurrentViewSnapshots = useCallback(
+    async (): Promise<[string | null, string | null, string | null]> => {
+      const prevViewMode = viewMode;
+      const prevRenderMode = renderMode;
+
+      const captureWithModes = async (
+        nextViewMode: 'lit' | 'dim',
+        nextRenderMode: 'normal' | 'wireframe'
+      ) => {
+        setViewMode(nextViewMode);
+        setRenderMode(nextRenderMode);
+        await waitForNextFrame();
+        return captureSceneSnapshotImage(scene, camera as THREE.PerspectiveCamera, gl);
+      };
+
+      const lit = await captureWithModes('lit', 'normal');
+      const dim = await captureWithModes('dim', 'normal');
+      const wireframe = await captureWithModes('lit', 'wireframe');
+
+      setViewMode(prevViewMode);
+      setRenderMode(prevRenderMode);
+      await waitForNextFrame();
+
+      return [lit, dim, wireframe] as [string | null, string | null, string | null];
+    },
+    [camera, gl, renderMode, scene, setRenderMode, setViewMode, viewMode]
   );
 
   const handleExportScene = useCallback(() => {
@@ -474,6 +612,9 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     zoomOut,
     capturePartSnapshots,
     captureModelSnapshots,
+    captureCurrentViewSnapshots,
+    focusOnNodeId,
+    focusOnAllModels,
     getModelRootName,
   }));
 

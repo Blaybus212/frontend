@@ -44,6 +44,7 @@ interface NoteProps {
   placeholder?: string;
   parts?: SelectablePart[];
   modelName?: string;
+  onMentionSelect?: (part: SelectablePart) => void;
   exportContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
@@ -96,6 +97,7 @@ export function Note({
   placeholder = NOTE_PLACEHOLDER,
   parts = [],
   modelName = '모델',
+  onMentionSelect,
   exportContainerRef,
 }: NoteProps) {
   const MarkdownHeading = Heading.extend({
@@ -153,6 +155,7 @@ export function Note({
   /** 에디터 래퍼 DOM 참조 */
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const editorInstanceRef = useRef<Editor | null>(null);
+  const lastEmittedMarkdownRef = useRef<string | null>(null);
   const [slashState, setSlashState] = useState<{
     open: boolean;
     query: string;
@@ -195,38 +198,73 @@ export function Note({
     if (!markdown) return '';
     const lines = markdown.replace(/\r\n/g, '\n').split('\n');
     const blocks: string[] = [];
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        blocks.push('');
-        return;
+    let currentList: 'ul' | 'ol' | null = null;
+    const closeList = () => {
+      if (currentList) {
+        blocks.push(`</${currentList}>`);
+        currentList = null;
       }
-      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
-      if (headingMatch) {
-        const level = headingMatch[1].length;
-        const content = headingMatch[2]
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-        blocks.push(`<h${level}>${content}</h${level}>`);
-        return;
-      }
-      const escaped = line
+    };
+    const escape = (value: string) =>
+      value
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-      blocks.push(`<p>${escaped}</p>`);
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        closeList();
+        blocks.push('');
+        return;
+      }
+      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        closeList();
+        const level = headingMatch[1].length;
+        const content = escape(headingMatch[2]);
+        blocks.push(`<h${level}>${content}</h${level}>`);
+        return;
+      }
+      const unorderedMatch = trimmed.match(/^[-*]\s+(.*)$/);
+      if (unorderedMatch) {
+        if (currentList !== 'ul') {
+          closeList();
+          currentList = 'ul';
+          blocks.push('<ul>');
+        }
+        blocks.push(`<li>${escape(unorderedMatch[1])}</li>`);
+        return;
+      }
+      const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+      if (orderedMatch) {
+        if (currentList !== 'ol') {
+          closeList();
+          currentList = 'ol';
+          blocks.push('<ol>');
+        }
+        blocks.push(`<li>${escape(orderedMatch[2])}</li>`);
+        return;
+      }
+      closeList();
+      blocks.push(`<p>${escape(line)}</p>`);
     });
+    closeList();
     return blocks.filter((block) => block !== '').join('');
   }, []);
 
   const serializeMarkdown = useCallback((editorInstance: Editor) => {
+    const nodes = {
+      ...defaultMarkdownSerializer.nodes,
+      bulletList: defaultMarkdownSerializer.nodes.bullet_list,
+      orderedList: defaultMarkdownSerializer.nodes.ordered_list,
+      listItem: defaultMarkdownSerializer.nodes.list_item,
+      hardBreak: defaultMarkdownSerializer.nodes.hard_break,
+    };
     const serializer = new MarkdownSerializer(
-      defaultMarkdownSerializer.nodes,
+      nodes,
       {
         ...defaultMarkdownSerializer.marks,
         mentionHighlight: {
@@ -296,6 +334,7 @@ export function Note({
     },
     onUpdate: ({ editor }: { editor: Editor }) => {
       const markdown = serializeMarkdown(editor);
+      lastEmittedMarkdownRef.current = markdown;
       if (!isControlled) {
         setInternalValue(markdown);
       }
@@ -384,11 +423,14 @@ export function Note({
 
   useEffect(() => {
     if (!editor) return;
+    if (isControlled && lastEmittedMarkdownRef.current === value) {
+      return;
+    }
     const nextContent = normalizeContent(value ?? '');
     if (editor.getHTML() !== nextContent) {
       editor.commands.setContent(nextContent, false);
     }
-  }, [editor, value, normalizeContent]);
+  }, [editor, value, normalizeContent, isControlled]);
 
   useEffect(() => {
     if (!exportContainerRef) return;
@@ -495,6 +537,7 @@ export function Note({
                 range={{ from: mentionState.from, to: mentionState.to }}
                 onClose={() => setMentionState((prev) => ({ ...prev, open: false, query: '' }))}
                 modelName={modelName}
+                onSelectPart={onMentionSelect}
               />
             )}
           </>

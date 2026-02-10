@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import {
   AiPanel,
   ViewerSidebar,
@@ -32,6 +33,7 @@ import {
   updateDisassemblyLevel,
   fetchSceneNote,
   updateSceneNote,
+  fetchConversationSummary,
   type SceneQuiz,
   type SceneQuizResponse,
   type GradeResponse,
@@ -42,6 +44,7 @@ import {
   ICON_FLASH_DELAY_MS,
   PDF_EMPTY_SUMMARY_TEXT,
 } from '@/app/_components/viewer/constants';
+import { VIEWER_HELP_TEXT } from '@/app/_components/viewer/helpText';
 import {
   extractNoteContent,
   formatDateLabel,
@@ -123,6 +126,7 @@ export default function ViewerPage() {
   const [aiHasNext, setAiHasNext] = useState(false);
   const [isPartsOpen, setIsPartsOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [parts, setParts] = useState<SelectablePart[]>([]);
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   const [rightPanelWidthPercent, setRightPanelWidthPercent] = useState(30);
@@ -139,6 +143,22 @@ export default function ViewerPage() {
   /** 3D 씬 ref */
   const scene3DRef = useRef<Scene3DRef>(null);
   const noteExportRef = useRef<HTMLDivElement | null>(null);
+  const initialCameraFitPendingRef = useRef(false);
+  const initialCameraFitTimerRef = useRef<number | null>(null);
+
+  const handleAuthError = useCallback((error: unknown) => {
+    if (error instanceof Error && error.message === 'AUTH_EXPIRED') {
+      signOut({ callbackUrl: '/login' });
+      return true;
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (!isPdfOpen && selectedIcon === 'pdf') {
+      setSelectedIcon(null);
+    }
+  }, [isPdfOpen, selectedIcon]);
 
   /**
    * 씬 정보 가져오기
@@ -151,6 +171,7 @@ export default function ViewerPage() {
         const info = await fetchSceneInfo(sceneIdParam);
         setSceneInfo(info);
       } catch (error) {
+        if (handleAuthError(error)) return;
         console.error('[viewer] 씬 정보 로드 실패', error);
       }
     };
@@ -165,8 +186,10 @@ export default function ViewerPage() {
         const response = await fetchDisassemblyLevel(sceneIdParam);
         if (response && typeof response.disassemblyLevel === 'number') {
           setAssemblyValue(Math.round(response.disassemblyLevel));
+          initialCameraFitPendingRef.current = true;
         }
       } catch (error) {
+        if (handleAuthError(error)) return;
         console.error('[viewer] 분해도 로드 실패', error);
       }
     };
@@ -182,6 +205,7 @@ export default function ViewerPage() {
         const markdown = extractNoteContent(data);
         setNoteValue(markdown);
       } catch (error) {
+        if (handleAuthError(error)) return;
         console.error('[viewer] 노트 로드 실패', error);
       } finally {
         setIsNoteLoaded(true);
@@ -207,6 +231,7 @@ export default function ViewerPage() {
         setAiNextCursor(response.pages.nextCursor);
         setAiHasNext(response.pages.hasNext);
       } catch (error) {
+        if (handleAuthError(error)) return;
         console.error('[AI] 대화 이력 로드 실패', error);
       }
     };
@@ -258,6 +283,7 @@ export default function ViewerPage() {
       };
       setAiMessages((prev) => sortMessages([...prev, aiMessage]));
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('[AI] 메시지 전송 실패', error);
       // 에러 메시지 표시
       const errorMessage: ConversationMessage = {
@@ -285,6 +311,7 @@ export default function ViewerPage() {
       setAiNextCursor(response.pages.nextCursor);
       setAiHasNext(response.pages.hasNext);
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('[AI] 이전 대화 로드 실패', error);
     } finally {
       setIsAiLoadingMore(false);
@@ -443,6 +470,7 @@ export default function ViewerPage() {
       setCurrentGrade(null);
       setReviewIndex(0);
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('[quiz] 퀴즈 로드 실패', error);
     } finally {
       setIsQuizLoading(false);
@@ -466,6 +494,7 @@ export default function ViewerPage() {
     try {
       await updateQuizProgress(sceneIdParam, payload);
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('[quiz] 진행 상황 저장 실패', error);
     }
   };
@@ -567,6 +596,7 @@ export default function ViewerPage() {
       moveToNextQuiz();
       setSubmittedQuizIds((prev) => ({ ...prev, [currentQuiz.id]: true }));
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('[quiz] 채점 실패', error);
     } finally {
       setIsGrading(false);
@@ -585,6 +615,10 @@ export default function ViewerPage() {
     };
 
     switch (iconId) {
+      case 'help':
+        setIsHelpOpen((prev) => !prev);
+        setSelectedIcon((prev) => (prev === 'help' ? null : 'help'));
+        return;
       case 'home':
         if (isQuizOpen) {
           handleExitQuiz(true);
@@ -676,6 +710,40 @@ export default function ViewerPage() {
     };
   }, [sceneIdParam]);
 
+  useEffect(() => {
+    if (!activeModelUrl) return;
+    initialCameraFitPendingRef.current = true;
+  }, [activeModelUrl]);
+
+  useEffect(() => {
+    if (!initialCameraFitPendingRef.current) return;
+    if (!scene3DRef.current || !activeModelUrl) return;
+    if (initialCameraFitTimerRef.current) {
+      window.clearTimeout(initialCameraFitTimerRef.current);
+      initialCameraFitTimerRef.current = null;
+    }
+    let attempts = 0;
+    const tryFit = () => {
+      if (!scene3DRef.current) return;
+      const applied = scene3DRef.current.focusOnAllModels();
+      if (applied) {
+        initialCameraFitPendingRef.current = false;
+        return;
+      }
+      attempts += 1;
+      if (attempts < 10) {
+        initialCameraFitTimerRef.current = window.setTimeout(tryFit, 300);
+      }
+    };
+    initialCameraFitTimerRef.current = window.setTimeout(tryFit, 0);
+    return () => {
+      if (initialCameraFitTimerRef.current) {
+        window.clearTimeout(initialCameraFitTimerRef.current);
+        initialCameraFitTimerRef.current = null;
+      }
+    };
+  }, [assemblyValue, activeModelUrl]);
+
   /**
    * 씬 상태 저장 함수
    */
@@ -717,6 +785,7 @@ export default function ViewerPage() {
         setStatus('idle');
       }, 1000);
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('❌ 씬 동기화 실패:', error);
       setStatus('error');
       
@@ -747,16 +816,16 @@ export default function ViewerPage() {
     
     // 1초마다 경과 시간 업데이트
     const timerInterval = window.setInterval(() => {
-      elapsedSeconds = (elapsedSeconds + 1) % 30; // 30초마다 0으로 초기화
+      elapsedSeconds = (elapsedSeconds + 1) % 3; // 3초마다 0으로 초기화
       setElapsedSeconds(elapsedSeconds);
     }, 1000);
     
-    // 30초마다 자동 저장
+    // 3초마다 자동 저장
     const saveInterval = window.setInterval(() => {
       handleSaveSceneState();
       elapsedSeconds = 0; // 저장 후 타이머 초기화
       setElapsedSeconds(0);
-    }, 30000);
+    }, 3000);
     
     return () => {
       window.clearInterval(timerInterval);
@@ -874,35 +943,83 @@ export default function ViewerPage() {
 
   const handlePdfPrint = async (config: {
     screenshotMode: 'full' | 'current';
-    partMode: 'all' | 'viewed';
     summary: string;
-    keywords: string;
   }) => {
     if (!scene3DRef.current || isPrinting) return;
     setIsPrinting(true);
 
     const includeSummary = Boolean(config.summary);
-    const includeKeywords = Boolean(config.keywords);
     const dateLabel = new Date().toLocaleDateString('ko-KR', {
       month: 'long',
       day: 'numeric',
     });
 
-    const modelName = modelRootName;
-    const modelEnglish = objectData.english;
-    const modelSnapshots = await captureAssembledModelSnapshots(models[0]?.id ?? 'model');
+    const modelName = sceneInfo?.title ?? modelRootName;
+    const modelEnglish = sceneInfo?.engTitle ?? objectData.english;
+    const summaryResponse = includeSummary
+      ? await fetchConversationSummary().catch((error) => {
+          if (handleAuthError(error)) return null;
+          return null;
+        })
+      : null;
+    const summaryText = includeSummary
+      ? summaryResponse?.summary || PDF_EMPTY_SUMMARY_TEXT
+      : '';
+    const modelSnapshots =
+      config.screenshotMode === 'full'
+        ? await captureAssembledModelSnapshots(models[0]?.id ?? 'model')
+        : await scene3DRef.current.captureCurrentViewSnapshots();
 
     const availableParts = scene3DRef.current?.getSelectableParts() || parts;
-    const targetParts =
-      config.partMode === 'viewed' && selectedPartIds.length > 0
-        ? availableParts.filter((part) => selectedPartIds.includes(part.nodeId))
-        : availableParts;
+    const targetParts = availableParts;
 
-    const partSnapshots: { title: string; images: [string | null, string | null, string | null] }[] = [];
-    for (const part of targetParts) {
-      const images = await scene3DRef.current.capturePartSnapshots(part.nodeId);
-      partSnapshots.push({ title: part.nodeName, images });
+    const partSnapshots: {
+      title: string;
+      images: [string | null, string | null, string | null];
+      info: {
+        korean: string;
+        english: string;
+        description: string;
+        materials?: string[];
+        applications?: string[];
+      };
+    }[] = [];
+    const scene3D = scene3DRef.current;
+    if (!scene3D) {
+      setIsPrinting(false);
+      return;
     }
+    for (const part of targetParts) {
+      const images = await scene3D.capturePartSnapshots(part.nodeId);
+      const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
+      partSnapshots.push({
+        title: part.originalName || part.nodeName,
+        images,
+        info: {
+          korean: part.originalName || part.nodeId,
+          english: removeTrailingNumbers(part.nodeName),
+          description: part.partDescription || '부품 설명이 없습니다.',
+          materials: part.texture ? part.texture.split(',').map((m) => m.trim()) : [],
+          applications: [],
+        },
+      });
+    }
+
+    const modelInfo = sceneInfo
+      ? {
+          korean: sceneInfo.title,
+          english: sceneInfo.engTitle,
+          description: sceneInfo.description,
+          materials: [],
+          applications: [],
+        }
+      : {
+          korean: modelName,
+          english: modelEnglish ?? '',
+          description: '',
+          materials: [],
+          applications: [],
+        };
 
     await exportSummaryPdf({
       documentTitle: `${modelName} 총정리`,
@@ -910,19 +1027,21 @@ export default function ViewerPage() {
       modelEnglish,
       dateLabel,
       includeSummary,
-      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
-      includeKeywords,
+      summaryText,
+      includeKeywords: false,
       keywords: [],
       modelSnapshots,
+      modelInfo,
       parts: partSnapshots,
     });
 
     await exportNotePdf({
       documentTitle: `${modelName} 노트 기록`,
       modelName,
+      modelEnglish,
       dateLabel,
       includeSummary,
-      summaryText: includeSummary ? PDF_EMPTY_SUMMARY_TEXT : '',
+      summaryText,
       noteHtml: markdownToHtml(noteValue),
       noteElement: noteExportRef.current,
     });
@@ -933,9 +1052,13 @@ export default function ViewerPage() {
 
   const effectiveRightPanelWidth = isQuizOpen ? 0 : rightPanelWidthPercent;
   const totalQuizCount = quizData?.quizzes.length ?? 0;
+  const correctQuizCount = useMemo(
+    () => Object.values(quizResults).filter((result) => result.correct).length,
+    [quizResults]
+  );
   const scorePercent =
     totalQuizCount > 0
-      ? Math.round(((quizData?.userProgress.success ?? 0) / totalQuizCount) * 100)
+      ? Math.round((correctQuizCount / totalQuizCount) * 100)
       : 0;
 
   const wrongQuizIds = useMemo(() => {
@@ -1012,6 +1135,12 @@ export default function ViewerPage() {
         isQuizMode={isQuizOpen}
       />
 
+      {isHelpOpen && (
+        <div className="absolute left-[120px] top-[64px] z-20 w-[320px] rounded-2xl border border-border-default bg-bg-default p-4 text-b-sm text-text-title shadow-lg whitespace-pre-line">
+          {VIEWER_HELP_TEXT}
+        </div>
+      )}
+
       {isQuizOpen && (
         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
           <div className="px-6 py-2 rounded-full bg-point-500 text-base-black text-b-md font-weight-semibold shadow-md">
@@ -1041,7 +1170,10 @@ export default function ViewerPage() {
       {isPdfOpen && (
         <div className="absolute left-[112px] top-[420px] z-20">
           <PdfModal
-            onClose={() => setIsPdfOpen(false)}
+            onClose={() => {
+              setIsPdfOpen(false);
+              setSelectedIcon((prev) => (prev === 'pdf' ? null : prev));
+            }}
             onPrintClick={handlePdfPrint}
             isPrinting={isPrinting}
           />
@@ -1067,6 +1199,10 @@ export default function ViewerPage() {
           onResizeWidth={setRightPanelWidthPercent}
           parts={parts}
           modelName={modelRootName}
+          onMentionSelect={(part) => {
+            scene3DRef.current?.setSelectedNodeIds([part.nodeId]);
+            scene3DRef.current?.focusOnNodeId(part.nodeId);
+          }}
         />
       )}
 

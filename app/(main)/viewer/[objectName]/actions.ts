@@ -3,6 +3,10 @@
 import { $fetch } from '@/app/_utils/fetch';
 import { auth } from '@/auth';
 
+const throwAuthError = () => {
+  throw new Error('AUTH_EXPIRED');
+};
+
 /**
  * AI 대화 전용 fetch 함수 (response.json()을 한 번만 호출)
  */
@@ -11,7 +15,7 @@ async function conversationFetch<T>(endpoint: string, options: RequestInit = {})
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const headers = new Headers(options.headers);
@@ -24,7 +28,7 @@ async function conversationFetch<T>(endpoint: string, options: RequestInit = {})
   });
 
   if (response.status === 401) {
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   if (!response.ok) {
@@ -68,6 +72,12 @@ export interface ConversationResponse {
     hasNext: boolean;
     limit: number;
   };
+}
+
+export interface ConversationSummary {
+  summary: string;
+  totalConversations: number;
+  totalMessages: number;
 }
 
 export interface SendMessageRequest {
@@ -141,7 +151,7 @@ export async function fetchZipData(
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/viewer?target=${encodeURIComponent(target)}`;
@@ -158,7 +168,7 @@ export async function fetchZipData(
   if (response.status === 401) {
     const errorText = await response.text();
     console.error('❌ 인증 오류:', errorText);
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   if (!response.ok) {
@@ -194,7 +204,7 @@ export async function fetchSceneInfo(sceneId: string): Promise<SceneInfo> {
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}`;
@@ -209,7 +219,7 @@ export async function fetchSceneInfo(sceneId: string): Promise<SceneInfo> {
   });
 
   if (response.status === 401) {
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   if (!response.ok) {
@@ -255,7 +265,7 @@ export async function fetchSceneNote(
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/note`;
@@ -279,7 +289,7 @@ export async function fetchSceneNote(
     : undefined;
 
   if (response.status === 401) {
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   if (!response.ok) {
@@ -299,12 +309,12 @@ export async function updateSceneNote(
   sceneId: string,
   content: string
 ): Promise<{ debug?: NoteDebugInfo }> {
-  const payload = JSON.stringify({ note: content });
+  const payload = JSON.stringify({ content });
   const session = await auth();
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const url = `${process.env.NEXT_PUBLIC_API_URL}/scenes/${encodeURIComponent(sceneId)}/note`;
@@ -330,7 +340,7 @@ export async function updateSceneNote(
     : undefined;
 
   if (response.status === 401) {
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   return { debug: debugInfo };
@@ -350,6 +360,15 @@ export async function fetchConversation(
   }
 
   return conversationFetch(`/scenes/${encodeURIComponent(sceneId)}/conversation?${params.toString()}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * AI 대화 요약 가져오기
+ */
+export async function fetchConversationSummary(): Promise<ConversationSummary | null> {
+  return conversationFetch(`/conversations/summary`, {
     method: 'GET',
   });
 }
@@ -399,7 +418,7 @@ export async function gradeQuizAnswer(
   const token = session?.accessToken;
 
   if (!token) {
-    throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
+    throwAuthError();
   }
 
   const requestBody = JSON.stringify({ answer: String(answer) });
@@ -422,7 +441,7 @@ export async function gradeQuizAnswer(
     const responseText = await response.text();
 
     if (response.status === 401) {
-      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+      throwAuthError();
     }
 
     if (!response.ok) {

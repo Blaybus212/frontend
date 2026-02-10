@@ -53,6 +53,8 @@ interface ViewerRightPanelProps {
   parts: SelectablePart[];
   /** 모델 이름(전체 선택용) */
   modelName: string;
+  /** 노트 멘션 선택 핸들러 */
+  onMentionSelect?: (part: SelectablePart) => void;
 }
 
 /**
@@ -85,6 +87,7 @@ export function ViewerRightPanel({
   onResizeWidth,
   parts,
   modelName,
+  onMentionSelect,
 }: ViewerRightPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -257,6 +260,7 @@ export function ViewerRightPanel({
             className="flex-1 flex flex-col"
             parts={parts}
             modelName={modelName}
+            onMentionSelect={onMentionSelect}
             exportContainerRef={noteExportRef}
           />
         </div>

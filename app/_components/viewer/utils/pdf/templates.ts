@@ -19,6 +19,43 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
     ? payload.summaryText || PDF_EMPTY_SUMMARY_TEXT
     : '';
 
+  const renderInfoBlock = (info: {
+    korean: string;
+    english: string;
+    description: string;
+    materials?: string[];
+    applications?: string[];
+  }) => {
+    const materials = info.materials ?? [];
+    const applications = info.applications ?? [];
+    const materialsHtml =
+      materials.length > 0
+        ? `<div style="margin-top:10px;">
+            <div style="font-size:14px; font-weight:600; color:${PDF_TEXT}; margin-bottom:4px;">재질</div>
+            <div style="font-size:13px; color:${PDF_SUBTEXT}; line-height:1.5;">
+              ${materials.join(', ')}
+            </div>
+          </div>`
+        : '';
+    const applicationsHtml =
+      applications.length > 0
+        ? `<div style="margin-top:10px;">
+            <div style="font-size:14px; font-weight:600; color:${PDF_TEXT}; margin-bottom:4px;">활용</div>
+            <div style="font-size:13px; color:${PDF_SUBTEXT}; line-height:1.5;">
+              ${applications.join(', ')}
+            </div>
+          </div>`
+        : '';
+    return `
+      <div style="margin-top:12px;">
+        <div style="font-size:18px; font-weight:600; color:${PDF_TEXT};">${info.korean}</div>
+        <div style="margin-top:8px; font-size:14px; color:${PDF_SUBTEXT}; line-height:1.5;">${info.description}</div>
+        ${materialsHtml}
+        ${applicationsHtml}
+      </div>
+    `;
+  };
+
   const partsHtml = payload.parts
     .map((part, index) => {
       const number = index + 2;
@@ -35,6 +72,7 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
         <div class="pdf-block" style="margin-top:24px;">
           <div style="font-size:22px; font-weight:600; margin-bottom:12px; color:${PDF_TEXT};">${number}. ${part.title}</div>
           <div style="display:flex; gap:12px;">${imageRow}</div>
+          ${renderInfoBlock(part.info)}
         </div>
       `;
     })
@@ -44,8 +82,8 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
     <div style="width:${A4_WIDTH}px; padding:40px 48px; font-family:${PDF_FONT.FAMILY}; color:${PDF_TEXT}; background:${PDF_BACKGROUND};">
       <div class="pdf-block" style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
-          <div style="font-size:28px; font-weight:700;">${payload.modelName} ${payload.modelEnglish ?? ''}</div>
-          <div style="font-size:16px; color:${PDF_SUBTEXT};">${payload.modelEnglish ?? ''}</div>
+          <div style="font-size:28px; font-weight:700;">${payload.modelEnglish ?? payload.modelName}</div>
+          <div style="font-size:16px; color:${PDF_SUBTEXT};">${payload.modelName}</div>
         </div>
         <div style="font-size:14px; color:${PDF_SUBTEXT};">@${payload.dateLabel}</div>
       </div>
@@ -60,7 +98,7 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
         payload.includeSummary
           ? `
         <div class="pdf-block pdf-summary-block" style="margin-top:18px; background:#2A303A; padding:14px 18px; border-radius:16px; font-size:14px; color:${PDF_TEXT};">
-          <div style="font-weight:600; margin-bottom:6px;">AI와의 대화 세줄 요약</div>
+          <div style="font-weight:600; margin-bottom:6px;">AI 대화 요약</div>
           <div>${summaryText}</div>
         </div>
       `
@@ -81,6 +119,7 @@ export const buildSummaryHtml = (payload: PdfSummaryPayload) => {
               .join('')}
           </div>
         </div>
+        ${renderInfoBlock(payload.modelInfo)}
       </div>
       ${partsHtml}
     </div>
@@ -187,15 +226,26 @@ export const buildNoteHtml = (payload: PdfNotePayload) => {
           border-top: 1px solid var(--color-border-default);
           margin: 12px 0;
         }
+        .note-content span[data-mention-highlight] {
+          color: var(--color-title);
+          padding: 0 2px;
+          border-radius: 4px;
+          box-shadow: inset 0 -8px 0 rgba(197, 255, 0, 0.2);
+          box-decoration-break: clone;
+          -webkit-box-decoration-break: clone;
+        }
         .note-content .is-empty.is-editor-empty::before { content: ''; }
         .note-content .is-empty::before { content: ''; }
       </style>
-      <div style="font-size:26px; font-weight:700; margin-bottom:20px;">${payload.modelName} 노트 기록</div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:26px; font-weight:700;">${payload.modelEnglish || payload.modelName} 노트 기록</div>
+        <div style="font-size:16px; color:${PDF_SUBTEXT}; margin-top:4px;">${payload.modelName}</div>
+      </div>
       ${
         payload.includeSummary
           ? `
         <div style="margin-top:0; margin-bottom:8px; background:#2A303A; padding:14px 18px; border-radius:16px; font-size:14px; line-height:20px; color:${PDF_TEXT}; display:flex; flex-direction:column; gap:6px;">
-          <div style="font-weight:600; margin:0; line-height:20px;">AI와의 대화 세줄 요약</div>
+          <div style="font-weight:600; margin:0; line-height:20px;">AI 대화 요약</div>
           <div>${summaryText}</div>
         </div>
       `

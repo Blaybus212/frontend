@@ -137,6 +137,12 @@ export interface Scene3DRef {
   capturePartSnapshots: (nodeId: string) => Promise<[string | null, string | null, string | null]>;
   /** 모델 전체 스냅샷 이미지를 3가지 모드로 생성합니다 */
   captureModelSnapshots: (modelId: string) => Promise<[string | null, string | null, string | null]>;
+  /** 현재 카메라 시점 기준 스냅샷 이미지를 3가지 모드로 생성합니다 */
+  captureCurrentViewSnapshots: () => Promise<[string | null, string | null, string | null]>;
+  /** 특정 노드를 화면에 맞게 포커스합니다 */
+  focusOnNodeId: (nodeId: string) => void;
+  /** 전체 모델이 화면에 들어오도록 포커스합니다 */
+  focusOnAllModels: () => boolean;
   /** 모델 루트 이름을 반환합니다 */
   getModelRootName: () => string | null;
 }
