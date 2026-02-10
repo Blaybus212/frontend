@@ -51,7 +51,7 @@ const Search = ({
         onChange={(e) => handleSearch(e.target.value)}
         defaultValue={searchParams.get("query")?.toString()}
         placeholder={placeholder}
-        className="outline-none group"
+        className="flex-1 min-w-0 outline-none bg-transparent"
       />
     </label>
   );
