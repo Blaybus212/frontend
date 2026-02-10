@@ -14,8 +14,10 @@ const ModelGrid: React.FC<ModelGridProps> = ({ models }) => {
   return (
     <div className="grid grid-cols-3 gap-x-5 gap-y-10">
       {models.map((scene) => (
-        <div key={scene.id} onClick={()=>router.push(`/viewer/${scene.title}`)} className="group w-full max-w-108 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered cursor-pointer">
-          
+        <div 
+          key={scene.id} 
+          onClick={()=>router.push(`/viewer/${scene.id}`)} 
+          className="group w-full max-w-108 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered cursor-pointer">
           <div className="relative w-full h-52.5 overflow-hidden bg-bg-sub">
             <Image
               src={`/thumb/${scene.title}.png`}

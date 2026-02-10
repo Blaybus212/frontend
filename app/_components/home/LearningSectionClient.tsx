@@ -32,7 +32,7 @@ const LearningSectionClient: React.FC<LearningSectionData> = ({
         {scenes.map((scene)=> (
           <div 
             key={scene.id} 
-            onClick={()=>router.push(`/viewer/${scene.title}`)}
+            onClick={()=>router.push(`/viewer/${scene.id}`)}
             className="group w-70 rounded-[14px] overflow-hidden bg-bg-default hover:bg-bg-hovered"
           >
             <div className="relative w-70 h-52.5 overflow-hidden">
