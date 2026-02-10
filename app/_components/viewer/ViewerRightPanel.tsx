@@ -7,6 +7,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Note } from './Note';
 import { ObjectInfoPanel } from './ObjectInfoPanel';
+import type { ObjectData } from './types';
 import type { SelectablePart } from '@/app/_components/3d/types';
 import {
   NOTE_PLACEHOLDER,
@@ -14,24 +15,6 @@ import {
   RIGHT_PANEL_WIDTH_MAX_PERCENT,
   RIGHT_PANEL_WIDTH_MIN_PERCENT,
 } from './constants';
-
-/**
- * 객체 정보 데이터 타입
- */
-interface ObjectData {
-  /** 한글명 */
-  korean: string;
-  /** 영문명 */
-  english: string;
-  /** 설명 */
-  description: string;
-  /** 재질 배열 (부품 선택 시에만 표시) */
-  materials?: string[];
-  /** 활용 분야 배열 (부품 선택 시에만 표시) */
-  applications?: string[];
-  /** 씬 정보인지 여부 */
-  isSceneInformation?: boolean;
-}
 
 /**
  * ViewerRightPanel 컴포넌트의 Props 인터페이스

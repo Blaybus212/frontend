@@ -1,4 +1,5 @@
 import { PDF_BACKGROUND, PDF_TEXT } from '../constants';
+import type { ObjectData } from '../types';
 import { CAPTURE, NOTE_LAYOUT, PDF_LAYOUT } from './pdf/constants';
 import { buildNoteHeaderCanvas, buildSummaryBlockCanvas } from './pdf/canvas';
 import { buildNoteHtml, buildSummaryHtml } from './pdf/templates';
@@ -9,13 +10,7 @@ export type PdfPartSnapshot = {
   info: PdfInfoBlock;
 };
 
-export type PdfInfoBlock = {
-  korean: string;
-  english: string;
-  description: string;
-  materials?: string[];
-  applications?: string[];
-};
+export type PdfInfoBlock = Omit<ObjectData, 'isSceneInformation'>;
 
 export type PdfSummaryPayload = {
   documentTitle: string;

@@ -1,4 +1,5 @@
 import type { SelectablePart } from '@/app/_components/3d/types';
+import { removeTrailingNumbers } from './utils/partInfo';
 
 interface PartsListPanelProps {
   parts: SelectablePart[];
@@ -18,9 +19,6 @@ export function PartsListPanel({
   const allSelected = parts.length > 0 && selectedIds.length === parts.length;
   const isChecked = (nodeId: string) => selectedIds.includes(nodeId);
   
-  // 한글 이름에서 맨 뒤 숫자 제거 (예: "베이스 플레이트1" → "베이스 플레이트")
-  const removeTrailingNumbers = (text: string) => text.replace(/\d+$/, '');
-
   return (
     <div className="w-[320px] max-h-[460px] bg-bg-default rounded-2xl border border-border-default overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
