@@ -11,8 +11,9 @@ const RankingSection = async ({
 }: RankingSectionProps) => {
   // "오늘 사람들이 많이 학습한 오브젝트" 정보 (GET /scenes/ranks/?category=)
   const data: RankingSectionData = await $fetch(`/scenes/ranks${rank == "" ? "" : `?category=${rank}`}`)
+  const filteredScenes = data.scenes.filter((scene) => scene.id !== "2");
 
-  return <RankingSectionClient {...data} />
+  return <RankingSectionClient {...data} scenes={filteredScenes} />
 }
 
 export default RankingSection;

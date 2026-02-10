@@ -26,10 +26,11 @@ const ListSection = async ({
 
   // "오브젝트 모두 보기" 정보 (GET /scenes)
   const data: ListSectionData = await $fetch(`/scenes?query=${query}&${queryString ? `${queryString}` : ''}`);
+  const filteredScenes = data.scenes.filter(scene => scene.id !== "2");
 
   return (
     <div className="flex flex-col pb-50">
-      <ModelGrid models={data.scenes} />
+      <ModelGrid models={filteredScenes} />
       <Pagination {...data.pages} />
     </div>
   )
