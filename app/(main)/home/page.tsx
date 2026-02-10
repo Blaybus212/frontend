@@ -25,7 +25,7 @@ export default async function HomePage(props: {
   const rank = searchParams?.rank || '';
 
   return (
-    <div className="flex flex-col max-w-min min-w-max py-13.75 gap-17.5 mx-auto">
+    <div className="flex flex-col w-full max-w-[1344px] my-13.75 gap-17.5 mx-auto">
 
       <div className="flex justify-between">
         {/* 환영 문구 */}
