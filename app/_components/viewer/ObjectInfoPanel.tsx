@@ -45,14 +45,22 @@ export function ObjectInfoPanel({ objectData }: ObjectInfoPanelProps) {
   return (
     <div className="flex-[4] bg-bg-default rounded-2xl border border-border-default overflow-hidden flex flex-col">
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 space-y-6">
-        {/* 객체 제목 영역: 한글명과 영문명 표시 */}
+        {/* 객체 제목 영역: 제품 전체 모드(한글명+영문명) / 부품 선택 모드(영어이름만) */}
         <div>
-          <h1 className="text-h-xl font-weight-semibold text-text-title mb-1">
-            {objectData.korean}
-          </h1>
-          <p className="text-b-md text-sub">
-            {objectData.english}
-          </p>
+          {objectData.isSceneInformation ? (
+            <>
+              <h1 className="text-h-xl font-weight-semibold text-text-title mb-1">
+                {objectData.korean}
+              </h1>
+              <p className="text-b-md text-sub">
+                {objectData.english}
+              </p>
+            </>
+          ) : (
+            <h1 className="text-h-xl font-weight-semibold text-text-title">
+              {objectData.korean}
+            </h1>
+          )}
         </div>
 
         {/* 객체 설명 섹션 */}
