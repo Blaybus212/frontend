@@ -6,6 +6,15 @@ import { buildNoteHtml, buildSummaryHtml } from './pdf/templates';
 export type PdfPartSnapshot = {
   title: string;
   images: [string | null, string | null, string | null];
+  info: PdfInfoBlock;
+};
+
+export type PdfInfoBlock = {
+  korean: string;
+  english: string;
+  description: string;
+  materials?: string[];
+  applications?: string[];
 };
 
 export type PdfSummaryPayload = {
@@ -18,12 +27,14 @@ export type PdfSummaryPayload = {
   includeKeywords: boolean;
   keywords?: string[];
   modelSnapshots: [string | null, string | null, string | null];
+  modelInfo: PdfInfoBlock;
   parts: PdfPartSnapshot[];
 };
 
 export type PdfNotePayload = {
   documentTitle: string;
   modelName: string;
+  modelEnglish?: string;
   dateLabel: string;
   includeSummary: boolean;
   summaryText?: string;

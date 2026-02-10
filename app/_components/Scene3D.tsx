@@ -67,6 +67,18 @@ const Scene3D = forwardRef<Scene3DRef, Scene3DProps>(
           Promise.resolve([null, null, null] as [null, null, null])
         );
       },
+      captureCurrentViewSnapshots: () => {
+        return (
+          sceneContentRef.current?.captureCurrentViewSnapshots() ??
+          Promise.resolve([null, null, null] as [null, null, null])
+        );
+      },
+      focusOnNodeId: (nodeId: string) => {
+        sceneContentRef.current?.focusOnNodeId(nodeId);
+      },
+      focusOnAllModels: () => {
+        return sceneContentRef.current?.focusOnAllModels() ?? false;
+      },
       getModelRootName: () => {
         return sceneContentRef.current?.getModelRootName() ?? null;
       },

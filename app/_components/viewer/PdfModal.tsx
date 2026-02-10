@@ -11,26 +11,14 @@ import { useState } from 'react';
 type ScreenshotMode = 'full' | 'current';
 
 /**
- * 부품 설명 모드 타입
- * @typedef {'all' | 'viewed'} PartMode
- * - 'all': 전체 부품 설명 포함
- * - 'viewed': 사용자가 본 부품만 설명 포함
- */
-type PartMode = 'all' | 'viewed';
-
-/**
  * PDF 출력 설정 정보
  * @typedef {Object} PdfPrintConfig
  * @property {ScreenshotMode} screenshotMode - 스크린샷 저장 모드
- * @property {PartMode} partMode - 부품 설명 모드
  * @property {string} summary - AI 대화 요약 내용
- * @property {string} keywords - 핵심 키워드
  */
 type PdfPrintConfig = {
   screenshotMode: ScreenshotMode;
-  partMode: PartMode;
   summary: string;
-  keywords: string;
 };
 
 /**
@@ -73,12 +61,8 @@ interface PdfModalProps {
 export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModalProps) {
   /** 현재 선택된 스크린샷 저장 모드 */
   const [screenshotMode, setScreenshotMode] = useState<ScreenshotMode>('full');
-  /** 현재 선택된 부품 설명 모드 */
-  const [partMode, setPartMode] = useState<PartMode>('all');
   /** AI 대화 요약 포함 여부 */
   const [includeSummary, setIncludeSummary] = useState(false);
-  /** 핵심 키워드 포함 여부 */
-  const [includeKeywords, setIncludeKeywords] = useState(false);
 
   /**
    * 스크린샷 저장 모드 변경 핸들러
@@ -86,14 +70,6 @@ export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModal
    */
   const toggleScreenshot = (mode: ScreenshotMode) => {
     setScreenshotMode(mode);
-  };
-
-  /**
-   * 부품 설명 모드 변경 핸들러
-   * @param {PartMode} mode - 선택할 부품 설명 모드
-   */
-  const togglePartMode = (mode: PartMode) => {
-    setPartMode(mode);
   };
 
   /** 토글 버튼의 기본 스타일 클래스 */
@@ -148,27 +124,6 @@ export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModal
         </div>
       </section>
 
-      {/* 부품 설명 모드 선택 섹션 */}
-      <section className="space-y-3">
-        <p className="text-b-sm font-weight-regular text-sub2">부품 설명</p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={`${baseToggleButton} ${getToggleClass(partMode === 'all')}`}
-            onClick={() => togglePartMode('all')}
-          >
-            전체 부품
-          </button>
-          <button
-            type="button"
-            className={`${baseToggleButton} ${getToggleClass(partMode === 'viewed')}`}
-            onClick={() => togglePartMode('viewed')}
-          >
-            내가 본 부품만
-          </button>
-        </div>
-      </section>
-
       {/* 추가 정보 선택 섹션 */}
       <section className="space-y-3">
         <p className="text-b-sm font-weight-regular text-sub2">추가(선택)</p>
@@ -180,13 +135,6 @@ export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModal
           >
             AI 대화 요약
           </button>
-          <button
-            type="button"
-            className={`${singleToggleButton} ${getToggleClass(includeKeywords)}`}
-            onClick={() => setIncludeKeywords((prev) => !prev)}
-          >
-            핵심 키워드
-          </button>
         </div>
       </section>
 
@@ -197,9 +145,7 @@ export function PdfModal({ isPrinting = false, onPrintClick, onClose }: PdfModal
         onClick={() =>
           onPrintClick?.({
             screenshotMode,
-            partMode,
             summary: includeSummary ? 'AI 대화 요약' : '',
-            keywords: includeKeywords ? '핵심 키워드' : '',
           })
         }
         className={`

@@ -21,6 +21,7 @@ interface ViewerIconProps {
   className?: string;
   icon?: ReactNode;
   'aria-label'?: string;
+  tooltip?: string;
   backgroundColor?: string;
   iconColor?: string;
 }
@@ -56,6 +57,7 @@ export function ViewerIcon({
   className = '',
   icon,
   'aria-label': ariaLabel = 'Viewer 아이콘',
+  tooltip,
   backgroundColor,
   iconColor,
 }: ViewerIconProps) {
@@ -151,28 +153,37 @@ export function ViewerIcon({
   const bgColor = backgroundColor || 'var(--color-grass-green-0)';
 
   return (
-    <button
-      onClick={onClick}
+    <div
+      className="relative flex items-center justify-center"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`
-        rounded-full
-        flex items-center justify-center
-        transition-all duration-200
-        ${onClick ? 'cursor-pointer' : 'cursor-default'}
-        ${className}
-      `}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        border: `1px solid ${colors.border}`,
-        backgroundColor: bgColor,
-      }}
-      aria-label={ariaLabel}
     >
-      <div style={{ color: colors.icon }}>
-        {renderIcon()}
-      </div>
-    </button>
+      <button
+        onClick={onClick}
+        className={`
+          rounded-full
+          flex items-center justify-center
+          transition-all duration-200
+          ${onClick ? 'cursor-pointer' : 'cursor-default'}
+          ${className}
+        `}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          border: `1px solid ${colors.border}`,
+          backgroundColor: bgColor,
+        }}
+        aria-label={ariaLabel}
+      >
+        <div style={{ color: colors.icon }}>
+          {renderIcon()}
+        </div>
+      </button>
+      {tooltip && isHovered && (
+        <div className="absolute left-[68px] whitespace-nowrap rounded-lg border border-border-default bg-bg-default px-3 py-2 text-b-xs text-text-title shadow-lg">
+          {tooltip}
+        </div>
+      )}
+    </div>
   );
 }

@@ -76,6 +76,7 @@ export function useCameraAdjustment({
 }: UseCameraAdjustmentProps): UseCameraAdjustmentReturn {
   /** Three.js 카메라 객체 */
   const { camera } = useThree();
+  const autoAdjustEnabled = false;
   
   /** 카메라가 이미 자동 조정되었는지 여부 */
   const cameraAdjustedRef = useRef(false);
@@ -91,6 +92,7 @@ export function useCameraAdjustment({
    * 최초 로딩 시에만 한 번 실행됩니다.
    */
   const adjustCameraToModels = useCallback(() => {
+    if (!autoAdjustEnabled) return;
     // 모델이 없거나 이미 조정되었거나 애니메이션 중이면 스킵
     if (models.length === 0 || cameraAdjustedRef.current || isAnimatingRef.current) return;
     
@@ -153,6 +155,7 @@ export function useCameraAdjustment({
    * 단, 사용자가 이미 카메라를 조작한 경우에는 조정하지 않습니다
    */
   useEffect(() => {
+    if (!autoAdjustEnabled) return;
     // 사용자가 이미 카메라를 조작한 경우에는 조정하지 않음
     if (cameraAdjustedRef.current) {
       return;
@@ -278,6 +281,7 @@ export function useCameraAdjustment({
    * ModelList에서 개별 모델이 로드될 때마다 호출하여 카메라 조정을 시도합니다
    */
   const onModelLoaded = useCallback(() => {
+    if (!autoAdjustEnabled) return;
     // 카메라가 이미 조정되었으면 스킵
     if (cameraAdjustedRef.current) return;
     

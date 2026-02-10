@@ -97,7 +97,7 @@ export const buildNoteHeaderCanvas = (payload: PdfNotePayload) => {
   ctx.fillStyle = PDF_TEXT;
   ctx.font = PDF_FONT.TITLE;
   ctx.fillText(
-    `${payload.modelName} 노트 기록`,
+    `${payload.modelEnglish ?? payload.modelName} 노트 기록`,
     NOTE_LAYOUT.PADDING_X,
     NOTE_LAYOUT.PADDING_TOP
   );
@@ -129,7 +129,7 @@ export const buildNoteHeaderCanvas = (payload: PdfNotePayload) => {
 
     ctx.fillStyle = PDF_TEXT;
     ctx.font = PDF_FONT.SUMMARY_LABEL;
-    ctx.fillText('AI와의 대화 세줄 요약', boxX + SUMMARY_BOX.PADDING_X, boxY + SUMMARY_BOX.PADDING_TOP);
+    ctx.fillText('AI 대화 요약', boxX + SUMMARY_BOX.PADDING_X, boxY + SUMMARY_BOX.PADDING_TOP);
 
     ctx.font = PDF_FONT.SUMMARY_TEXT;
     let textY = boxY + SUMMARY_BOX.PADDING_TOP + SUMMARY_BOX.LINE_HEIGHT + SUMMARY_BOX.GAP;
@@ -197,7 +197,7 @@ export const buildSummaryBlockCanvas = (payload: PdfSummaryPayload) => {
 
   ctx.fillStyle = PDF_TEXT;
   ctx.font = PDF_FONT.SUMMARY_LABEL;
-  ctx.fillText('AI와의 대화 세줄 요약', boxX + SUMMARY_BOX.PADDING_X, boxY + SUMMARY_BOX.PADDING_TOP);
+  ctx.fillText('AI 대화 요약', boxX + SUMMARY_BOX.PADDING_X, boxY + SUMMARY_BOX.PADDING_TOP);
 
   ctx.font = PDF_FONT.SUMMARY_TEXT;
   let textY = boxY + SUMMARY_BOX.PADDING_TOP + SUMMARY_BOX.LINE_HEIGHT + SUMMARY_BOX.GAP;
