@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, ReactNode } from 'react';
+import React, { useState, useRef, useLayoutEffect, useCallback, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ViewerIconProps {
   selected?: boolean;
@@ -27,6 +28,32 @@ export function ViewerIcon({
   iconColor,
 }: ViewerIconProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [tooltipRect, setTooltipRect] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const updateTooltipPosition = useCallback(() => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setTooltipRect({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 8,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!tooltip || !isHovered) {
+      setTooltipRect(null);
+      return;
+    }
+    updateTooltipPosition();
+    window.addEventListener('scroll', updateTooltipPosition, true);
+    window.addEventListener('resize', updateTooltipPosition);
+    return () => {
+      window.removeEventListener('scroll', updateTooltipPosition, true);
+      window.removeEventListener('resize', updateTooltipPosition);
+    };
+  }, [tooltip, isHovered, updateTooltipPosition]);
 
   const getColorClasses = () => {
     if (selected) {
@@ -110,6 +137,7 @@ export function ViewerIcon({
       onMouseLeave={() => setIsHovered(false)}
     >
       <button
+        ref={buttonRef}
         onClick={onClick}
         className={`
           rounded-full
@@ -130,11 +158,20 @@ export function ViewerIcon({
           {renderIcon()}
         </div>
       </button>
-      {tooltip && isHovered && (
-        <div className="absolute left-[68px] whitespace-nowrap rounded-lg border border-border-default bg-bg-default px-3 py-2 text-b-xs text-text-title shadow-lg">
-          {tooltip}
-        </div>
-      )}
+      {tooltip && isHovered && tooltipRect && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed whitespace-nowrap rounded-lg border border-border-default bg-bg-default px-3 py-2 text-b-xs text-text-title shadow-lg z-[9999] pointer-events-none"
+            style={{
+              top: tooltipRect.top,
+              left: tooltipRect.left,
+              transform: 'translateY(-50%)',
+            }}
+          >
+            {tooltip}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
