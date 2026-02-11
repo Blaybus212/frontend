@@ -174,8 +174,6 @@ export function AiPanel({
         }
         return [...prev, part.dbId!];
       });
-    } else {
-      console.warn('⚠️ 부품에 dbId가 없습니다:', part);
     }
     
     // 입력창 포커스 복원

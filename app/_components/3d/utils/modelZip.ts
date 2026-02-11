@@ -30,8 +30,6 @@ interface ModelZipResult {
 
 let currentUrlMap: Map<string, string> | null = null;
 let urlModifierInstalled = false;
-let customGltfNodesLogged = false;
-let defaultGltfNodesLogged = false;
 
 const ensureUrlModifier = () => {
   if (urlModifierInstalled) return;
@@ -104,17 +102,7 @@ export async function downloadAndExtractModelZip(params: {
         try {
           const gltfData = JSON.parse(text);
           
-          if (manifest.default && filename === manifest.default && gltfData.nodes) {
-            if (!defaultGltfNodesLogged) {
-              console.log('[default.gltf] nodes:', gltfData.nodes);
-              defaultGltfNodesLogged = true;
-            }
-          }
           if (manifest.custom && filename === manifest.custom && gltfData.nodes) {
-            if (!customGltfNodesLogged) {
-              console.log('[custom.gltf] nodes:', gltfData.nodes);
-              customGltfNodesLogged = true;
-            }
             parts = gltfData.nodes
               .map((node: any, index: number) => ({
                 nodeId: String(index),
