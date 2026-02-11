@@ -117,7 +117,7 @@ export function ViewerSidebar({
                 border border-border-default
                 flex flex-col items-center justify-center
                 transition-colors
-                bg-bg-hovered hover: hover:border-border-hovered
+                bg-bg-hovered hover:border-border-hovered
               `}
               aria-label="퀴즈"
             >
