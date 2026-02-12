@@ -16,12 +16,7 @@ export default function LoginPage() {
 
   useEffect(() => {
       if (status === 'authenticated' && session) {
-        if (session.loginUser?.isFinishOnboard) {
-          const preferCategory = session.loginUser.preferCategory;
-          router.push(preferCategory ? `/home?category=${preferCategory}` : '/home');
-        } else {
           router.push('/onboard');
-        }
       }
     }, [session, status, router]);
 
