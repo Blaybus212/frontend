@@ -56,7 +56,7 @@ const RankingSection = async ({
 
   const filteredScenes = (data.scenes ?? []).filter((scene) => scene.id !== "2");
   const useMock = filteredScenes.length === 0;
-
+  console.log(filteredScenes);
   const scenesToShow = useMock
     ? rank === "" || rank === "all"
       ? MOCK_RANKING_ALL

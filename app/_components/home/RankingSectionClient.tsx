@@ -67,7 +67,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
             </button>
           </div>
           <div className="flex flex-col gap-2">
-            {scenes.map((item) => (
+            {scenes.map((item, index) => (
               <div
                 key={item.id}
                 onClick={() => router.push(`viewer/${item.id}`) }
@@ -75,7 +75,7 @@ const RankingSectionClient: React.FC<RankingSectionData> = ({
               >
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-bg-sub text-sub text-b-md font-medium">
-                    {item.rank}
+                    {index + 1}
                   </div>
 
                   <div className="flex flex-col">
