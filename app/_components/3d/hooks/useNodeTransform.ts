@@ -8,6 +8,7 @@
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SelectedNode } from './useClickHandler';
+import type { GetDisassemblyOffsetForNode } from './useAssemblyDisassembly';
 
 /**
  * useNodeTransform 훅의 매개변수 인터페이스
@@ -17,6 +18,8 @@ interface UseNodeTransformProps {
   selectedNodesRef: React.MutableRefObject<SelectedNode[] | null>;
   /** TransformControls의 참조 */
   transformControlsRef: React.MutableRefObject<any>;
+  /** 노드의 현재 분해 오프셋 반환 (저장 시 조립 기준으로 만들기 위해 사용) */
+  getDisassemblyOffsetForNode?: GetDisassemblyOffsetForNode;
 }
 
 /**
@@ -42,6 +45,7 @@ interface UseNodeTransformProps {
 export function useNodeTransform({
   selectedNodesRef,
   transformControlsRef,
+  getDisassemblyOffsetForNode,
 }: UseNodeTransformProps) {
   /**
    * 매 프레임마다 TransformControls의 변환을 노드에 적용합니다
@@ -91,12 +95,22 @@ export function useNodeTransform({
     // 매트릭스 업데이트
     node.updateMatrix();
     node.updateMatrixWorld(true);
-    
+
+    // 조립(0%) 기준 위치로 저장: 현재 node.position에서 분해 오프셋을 뺀 값
+    // 슬라이더가 0% 초과일 때 드래그해도 저장/로드 시 올바르게 동작하도록
+    let positionToStore = node.position.clone();
+    if (getDisassemblyOffsetForNode) {
+      const offset = getDisassemblyOffsetForNode(node, selectedNode.modelIndex);
+      if (offset) {
+        positionToStore = node.position.clone().sub(offset);
+      }
+    }
+
     // 사용자가 변경한 위치를 userData에 저장 (useAssemblyDisassembly가 덮어쓰지 않도록)
     if (!node.userData.userModifiedPosition) {
       node.userData.userModifiedPosition = new THREE.Vector3();
     }
-    node.userData.userModifiedPosition.copy(node.position);
+    node.userData.userModifiedPosition.copy(positionToStore);
     
     if (!node.userData.userModifiedRotation) {
       node.userData.userModifiedRotation = new THREE.Euler();

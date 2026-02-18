@@ -34,9 +34,17 @@ interface UseAssemblyDisassemblyProps {
   modelRefsVersion?: number;
 }
 
+/** 노드의 현재 분해 오프셋 (로컬 좌표) */
+export type GetDisassemblyOffsetForNode = (
+  node: THREE.Object3D,
+  modelIndex: number
+) => THREE.Vector3 | null;
+
 interface UseAssemblyDisassemblyReturn {
   /** 현재 조립/분해 값 기준으로 위치를 초기 상태로 되돌림 */
   resetToAssembly: () => void;
+  /** 노드의 현재 분해 오프셋 반환 (userModifiedPosition 저장 시 빼기 위해 사용) */
+  getDisassemblyOffsetForNode: GetDisassemblyOffsetForNode;
 }
 
 /**
@@ -169,6 +177,36 @@ export function useAssemblyDisassembly({
   };
 
   /**
+   * 노드의 현재 분해 오프셋(로컬 좌표)을 반환합니다.
+   * useNodeTransform에서 userModifiedPosition 저장 시 조립 기준으로 만들기 위해 빼는 데 사용합니다.
+   */
+  const getDisassemblyOffsetForNode: GetDisassemblyOffsetForNode = (
+    node: THREE.Object3D,
+    modelIndex: number
+  ) => {
+    const nodes = disassemblyDataRef.current.get(modelIndex);
+    if (!nodes || nodes.length === 0) return null;
+
+    const entry = nodes.find((n) => n.node === node);
+    if (!entry) return null;
+
+    const { direction, distance } = entry;
+    const factor = assemblyValue / 100;
+    if (factor <= 0) return new THREE.Vector3(0, 0, 0);
+
+    if (node.parent) {
+      const parentWorldMatrix = node.parent.matrixWorld.clone();
+      const parentRotation = new THREE.Quaternion();
+      parentWorldMatrix.decompose(new THREE.Vector3(), parentRotation, new THREE.Vector3());
+      const localDirection = direction
+        .clone()
+        .applyQuaternion(parentRotation.clone().invert());
+      return localDirection.multiplyScalar(distance * factor);
+    }
+    return direction.clone().multiplyScalar(distance * factor);
+  };
+
+  /**
    * 현재 조립/분해 값 기준으로 모든 노드 위치를 초기 상태로 되돌립니다.
    */
   const resetToAssembly = () => {
@@ -231,5 +269,5 @@ export function useAssemblyDisassembly({
     });
   }, [assemblyValue, modelRefs, modelRefsVersion]);
 
-  return { resetToAssembly };
+  return { resetToAssembly, getDisassemblyOffsetForNode };
 }

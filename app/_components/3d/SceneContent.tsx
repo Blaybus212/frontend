@@ -107,7 +107,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
     justEndedDragRef,
   });
 
-  const { resetToAssembly } = useAssemblyDisassembly({
+  const { resetToAssembly, getDisassemblyOffsetForNode } = useAssemblyDisassembly({
     modelRefs,
     assemblyValue,
     transformControlsRef,
@@ -144,6 +144,7 @@ export const SceneContent = forwardRef<Scene3DRef, SceneContentProps>(({
   useNodeTransform({
     selectedNodesRef,
     transformControlsRef,
+    getDisassemblyOffsetForNode,
   });
 
   const getSelectedNodeIds = useCallback(() => {
